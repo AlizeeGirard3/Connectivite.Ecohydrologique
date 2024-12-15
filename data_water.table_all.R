@@ -13,6 +13,7 @@
 #         |—— output
 #                     |—— data
 #                     |—— figures
+
 #         |—— scripts
 # NOTES : 
 
@@ -24,7 +25,7 @@
 
 ###########################################################################-
 
-setwd("Aliz/Documents/Doctorat/_R.&.Stats_PhD")
+setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
 
 # Librairies ----
 if (!require("conflicted")) install.packages("conflicted") # ℹ Use the conflicted package to force all conflicts to become errors    ---->>>>  devtools::install_github("r-lib/conflicted")
