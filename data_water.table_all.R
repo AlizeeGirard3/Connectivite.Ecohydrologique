@@ -13,7 +13,6 @@
 #         |—— output
 #                     |—— data
 #                     |—— figures
-
 #         |—— scripts
 # NOTES : 
 
@@ -47,6 +46,7 @@ ll.clean <- list()
 for (i in 1:length(ll.pre)) {
 # import et ménage
   paste(i)
+  i<-6
   ll.pre[i]
   # read.csv(paste0("connectivite/data/raw/",ll[i])) # fonctionne, mais ne peut lire les lignes bizarrement codées
   ll.pre.0 <- readLines(paste0("connectivite/data/raw/",ll.pre[i]))
@@ -82,7 +82,7 @@ for (i in 1:length(ll.pre)) {
    numeric_result <- as.numeric(unlist(result))
    fichier <- print(numeric_result)
    # test
-   if(!(logger.serial.no %in% fichier)) { # si FALSE = STOP et warning "blabla" // si TRUE = continuer la boucle (donc rien, donc IF statement)
+   if(!(logger.serial.no %in% fichier)) { # si TRUE = STOP et warning "blabla" // si TRUE = continuer la boucle (donc rien, donc IF statement)
      stop(paste0("Attention, le nom du fichier ne correspond pas au numéro de série du level logger. Fichier problématique : i = ", paste(i), "; ", ll.pre[i]))
    }
    # si problème : aller changer manuellement en utilisant le no de série (unique) inscrit dans le fichier et PAS son nom 
@@ -99,7 +99,71 @@ for (i in 1:length(ll.pre)) {
   ll.pre.2.data.1$calibrated.value <- ifelse(ll.pre.2.data.1$raw.value == ll.pre.2.data.1$calibrated.value, yes = ll.pre.2.data.1$calibrated.value[rep("NA", times = length(ll.pre.2.data.1$calibrated.value))], no = ll.pre.2.data.1$calibrated.value)
   head(ll.pre.2.data.1)
   str(ll.pre.2.data.1)
+  # changer pour un nom explicite
+  ll.cal.pre <- ll.pre.2.data.1
   
+  
+  # CHANTIER ici ####
+# calcul de calibration  ----
+# notes : les longueurs doivent être en mm !
+  
+  
+  # ouvrir le fichier de données
+  cal.data <- read_xlsx("connectivite/data/raw/level.logger.calibration.all.xlsx")
+  head(cal.data) # tibble
+  str(cal.data) # idée : 
+                # si unité = cm -> convertir en mm, si mm-> continuer
+  # 
+  # PROBLÈME INCONNU DU À LA FATIGUE
+  # # trouver les lignes qui correspondent à la sonde à calibrer
+  # cal.probe.i <- cal.data %>% dplyr::filter(cal.data$probe.serial.no == logger.serial.no)
+  # 
+  # # test: si raw.value == vecteur de "NA", on peut procédéer à la calibration, sinon ça veut dire qu'on a la cal du programme de la sonde, garder ces données (créer autre colonne)
+  # if(FALSE %in% (!ll.cal.pre$calibrated.value %in% rep("NA", times = length(ll.cal.pre$calibrated.value)))) { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
+  #   stop(paste0("Attention, la colonne calibrated.value n'est pas vide. Sonde problématique : i = ", paste(i), "; ", ll.pre[i]))
+  #   # créer une autre colonne, le cas échéant (à faire)
+  # }
+  # 
+  # 
+  # RENDUE ICI
+  
+  # établir la séquence (vecteur) et remplacer "raw.value" **
+  # for (j in 1:2) { # 2 fois, car deux mesures ? / NON marche pas faire autrement
+    # paste(j)
+    # cal.probe.i.j <- cal.probe.i[j,]
+    
+  # FORMULES pour la calibration
+  # RES.NP.calibré = ((DATA.raw.value " - b.offset) / a.slope ) - longueur.fil
+  # si Y = (a * X) + b,
+  # X = ( Y - b ) / a, puis on enlève la longueur du fil à la mesure de NP
+  # où 
+  # y = raw.value aux longueurs 1 et 2 du test de calibration (p. ex. 200 mm et 800 mm ou 1400 mm, pour STH)
+  # b.offset = y1 - a.slope * x1
+  # a.slope = ( y2 - y1 ) / ( x2 - x1 ), soit la proportion de changement de y pour chaque changement de x
+  # a.slope = longueur de fil (mm)
+  # x2 = longueur fil test #2 (V = "cal.order"), x1 = longueur fil test #1 (V = "cal.order")
+  # y2 = raw.value à du test #2 (V = "cal.value"), y1 = raw.value à du test #1 (V = "cal.value")
+ 
+  # calcul des termes de la calibration ----
+  longueur.fil = cal.probe.i$cal.length.cm[cal.probe.i$cal.order==1]*10
+  x2 = cal.probe.i$cal.length.cm[cal.probe.i$cal.order==2]*10
+  x1 = cal.probe.i$cal.length.cm[cal.probe.i$cal.order==1]*10
+  y2 = cal.probe.i$cal.value[cal.probe.i$cal.order==2]
+  y1 = cal.probe.i$cal.value[cal.probe.i$cal.order==1]
+  a.slope = ( y2 - y1 ) / ( x2 - x1 )
+  b.offset = y1 - (a.slope * x1)
+  
+    
+  
+  
+  
+  
+  # ll.cal.pre$calibrated.value ==
+  
+  # pour toutes les lignes 
+  
+  
+  # avant le 14 déc, cette séquences de cération de liste était avant le calcul de calibraiton et ça foncitonnait
   # À FAIRE
   # ENLEVER LES DONNÉES DE LA PREMIÈRE JOURNÉE (24H) CAR RABATTEMENT DE LA NAPPE ET 
   # DÉCOUPER LES DONNÉES DE LA DERNIÈRE JOURNÉES
@@ -108,30 +172,6 @@ for (i in 1:length(ll.pre)) {
   # noted : <- le fichier du level logger correspondant à la position i; [1] : data (dataframe), [2] : metadata (character string)
   ll.clean[[i]] <- list("data" = ll.pre.2.data.1, "metadata" = ll.pre.2.metadata)
   
-# calcul de calibration  ----
-# notes : les longueurs doivent être en mm !
-  # RENDUE LÀ : ouvrir et croiser les données créées dans ll.clean et les données de calibration issues du fichier "level.logger.calibration.all.xlsx".
-  
-  cal.data <- read_xlsx("connectivite/data/raw/level.logger.calibration.all.xlsx")
-  head(cal.data) # tibble
-  str(cal.data) # idée : 
-                # si unité = cm -> convertir en mm, si mm-> continuer
-  
-# FORMULES pour la calibration ----
-  # RES.NP.calibré = ((DATA.raw.value " - b.offset) / a.slope ) - longueur.fil
-  # si Y = (a * X) + b,
-  # X = ( Y - b ) / a, puis on enlève la longueur du fil à la mesure de NP
-  # où 
-  # y = raw.value aux longueurs 1 et 2 du test de calibration (p. ex. 200 mm et 800 mm ou 1400 mm, pour STH)
-  # b.offset = ( y2 - y1 ) / ( x2 - x1 ), soit la proportion de changement de y pour chaque changement de x
-  # a = longueur de fil (mm)
-  # x2 = longueur fil test #2 (V = "cal.order"), x1 = longueur fil test #1 (V = "cal.order")
-  # y2 = raw.value à du test #2 (V = "cal.value"), y1 = raw.value à du test #1 (V = "cal.value")
-  
-  for (i in 1:2) { # 2 fois, car deux mesures ?
-    
-  }
-    
 }
 # vérifier que les erreurs sont tjrs la meme affaire inutile -> incomplete final line, tenté de régler le problème, mais sans succès; 
 # et different length (ça le dit quand le "cal" est vide, et ça met des NA, ce qui est parfait)
