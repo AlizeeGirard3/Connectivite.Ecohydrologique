@@ -36,6 +36,9 @@ if (!require("dplyr")) install.packages("dplyr") # entre autres : left_join()
 if (!require("tidyr")) install.packages("tidyr") # entre autres : extract_numeric() / extract_numeric() is deprecated: please use readr::parse_number() instead
 # if (!require("readr")) install.packages("readr") #  parse_number()
 # if (!require("WriteXLS")) install.packages("WriteXLS")
+if (!require("sf")) install.packages("sf"); if (!require("lutz")) install.packages("lutz") # GIS in R
+# if (!require("lubridate")) install.packages("lubridate")
+
 
 # fichiers de consigne de données ----
 ll.pre <- list.files("connectivite/data/raw", pattern = "^4")
@@ -44,7 +47,7 @@ ll.clean <- list()
 # boucle ----
 # notes : modifications pour chaque fichier issus d'une période de mesures des level loggers
 for (i in 1:length(ll.pre)) {
-# import et ménage
+  # import et ménage
   paste(i)
   ll.pre[i]
   # read.csv(paste0("connectivite/data/raw/",ll[i])) # fonctionne, mais ne peut lire les lignes bizarrement codées
@@ -55,40 +58,40 @@ for (i in 1:length(ll.pre)) {
   ll.pre.2 <- gsub(" ", "", ll.pre.1) # enlever tous les espaces dans le subset de données
   str(ll.pre.2)
   
-# création des subsets ----
-# notes : les noms réfèrent à l'étape et non à une matrice en particulier, les objets seront remplacés au fil de la boucle. 
-# l'info importante est consignée dans la liste ll.clean[i]
+  # création des subsets ----
+  # notes : les noms réfèrent à l'étape et non à une matrice en particulier, les objets seront remplacés au fil de la boucle. 
+  # l'info importante est consignée dans la liste ll.clean[i]
   ll.pre.2.metadata <-  ll.pre.2[c(1:9)] # inclue les anciens noms de colonnes, qui sont dans un format et un ordre bizzare
   ll.pre.2.data <- ll.pre.2[-c(1:9)]
   str(ll.pre.2.data)
-
-# vérification : logger.serial.no == nom du fichier, sinon arrêter TOUT ! ----
- {# base R pour extraire juste les chiffres...
-   # logger serial no
-   text <- ll.pre.2.metadata[4]
-   # Extract numbers using regular expressions
-   numbers <- gregexpr("[0-9]+", text)
-   result <- regmatches(text, numbers)
-   # Convert to numeric
-   numeric_result <- as.numeric(unlist(result))
-   logger.serial.no <- print(numeric_result)
-   # fichier
-   text <- ll.pre[i]
-   # Extract numbers using regular expressions
-   numbers <- gregexpr("[0-9]+", text)
-   result <- regmatches(text, numbers)
-   # Convert to numeric
-   numeric_result <- as.numeric(unlist(result))
-   fichier <- print(numeric_result)
-   # test
-   if(!(logger.serial.no %in% fichier)) { # si TRUE = STOP et warning "blabla" // si TRUE = continuer la boucle (donc rien, donc IF statement)
-     stop(paste0("Attention, le nom du fichier ne correspond pas au numéro de série du level logger. Fichier problématique : i = ", paste(i), "; ", ll.pre[i]))
-   }
-   # si problème : aller changer manuellement en utilisant le no de série (unique) inscrit dans le fichier et PAS son nom 
-   # ** 1. créer copie -> archive; 2. s'assurer de changer partout ** : QGIS, fichier, onglet, data_site.id
- } 
   
-# création du dataframe et ménage  ----
+  # vérification : logger.serial.no == nom du fichier, sinon arrêter TOUT ! ----
+  {# base R pour extraire juste les chiffres...
+    # logger serial no
+    text <- ll.pre.2.metadata[4]
+    # Extract numbers using regular expressions
+    numbers <- gregexpr("[0-9]+", text)
+    result <- regmatches(text, numbers)
+    # Convert to numeric
+    numeric_result <- as.numeric(unlist(result))
+    logger.serial.no <- print(numeric_result)
+    # fichier
+    text <- ll.pre[i]
+    # Extract numbers using regular expressions
+    numbers <- gregexpr("[0-9]+", text)
+    result <- regmatches(text, numbers)
+    # Convert to numeric
+    numeric_result <- as.numeric(unlist(result))
+    fichier <- print(numeric_result)
+    # test
+    if(!(logger.serial.no %in% fichier)) { # si TRUE = STOP et warning "blabla" // si TRUE = continuer la boucle (donc rien, donc IF statement)
+      stop(paste0("Attention, le nom du fichier ne correspond pas au numéro de série du level logger. Fichier problématique : i = ", paste(i), "; ", ll.pre[i]))
+    }
+    # si problème : aller changer manuellement en utilisant le no de série (unique) inscrit dans le fichier et PAS son nom 
+    # ** 1. créer copie -> archive; 2. s'assurer de changer partout ** : QGIS, fichier, onglet, data_site.id
+  } 
+  
+  # création du dataframe et ménage  ----
   ll.pre.2.data.1 <- read.csv(text = ll.pre.2.data, col.names = c("scan.id", "date.AAAA-MM-JJ", "time.HH:MM:SS",'raw.value.mm',"calibrated.value.mm"))
   # vérifications
   head(ll.pre.2.data.1)
@@ -99,15 +102,47 @@ for (i in 1:length(ll.pre)) {
   head(ll.pre.2.data.1)
   str(ll.pre.2.data.1)
   
-  # IDÉE : changer ici le format de date et heure, et uniformiser l'heure selon le UTC 0
+  
+  # _________________
+  
+  # trouver les UTC (time zones) ----  
+  # extraction : nom du site pour trouver les coordonnées qui serviront à connaître le fuseau horaire ----
+  site.name <- sub(".*,", "", ll.pre.2.metadata[1])
+  
+  # ouvrir données du shapefile pour accéder les zones
+  zones <- read_sf("~Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectitite_PhD_Mergin_26nov24/Ecotone.restauration.zone.pt.shp")
+  head(zones)
+  str(zones)
+  
+  # extraire la bonne lat, long selon le nom du site
+  coords <- c(zones$latitude[grep(site.name, zones, ignore.case = TRUE)], zones$longitude[grep(site.name, zones, ignore.case = TRUE)])
+  
+  # trouver le UTC selon la lat long
+  head(test1)
+  tz <- tz_lookup_coords(coords[1], coords[2], method = "fast", warn = FALSE) 
+  # modifier mes colonnes pour avoir le format ISO (manque encore le UTC à ajouter à la fin)
+  test1 <- ll.pre.2.data.1 %>% mutate(new = paste0(date.AAAA.MM.JJ," ", time.HH.MM.SS)) %>% select(!c("date.AAAA.MM.JJ", "time.HH.MM.SS"))
+  colnames(test1)
+  
+  #  tr
+  with_tz(dmy_hms(test1$new, tz = tz), tzone = "UTC") # les heures sont ainsi ramenées à UTC +0
+
+  
+  
+  
+  # _________________
+  
+  
+  
+  
   
   
   
   # changer pour un nom explicite
   ll.cal.pre <- ll.pre.2.data.1
   
-# calcul de calibration  ----
-# notes : les longueurs doivent être en mm !
+  # calcul de calibration  ----
+  # notes : les longueurs doivent être en mm !
   # ouvrir le fichier de données
   cal.data <- read_xlsx("connectivite/data/raw/level.logger.calibration.all.xlsx")
   head(cal.data) # tibble
@@ -124,7 +159,7 @@ for (i in 1:length(ll.pre)) {
     stop(paste0("Attention, la colonne calibrated.value n'est pas vide. Sonde problématique : i = ", paste(i), "; ", ll.pre[i]))
     # créer une autre colonne, le cas échéant (à faire)
   }
-
+  
   # calcul des termes de la calibration ----
   # FORMULES
   # RES.NP.calibré = ((DATA.raw.value " - b.offset) / a.slope ) - longueur.fil
@@ -149,7 +184,7 @@ for (i in 1:length(ll.pre)) {
   ll.cal.pre$calibrated.value = ((ll.cal.pre$raw.value - b.offset) / a.slope ) - longueur.fil
   
   head(ll.cal.pre)
-
+  
   
   
   # CHANTIER
@@ -182,5 +217,5 @@ for (i in 1:length(ll.pre)) {
 # et different length (ça le dit quand le "cal" est vide, et ça met des NA, ce qui est parfait)
 
 if("ll.clean.RData" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
-    stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
-  } else { save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
+  stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
+} else { save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
