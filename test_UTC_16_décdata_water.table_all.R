@@ -98,36 +98,27 @@ for (i in 1:length(ll.pre)) {
 # Date et heure : format ISO date AAAA-MM-JJTHH:MM:SS,ss-/+FF:ff, voir https://fr.wikipedia.org/wiki/ISO_8601 ----
    # heure : « Z » à la fin lorsqu’il s’agit de l’heure UTC. (« Z » pour méridien zéro, aussi connu sous le nom « Zulu » dans l’alphabet radio international).
    # extraction : nom du site pour trouver les coordonnées qui serviront à connaître le fuseau horaire
+   site.name.pre <- sub("SiteName","",ll.pre.2.metadata[1])
+   site.name <- gsub(",", "", site.name.pre)
 
-   
-   
-   # CA FONCTIONNE PLUS !!
-   # L'OSTI DE CSV qui décide s'il met des , ou è pour séparer les données !!! ÇA CHIE MA BOUCLE !!
-     site.name <- sub(".*,", "", ll.pre.2.metadata[1])
-   # 20 déc. j'ai écrit à Maryann pour qu'elle me transfère le fichier brut, attente
-  
   # ouvrir données du shapefile pour accéder les zones
-  zones <- read_sf("~Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectitite_PhD_Mergin_26nov24/Ecotone.restauration.zone.pt.shp")
-  head(zones)
-  str(zones)
-  
-  # CA FONCTIONNE PLUS !!
-  
+   zones <- read_sf("~Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectitite_PhD_Mergin_26nov24/Ecotone.restauration.zone.pt.shp")
+   head(zones)
+   str(zones)
   
   # extraire la bonne lat, long selon le nom du site
-  # coords <- c(zones$latitude[grep(site.name, zones, ignore.case = TRUE)], zones$longitude[grep(site.name, zones, ignore.case = TRUE)])
-  coords <- c(zones$latitude[grep(site.name, zones, ignore.case = TRUE)], zones$longitude[grep(site.name, zones, ignore.case = TRUE)])
+   coords <- c(zones$latitude[grep(site.name, zones, ignore.case = TRUE)], zones$longitude[grep(site.name, zones, ignore.case = TRUE)])
   
   # trouver le UTC selon la lat long
-  tz <- tz_lookup_coords(coords[1], coords[2], method = "fast", warn = FALSE) 
+   tz <- tz_lookup_coords(coords[1], coords[2], method = "fast", warn = FALSE) 
   # modifier mes colonnes pour avoir le format ISO (manque encore le UTC à ajouter à la fin)
-  ll.pre.2.data.2 <- ll.pre.2.data.1 %>% mutate(date.time.UTC.0pre = paste0(date.AAAA.MM.JJ," ", time.HH.MM.SS)) %>% select(!c("date.AAAA.MM.JJ", "time.HH.MM.SS"))
-  ll.pre.2.data.2$date.time.UTC.0pre <- gsub("00:00", "00:01", ll.pre.2.data.2$date.time.UTC.0pre) # sinon, les données 00:00:00 étaient effacées !
+   ll.pre.2.data.2 <- ll.pre.2.data.1 %>% mutate(date.time.UTC.0pre = paste0(date.AAAA.MM.JJ," ", time.HH.MM.SS)) %>% select(!c("date.AAAA.MM.JJ", "time.HH.MM.SS"))
+   ll.pre.2.data.2$date.time.UTC.0pre <- gsub("00:00", "00:01", ll.pre.2.data.2$date.time.UTC.0pre) # sinon, les données 00:00:00 étaient effacées !
 
   #  transformer en format ISO 8601
-  ll.pre.2.data.2 <- ll.pre.2.data.2 %>% 
-    mutate(date.time.UTC.0pre.1 = with_tz(dmy_hms(ll.pre.2.data.2$date.time.UTC.0pre, tz = tz), tzone = "UTC")) # les heures sont ainsi ramenées à UTC +0
-  head(ll.pre.2.data.2) # différence de 4 heures
+   ll.pre.2.data.2 <- ll.pre.2.data.2 %>% 
+     mutate(date.time.UTC.0pre.1 = with_tz(dmy_hms(ll.pre.2.data.2$date.time.UTC.0pre, tz = tz), tzone = "UTC")) # les heures sont ainsi ramenées à UTC +0
+   head(ll.pre.2.data.2) # différence de 4 heures
   
   # début et fin inscrits dans "level.logger.calibration.all.csv" (début = installation + 24h de rabattement de la NP, fin = heure de retrait)
   # note : données de date en format xlsx ça lit TOUT CROCHE, transformé en csv fonctionne bien
@@ -137,9 +128,6 @@ for (i in 1:length(ll.pre)) {
   head(cal.data) # tibble
   str(cal.data)
   
-  
-  # CHANTIER
-
   # transformer en format ISO 8601, UTC +0
   cal.data <- cal.data %>%
     mutate(day.begining.aaaa.mm.dd.hh.00.01 = with_tz(ymd_hms(cal.data$day.begining.aaaa.mm.dd.hh.00.01, tz = tz), tzone = "UTC")) %>% # les heures sont ainsi ramenées à UTC +0 / ceci écrase la colonne du mm nom
