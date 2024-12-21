@@ -84,7 +84,7 @@ for (i in 1:length(ll.pre)) {
   } 
   
   # création du dataframe level legger (ll) contenant données de nappe phréatique (NP) et ménage  ----
-  ll.pre.2.data.1 <- read.csv(text = ll.pre.2.data, col.names = c("scan.id", "date.AAAA-MM-JJ", "time.HH:MM:SS",'raw.value.mm',"calibrated.value.mm"), sep = ";") # text = argument de read.csv qui lit la valeur contenue dans l'objet
+  ll.pre.2.data.1 <- read.csv(text = ll.pre.2.data, col.names = c("scan.id", "date.AAAA-MM-JJ", "time.HH:MM:SS",'raw.value.mm',"calibrated.value.mm")) # text = argument de read.csv qui lit la valeur contenue dans l'objet
     # vérifications
   head(ll.pre.2.data.1)
   str(ll.pre.2.data.1)
