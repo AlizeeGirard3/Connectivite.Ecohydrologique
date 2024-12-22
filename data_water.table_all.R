@@ -118,10 +118,11 @@ for (i in 1:length(ll.pre)) {
    ll.pre.2.data.2 <- ll.pre.2.data.1 %>% mutate(date.time.UTC.0pre = paste0(date.JJ.MM.AAAA," ", time.HH.MM.SS)) # %>% select(!"time.HH.MM.SS") # conserver l'heure aussi ?
    ll.pre.2.data.2$date.time.UTC.0pre <- gsub("00:00", "00:01", ll.pre.2.data.2$date.time.UTC.0pre) # sinon, les données 00:00:00 étaient effacées !
 
-     #  transformer en format ISO 8601
-      # garder date.AAAA-MM-JJ
+  #  transformer en format ISO 8601
+  # garder date.AAAA-MM-JJ
    ll.pre.2.data.2 <- ll.pre.2.data.2 %>% 
-     mutate(`date.AAAA-MM-JJ` = dmy(ll.pre.2.data.2$date.JJ.MM.AAAA, tz = tz)) %>%  # les heures sont ainsi ramenées à UTC +0
+     mutate(`date.AAAA-MM-JJ` = dmy(ll.pre.2.data.2$date.JJ.MM.AAAA, tz = tz)) %>%
+     mutate(`date.time.tz.orig` = dmy_hms(paste0(ll.pre.2.data.2$date.JJ.MM.AAAA," ", ll.pre.2.data.2$time.HH.MM.SS))) %>% 
      mutate(date.time.UTC.0pre.1 = with_tz(dmy_hms(ll.pre.2.data.2$date.time.UTC.0pre, tz = tz), tzone = "UTC"))  # les heures sont ainsi ramenées à UTC +0
    head(ll.pre.2.data.2) # différence de 4 heures
   
@@ -153,8 +154,8 @@ for (i in 1:length(ll.pre)) {
   ll.pre.2.data.3 <- ll.pre.2.data.3 %>%   # enlever l'espace entre date et heure (ISO 8601)
     mutate(date.time.UTC.0pre.2 = str_replace(ll.pre.2.data.3$date.time.UTC.0pre.1, " ", "T"))
   ll.pre.2.data.3$date.time.UTC.0 <- str_replace_all(ll.pre.2.data.3$date.time.UTC.0pre.2, "00:01","00:01Z") # ajouter le Z à la fin (ISO 8601)
-  ll.pre.2.data.3 <- ll.pre.2.data.3 %>% select(!c("date.JJ.MM.AAAA", "date.time.UTC.0pre","date.time.UTC.0pre.1", "date.time.UTC.0pre.2")) %>% # enlever les vielles colonnes
-    select("scan.id", "raw.value.mm", "calibrated.value.mm", "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.UTC.0") # date et time sans "UTC.0" sont dans le fuseau horaire d'origine (tz trouvé en croisant les coordonnées "coords")
+  ll.pre.2.data.3 <- ll.pre.2.data.3 %>% select(!c("date.JJ.MM.AAAA", "date.time.UTC.0pre.1", "date.time.UTC.0pre.2")) %>% # enlever les vielles colonnes
+    select("scan.id", "raw.value.mm", "calibrated.value.mm", "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.tz.orig", "date.time.UTC.0") # date et time sans "UTC.0" sont dans le fuseau horaire d'origine (tz trouvé en croisant les coordonnées "coords")
   head(ll.pre.2.data.3)
   colnames(ll.pre.2.data.3)
   }

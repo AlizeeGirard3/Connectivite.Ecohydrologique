@@ -30,7 +30,7 @@ ll.clean <- readRDS("connectivite/data/clean/ll.clean.RDS")
 # graph.wt <- list()
 for (i in 1:length(ll.clean)) {
   paste(i)
-
+  
   # extraire no de sonde
   texte <- ll.clean[[i]]$metadata[4]
   numbers <- gregexpr("[0-9]+", texte)
@@ -51,18 +51,20 @@ for (i in 1:length(ll.clean)) {
   # créer objet contenant les données
   ll.cal <- ll.clean[[i]]$data # ll.cal ce sont les données calibrées finales, reprise du nom dans le script d'origine "data_water.table.all.R"
   class(ll.cal); head(ll.cal); str(ll.cal); colnames(ll.cal)
+  ll.cal$date.time.tz.orig <- as.POSIXct(ll.cal$date.time.tz.orig, tryFormats = )
 
   # graphiques de nappe phréatique
-  graph.wt <- ll.cal %>% group_by(ll.cal$date.time.UTC.0) %>%  # CHANTIER : GROUPER L'AXE X PAR LE JOUR **
-    ggplot(mapping = aes(y = calibrated.value.mm, x = date.time.UTC.0)) +
+  graph.wt <- ll.cal %>% ggplot(mapping = aes(y = calibrated.value.mm/10, x = date.time.tz.orig)) + # doit être en as.POSICct, mais avec la date et l'heure. Repartir de zéro dans le script water.tanle_all??
     geom_line(group = 1) +
+    scale_x_datetime(
+      date_minor_breaks = "day", date_breaks = "2 weeks", date_labels = "%D:%H") +
     ggtitle(paste0(site.name, ", sonde no ", probe.serial.no.i, " à l'emplacement ", transect.id.i)) +
-    labs(y = "Hauteur de nappe phréatique (mm)", x = "date et heure (UTC +0)") +
-    theme_bw() + theme(plot.title = element_text(hjust = 0.5))
+    labs(y = "Hauteur de nappe phréatique (cm)", x = "Date") +
+    theme_bw() + theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 45, hjust = 1, vjust = 0.5))
   print(graph.wt) # imprimer dans R
   
   # ATTENTION !! surpasser consciemment dans la boucle
-  # ggsave(paste0("connectivite/output/figures",site.name, "_", probe.serial.no.i, "_", transect.id.i,".pdf"), graph.wt, width = 12, height = 8)
+  ggsave(paste0("connectivite/output/figures/",site.name, "_", probe.serial.no.i, "_", transect.id.i,".pdf"), graph.wt, width = 12, height = 8)
 
   # # si inexistant, imprimer dans le dossier (ou outrepasser de façon consciente)
   # if(paste0(site.name, "_", probe.serial.no.i, "_", transect.id.i,".pdf") %in% list.files("connectivite/output/figures/"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
@@ -72,8 +74,7 @@ for (i in 1:length(ll.clean)) {
   
   
   
-  
-  
+
   # CHANTIER
   
   # ÇA GOSSE ÇA ARRÊTE TOUTE LA BOUCLE !!!! j'ai essayé de mettre ça dans une liste, mais après ça bugait... je ne sais pas comment sortir ça de là donc.
