@@ -83,10 +83,10 @@ for (i in 1:length(ll.pre)) {
     }
     # si problème : aller changer manuellement en utilisant le no de série (unique) inscrit dans le fichier et PAS son nom 
     # ** 1. créer copie -> archive; 2. s'assurer de changer partout ** : QGIS, fichier, onglet, data_site.id
-  } 
-  
-  # création du dataframe level legger (ll) contenant données de nappe phréatique (NP) et ménage  ----
-  ll.pre.2.data.1 <- read.csv(text = ll.pre.2.data, col.names = c("scan.id", "date.AAAA-MM-JJ", "time.HH:MM:SS",'raw.value.mm',"calibrated.value.mm")) # text = argument de read.csv qui lit la valeur contenue dans l'objet
+  }
+
+    # création du dataframe level legger (ll) contenant données de nappe phréatique (NP) et ménage  ----
+  ll.pre.2.data.1 <- read.csv(text = ll.pre.2.data, col.names = c("scan.id", "date.JJ.MM.AAAA", "time.HH.MM.SS",'raw.value.mm',"calibrated.value.mm")) # text = argument de read.csv qui lit la valeur contenue dans l'objet / DATE mauvais format
     # vérifications
   head(ll.pre.2.data.1)
   str(ll.pre.2.data.1)
@@ -114,12 +114,15 @@ for (i in 1:length(ll.pre)) {
   # trouver le UTC selon la lat long
    tz <- tz_lookup_coords(coords[1], coords[2], method = "fast", warn = FALSE) 
   # modifier mes colonnes pour avoir le format ISO (manque encore le UTC à ajouter à la fin)
-   ll.pre.2.data.2 <- ll.pre.2.data.1 %>% mutate(date.time.UTC.0pre = paste0(date.AAAA.MM.JJ," ", time.HH.MM.SS)) %>% select(!c("date.AAAA.MM.JJ", "time.HH.MM.SS"))
+   # garder date.AAAA-MM-JJ"
+   ll.pre.2.data.2 <- ll.pre.2.data.1 %>% mutate(date.time.UTC.0pre = paste0(date.JJ.MM.AAAA," ", time.HH.MM.SS)) # %>% select(!"time.HH.MM.SS") # conserver l'heure aussi ?
    ll.pre.2.data.2$date.time.UTC.0pre <- gsub("00:00", "00:01", ll.pre.2.data.2$date.time.UTC.0pre) # sinon, les données 00:00:00 étaient effacées !
 
-  #  transformer en format ISO 8601
+     #  transformer en format ISO 8601
+      # garder date.AAAA-MM-JJ
    ll.pre.2.data.2 <- ll.pre.2.data.2 %>% 
-     mutate(date.time.UTC.0pre.1 = with_tz(dmy_hms(ll.pre.2.data.2$date.time.UTC.0pre, tz = tz), tzone = "UTC")) # les heures sont ainsi ramenées à UTC +0
+     mutate(`date.AAAA-MM-JJ` = dmy(ll.pre.2.data.2$date.JJ.MM.AAAA, tz = tz)) %>%  # les heures sont ainsi ramenées à UTC +0
+     mutate(date.time.UTC.0pre.1 = with_tz(dmy_hms(ll.pre.2.data.2$date.time.UTC.0pre, tz = tz), tzone = "UTC"))  # les heures sont ainsi ramenées à UTC +0
    head(ll.pre.2.data.2) # différence de 4 heures
   
   # début et fin inscrits dans "level.logger.calibration.all.csv" (début = installation + 24h de rabattement de la NP, fin = heure de retrait)
@@ -147,11 +150,11 @@ for (i in 1:length(ll.pre)) {
   dplyr::filter(date.time.UTC.0pre.1 <= # <= date de mesure de NP plus petite ou égale à la date end dans cal.data [...], recoupe tous les jours entre la récupération des sondes et leur mise en arrêt
                   cal.data$day.end.aaaa.mm.dd.hh.00.01[cal.data$probe.serial.no == probe.serial.no.i][1]) 
 
-  
   ll.pre.2.data.3 <- ll.pre.2.data.3 %>%   # enlever l'espace entre date et heure (ISO 8601)
     mutate(date.time.UTC.0pre.2 = str_replace(ll.pre.2.data.3$date.time.UTC.0pre.1, " ", "T"))
   ll.pre.2.data.3$date.time.UTC.0 <- str_replace_all(ll.pre.2.data.3$date.time.UTC.0pre.2, "00:01","00:01Z") # ajouter le Z à la fin (ISO 8601)
-  ll.pre.2.data.3 <- ll.pre.2.data.3 %>% select(!c("date.time.UTC.0pre","date.time.UTC.0pre.1", "date.time.UTC.0pre.2")) # enlever les vielles colonnes
+  ll.pre.2.data.3 <- ll.pre.2.data.3 %>% select(!c("date.JJ.MM.AAAA", "date.time.UTC.0pre","date.time.UTC.0pre.1", "date.time.UTC.0pre.2")) %>% # enlever les vielles colonnes
+    select("scan.id", "raw.value.mm", "calibrated.value.mm", "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.UTC.0") # date et time sans "UTC.0" sont dans le fuseau horaire d'origine (tz trouvé en croisant les coordonnées "coords")
   head(ll.pre.2.data.3)
   colnames(ll.pre.2.data.3)
   }
@@ -212,5 +215,5 @@ for (i in 1:length(ll.pre)) {
 
 if("ll.clean.RData" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
-} else { save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
-
+} else { saveRDS(ll.clean, file = "connectivite/data/clean/ll.clean.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
+ 

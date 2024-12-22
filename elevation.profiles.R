@@ -2,8 +2,17 @@
 #                             Elevation profile graphs
 #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
-# Initialized Oct. 23rd 2024
-# By Alizée Girard
+# Description -------------------------------------------------------------
+###########################################################################-
+# Fait par :      Alizée Girard
+# Affiliation :   ULaval
+# Date création : Oct. 23rd 2024
+# Fonction : pour visualiser les données d'élévation à Inkerman
+# NOTES : données caduques, ces données d'élévation sont issues de données DSM, alors que je cherchais le DEM
+# – A DEM (Digital Elevation Model) Represents the bare-Earth surface, removing all natural and built features;
+# – A DSM (Digital Surface Model) captures both the natural and built/artificial features of the environment, as shown below;
+# – A DTM (Digital Terrain Model)  typically augments a DEM, by including vector features of the natural terrain, such as rivers and ridges. A DTM may be interpolated to generate a DEM, but not vice versa.
+###########################################################################-
 
 #### bibliotheques a charger (installer avant si pas fait)
 library(conflicted) # ℹ Use the conflicted package to force all conflicts to become errors    ---->>>>  devtools::install_github("r-lib/conflicted")
@@ -26,10 +35,10 @@ if (!require("tidyverse")) install.packages("tidyverse") # pour manipulation don
 # ✖ dplyr::rename()    masks plyr::rename()     # ✖ dplyr::summarise() masks plyr::summarise()      # ✖ dplyr::summarize() masks plyr::summarize()
 
 ##### importer et préparer donnees dans R
-setwd("/Users/Aliz/Documents/Doctorat/R_PhD/Connectivite")
+setwd("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/connectivite")
 
-Elevation <- readxl::read_xlsx("/Users/Aliz/Documents/Doctorat/_Connectivité/1&2_Écotones/Inkerman/Data/Data_Inkerman.xlsx",
-                  sheet = "Elevation") #%>% group_by("ID.unique")
+Elevation <- readxl::read_xlsx("data/raw/data_INK.xlsx",
+                  sheet = "cad.Elevation") #%>% group_by("ID.unique")
 ungroup(Elevation)
 transect <- unique(Elevation$ID.unique)
 
@@ -46,20 +55,10 @@ for (i in 1:(length(transect))) {
   labs(y = "Élévation (m; Canada, 2024)", x = "Transect N-S") +
   theme_bw() + theme(plot.title = element_text(hjust = 0.5))
 
-  # Check if the file does not exist
-  file_to_check <- paste0('output/figures/Elevation_Inkerman_graph',transect[i],'.png')
-  if(!file.exists(file_to_check)){ # si c'est PAS VRAI (le file n'existe pas, on poursuit) = VRAI, si c'est VRAI = FAUX (else if -> message d'erreur, empêche d'écraser)
-    ggplot2::ggsave(paste0('output/figures/Elevation_Inkerman_graph',transect[i],'.png'), graph, width = 4.7, height = 2.4)
+  # if(paste0('Elevation_Inkerman_graph', transect[i],'.png') %in% list.files("connectivite/output/figures"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
+  #   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
+  # } else { ggplot2::ggsave(paste0('output/figures/Elevation_Inkerman_graph',transect[i],'.png'), graph, width = 4.7, height = 2.4)  }
 
-    # otherwise print a message
-  }else if(file.exists(file_to_check)){
-
-    stop("The file already exists in the current directory!")
-  }
-  
-  # Choix CONSCIENT d'écraser
-  # ggplot2::ggsave(paste0('output/figures/Elevation_Inkerman_graph',transect[i],'.png'), graph, width = 4.7, height = 2.4)
-  
 }
 # ggarrange(graph_1,graph_2,graph_3,graph_4,graph_5,graph_6,
 #                   ncol = 3, nrow = 2, common.legend = T)
