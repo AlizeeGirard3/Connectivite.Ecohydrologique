@@ -1,33 +1,42 @@
-#-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-#                Raw (calibrated) water table data visualisation graphs
-#-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
-# Description -------------------------------------------------------------
-###########################################################################-
-# Fait par :      Alizée Girard
-# Affiliation :   ULaval
-# Date création : 2024-12-09
-# Pourquoi : pour visualiser les données de nappe phréatique 
-# NOTES : 
-###########################################################################-
+---
+title: "Water table data visualisation graphs"
+author: Alizée Girard
+date: 2024-12-23
+output: pdf_document
+---
 
-##### fonctions utiles et working directory
-setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
-source("general.scripts/fonctions.R") # appel du fichier de métadonnées de projet
+```{=html}
+<!-- Notes :
 
-##### importer et préparer donnees dans R
-ll.clean <- readRDS("connectivite/data/clean/ll.clean.RDS")
-# obtenu via le script "/scripts/data_water.table.all.R"
+Raw (calibrated) data
+Autres codes :
+pdf_document 
+
+<!-- https://bookdown.org/yihui/rmarkdown-cookbook/working-directory.html
+Sometimes you may want to use another directory as the working directory. The usual way to change the working directory is setwd(), but please note that setwd() is not persistent in R Markdown (or other types of knitr source documents), which means setwd() only works for the current code chunk, and the working directory will be restored after this code chunk has been evaluated. -->
+```
+
+
+```{r, message = FALSE, include = FALSE}
+# setwd("~/Documents/Doctorat/_R.&.Stats_PhD") # fonctions utiles et working directory
+# sys.source("general.scripts/fonctions.R") # envir = knitr::knit_global())
+# load("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/raw/metadata_all.RDS")
 
 #### bibliotheques a charger (installer avant si pas fait)
-library(conflicted) # ℹ Use the conflicted package to force all conflicts to become errors    ---->>>>  devtools::install_github("r-lib/conflicted")
+if (!require("conflicted")) install.packages("conflicted")
 if (!require("dplyr")) install.packages("dplyr") # pour manipulation donnees (pipe, etc)
 if (!require("ggplot2")) install.packages("ggplot2")
 if (!require("gridExtra")) install.packages("gridExtra") # multiplot()
 if (!require("stringr")) install.packages("stringr") # str_to_title
 if (!require("grDevices")) install.packages("grDevices") # pdf()
 
-# graph.wt <- list()
+##### importer et préparer donnees dans R
+ll.clean <- readRDS("connectivite/data/clean/ll.clean.RDS")
+# obtenu via le script "/scripts/data_water.table.all.R"
+```
+
+``` {r, echo = FALSE}
 for (i in 1:length(ll.clean)) {
   paste(i)
   
@@ -50,7 +59,7 @@ for (i in 1:length(ll.clean)) {
   
   # créer objet contenant les données
   ll.cal <- ll.clean[[i]]$data # ll.cal ce sont les données calibrées finales, reprise du nom dans le script d'origine "data_water.table.all.R"
-  class(ll.cal); head(ll.cal); str(ll.cal); colnames(ll.cal)
+  # class(ll.cal); head(ll.cal); str(ll.cal); colnames(ll.cal)
   ll.cal$date.time.tz.orig <- as.POSIXct(ll.cal$date.time.tz.orig, tryFormats = )
 
   # graphiques de nappe phréatique
@@ -64,26 +73,11 @@ for (i in 1:length(ll.clean)) {
   print(graph.wt) # imprimer dans R
   
   # ATTENTION !! surpasser consciemment dans la boucle
-  ggsave(paste0("connectivite/output/figures/",site.name, "_", probe.serial.no.i, "_", transect.id.i,".pdf"), graph.wt, width = 12, height = 8)
-
-  # # si inexistant, imprimer dans le dossier (ou outrepasser de façon consciente)
-  # if(paste0(site.name, "_", probe.serial.no.i, "_", transect.id.i,".pdf") %in% list.files("connectivite/output/figures/"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
-  #   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
-  # } else { ggsave(paste0("connectivite/output/figures",site.name, "_", probe.serial.no.i, "_", transect.id.i,".pdf"), graph.wt, width = 12, height = 8)  }
-  
-  
-  
-  
-
-  # CHANTIER
-  
-  # ÇA GOSSE ÇA ARRÊTE TOUTE LA BOUCLE !!!! j'ai essayé de mettre ça dans une liste, mais après ça bugait... je ne sais pas comment sortir ça de là donc.
-  # plusieurs n'affichent rien, pourquoi ?
-  # print dans RMarkdown (?), cela serait généré dans tout un seul pdf
-  # ou à partir du terminal (je peux normalement passer de R studio au temrinal, mais puis-je le faire à paarti du même script ? sinon source()??)
-  # https://apple.stackexchange.com/questions/230437/how-can-i-combine-multiple-pdfs-using-the-command-line
-  
+  # ggsave(paste0("connectivite/output/figures/",site.name, "_", probe.serial.no.i, "_", transect.id.i,".pdf"), graph.wt, width = 12, height = 8)
 }
+```
+```{r, include = FALSE}
+
 # Afficher tous les graphiques
 
 # pdf("filename.pdf", width = 8, height = 12) # Open a new pdf file
@@ -103,12 +97,12 @@ for (i in 1:length(ll.clean)) {
 # file_to_check <- paste0('output/figures/Elevation_Inkerman_graph',transect[i],'.png')
 # if(!file.exists(file_to_check)){ # si c'est PAS VRAI (le file n'existe pas, on poursuit) = VRAI, si c'est VRAI = FAUX (else if -> message d'erreur, empêche d'écraser)
 #   ggplot2::ggsave(paste0('output/figures/Elevation_Inkerman_graph',transect[i],'.png'), graph, width = 4.7, height = 2.4)
-#   
+#
 #   # otherwise print a message
 # }else if(file.exists(file_to_check)){
-#   
+#
 #   stop("The file already exists in the current directory!")
 # }
 # Choix CONSCIENT d'écraser
 # ggplot2::ggsave(paste0('output/figures/Elevation_Inkerman_graph',transect[i],'.png'), graph, width = 4.7, height = 2.4)
-
+```

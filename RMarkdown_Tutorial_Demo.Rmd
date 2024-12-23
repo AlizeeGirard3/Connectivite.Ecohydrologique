@@ -1,0 +1,40 @@
+
+---
+title: "Tentatives de RMarkdown"
+author: Alizée Girard
+date: 2024-12-23
+output: html_document
+rmarkdown::render("RMarkdown_Tutorial_Demo.Rmd", output_file = "User/Aliz/Documents/Doctorat/_R.&.Stats_PhD/connectivite/output/documents/test.html")
+output: html_document
+---
+<!-- pdf_document -->
+<!-- Knit Document (knitr) 	Cmd+Shift+K 
+https://ourcodingclub.github.io/tutorials/rmarkdown/
+-->
+
+```{r, warning = FALSE}
+# include = F
+if (!require("conflicted")) install.packages("conflicted")
+# if (!require("dplyr")) install.packages("dplyr")
+```
+ 
+*Italic*
+**Bold**
+ `code`
+ # Header 1
+ ## Header 2
+ `# commentaire de code`
+ 
+<!-- si je fais ça, ce sera tout caché (inclure tout le code chunk, sinon erreur) -->
+```{r, echo = FALSE, fig.cap = "..."}
+A <- c("a", "a", "b", "b")
+B <- c(5, 10, 15, 20)
+dataframe <- data.frame(A, B)
+print(dataframe)
+boxplot(B~A,data=dataframe)
+dataframe
+library(knitr)
+kable(dataframe, digits = 2) # façon esthétique de présenter un graphique
+```
+
+

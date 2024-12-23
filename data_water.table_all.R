@@ -28,6 +28,7 @@
 
 ###########################################################################-
 
+# .rs.restartR()
 setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
 
 # Librairies ----
@@ -38,6 +39,9 @@ if (!require("dplyr")) install.packages("dplyr") # entre autres : left_join()
 if (!require("tidyr")) install.packages("tidyr") # entre autres : extract_numeric() / extract_numeric() is deprecated: please use readr::parse_number() instead
 if (!require("sf")) install.packages("sf"); if (!require("lutz")) install.packages("lutz") # GIS in R
 if (!require("lubridate")) install.packages("lubridate")
+
+# 1. Donnée issues du Capacitance Water Level Logger Odyssey® ----
+# CHNATIER : il se pourrait que les données du HOBO ou autre nécessitent un autre code
 
 # Boucle principale ----
 # fonction : modifications automatisées pour chaque fichier issus d'une période de mesures des level loggers
@@ -217,4 +221,25 @@ for (i in 1:length(ll.pre)) {
 if("ll.clean.RData" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
 } else { saveRDS(ll.clean, file = "connectivite/data/clean/ll.clean.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
+
  
+
+# CHANTIER ICI 
+
+
+
+
+
+
+# 2. Données de vérification/calibration avec bulleur
+# créé le 23 déc. pour vérifier données des Odyssey de St-Henri 2024
+
+bulleur.pre <- list.files("connectivite/data/raw", pattern = "^data_") # "^" = "starts with"
+for (i in 1:length(bulleur.pre)) {
+  print(i);  print(bulleur.pre[i])
+  bulleur.pre.i <- read_excel(paste0("connectivite/data/raw/", bulleur.pre[i]), 
+                              sheet = "well")
+  
+  
+}
+
