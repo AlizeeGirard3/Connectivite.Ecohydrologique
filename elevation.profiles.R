@@ -36,10 +36,35 @@ source("general.scripts/fonctions.R")
 # ET SOIT 1. APPELER LES IMAGES À PARTIR DU SCIRPT DE VISUALISAITON (OPTION PRÉFÉRÉE, TROUVER QUEL OBJET PEUT ÊTRE APPELÉ...)
 # OU 2. METTRE TOUT CE SCIPT de graphique AVEC celui de water table, et garder ici le script de nettoyage
 
+# idée : pour chaque site, comment m'organiser ? ici boucle pour chaque traitement pour un site, mais insérer ceci dans une
+# autre boucle qui lierait chaque fichier contenant de la microtopo
+
 microtopo <- readxl::read_xlsx("connectivite/data/raw/data_STH.xlsx",
                   sheet = "microtopo") #%>% group_by("ID.unique")
+metadata.all <- readRDS("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/raw/metadata.all.RDS")
+
+for (i in 1:length(unique(na.omit(microtopo$trmnt.uid)))) {
+  print(i)
+  trmnt.uid.i <- unique(na.omit(microtopo$trmnt.uid))[i]
+  # trouver le site
+  trmnt.uid.i.site.uid.pre <- sub("[.].*", "", trmnt.uid.i) # replacer par rien tout ce qui se trouve après le premier point [.]
+  trmnt.uid.i.site.uid.pre
+  site.name.i <- unique(metadata.all$site[metadata.all$site.uid %in% trmnt.uid.i.site.uid.pre])
+# graphiques de nappe phréatique
+graph.wt <- microtopo %>% ggplot(mapping = aes(y = elevation.cm , x = distance.m)) + # doit être en as.POSICct, mais avec la date et l'heure. Repartir de zéro dans le script water.tanle_all??
+  geom_line(group = 1) +
+  # scale_x_datetime(
+  #   date_minor_breaks = "day", date_breaks = "2 weeks", date_labels = "%D:%H") +
+  ggtitle(paste0(site.name, ", transect ", trmnt.uid.i)) +
+  labs(y = "Élévation du terrain (cm)", x = "Distance de la zone perturbée (m)") +
+  theme_bw() + theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 45, hjust = 1, vjust = 0.5))
+print(graph.wt) # imprimer dans R
+
+# ATTENTION !! surpasser consciemment dans la boucle
+# ggsave(paste0("connectivite/output/figures/",site.name, "_", probe.serial.no.i, "_", transect.id.i,".pdf"), graph.wt, width = 12, height = 8)
 
 
+}
 
 
 
