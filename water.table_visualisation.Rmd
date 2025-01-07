@@ -36,10 +36,9 @@ ll.clean <- readRDS("connectivite/data/clean/ll.clean.RDS")
 # obtenu via le script "/scripts/data_water.table.all.R"
 ```
 
-``` {r, echo = FALSE}
+``` {r, echo = FALSE} 
 for (i in 1:length(ll.clean)) {
   paste(i)
-  
   # extraire no de sonde
   texte <- ll.clean[[i]]$metadata[4]
   numbers <- gregexpr("[0-9]+", texte)
@@ -67,7 +66,8 @@ for (i in 1:length(ll.clean)) {
     geom_line(group = 1) +
     scale_x_datetime(
       date_minor_breaks = "day", date_breaks = "2 weeks", date_labels = "%D:%H") +
-    ggtitle(paste0(site.name, ", sonde no ", probe.serial.no.i, " à l'emplacement ", transect.id.i)) +
+    ggtitle(paste0(site.name, ", sonde no ", probe.serial.no.i, " à l'emplacement ", transect.id.i, "\n",
+                   "nombre de ligne du fichier : ", nrow(ll.cal))) +
     labs(y = "Hauteur de nappe phréatique (cm)", x = "Date") +
     theme_bw() + theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 45, hjust = 1, vjust = 0.5))
   print(graph.wt) # imprimer dans R
@@ -106,3 +106,6 @@ for (i in 1:length(ll.clean)) {
 # Choix CONSCIENT d'écraser
 # ggplot2::ggsave(paste0('output/figures/Elevation_Inkerman_graph',transect[i],'.png'), graph, width = 4.7, height = 2.4)
 ```
+
+
+

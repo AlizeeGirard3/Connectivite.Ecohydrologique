@@ -3,7 +3,7 @@
 #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 # Description -------------------------------------------------------------
-###########################################################################-
+###########################################################################
 # Fait par :      Alizée Girard
 # Affiliation :   ULaval
 # Date création : 2024-12-09
@@ -40,8 +40,11 @@ if (!require("tidyr")) install.packages("tidyr") # entre autres : extract_numeri
 if (!require("sf")) install.packages("sf"); if (!require("lutz")) install.packages("lutz") # GIS in R
 if (!require("lubridate")) install.packages("lubridate")
 
+
 # 1. Donnée issues du Capacitance Water Level Logger Odyssey® ----
-# CHNATIER : il se pourrait que les données du HOBO ou autre nécessitent un autre code
+
+
+# CHANTIER : il se pourrait que les données du HOBO ou autre nécessitent un autre code
 
 # Boucle principale ----
 # fonction : modifications automatisées pour chaque fichier issus d'une période de mesures des level loggers
@@ -51,8 +54,8 @@ ll.pre <- list.files("connectivite/data/raw", pattern = "^4")
 ll.clean <- list()
 
 for (i in 1:length(ll.pre)) {
-# import et ménage
-  paste(i)
+  # import et ménage
+  print(i)
   ll.pre[i]
   ll.pre.0 <- readLines(paste0("connectivite/data/raw/",ll.pre[i])); str(ll.pre.0) # lire en format texte
   # Warning message:
@@ -105,29 +108,36 @@ for (i in 1:length(ll.pre)) {
    # heure : « Z » à la fin lorsqu’il s’agit de l’heure UTC. (« Z » pour méridien zéro, aussi connu sous le nom « Zulu » dans l’alphabet radio international).
    # extraction : nom du site pour trouver les coordonnées qui serviront à connaître le fuseau horaire
    site.name.pre <- sub("SiteName","",ll.pre.2.metadata[1])
-   site.name <- gsub(",", "", site.name.pre)
+   site.name <- stringr::str_to_title(gsub(",", "", site.name.pre))
 
   # ouvrir données du shapefile pour accéder les zones
    zones <- read_sf("~Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectitite_PhD_Mergin_26nov24/Ecotone.restauration.zone.pt.shp")
+   zones <- as.data.frame(zones)
    head(zones)
    str(zones)
   
   # extraire la bonne lat, long selon le nom du site
-   coords <- c(zones$latitude[grep(site.name, zones, ignore.case = TRUE)], zones$longitude[grep(site.name, zones, ignore.case = TRUE)])
-  
+   coords <- c(zones$latitude[zones$site==site.name], zones$longitude[zones$site==site.name])
+
   # trouver le UTC selon la lat long
    tz <- tz_lookup_coords(coords[1], coords[2], method = "fast", warn = FALSE) 
   # modifier mes colonnes pour avoir le format ISO (manque encore le UTC à ajouter à la fin)
    # garder date.AAAA-MM-JJ"
-   ll.pre.2.data.2 <- ll.pre.2.data.1 %>% mutate(date.time.UTC.0pre = paste0(date.JJ.MM.AAAA," ", time.HH.MM.SS)) # %>% select(!"time.HH.MM.SS") # conserver l'heure aussi ?
+   ll.pre.2.data.2 <- ll.pre.2.data.1 %>% dplyr::mutate(date.time.UTC.0pre = paste0(date.JJ.MM.AAAA," ", time.HH.MM.SS)) # %>% select(!"time.HH.MM.SS") # conserver l'heure aussi ?
+   nrow(ll.pre.2.data.2)
    ll.pre.2.data.2$date.time.UTC.0pre <- gsub("00:00", "00:01", ll.pre.2.data.2$date.time.UTC.0pre) # sinon, les données 00:00:00 étaient effacées !
 
   #  transformer en format ISO 8601
   # garder date.AAAA-MM-JJ
-   ll.pre.2.data.2 <- ll.pre.2.data.2 %>% 
-     mutate(`date.AAAA-MM-JJ` = dmy(ll.pre.2.data.2$date.JJ.MM.AAAA, tz = tz)) %>%
-     mutate(`date.time.tz.orig` = dmy_hms(paste0(ll.pre.2.data.2$date.JJ.MM.AAAA," ", ll.pre.2.data.2$time.HH.MM.SS))) %>% 
-     mutate(date.time.UTC.0pre.1 = with_tz(dmy_hms(ll.pre.2.data.2$date.time.UTC.0pre, tz = tz), tzone = "UTC"))  # les heures sont ainsi ramenées à UTC +0
+     ll.pre.2.data.2 <- ll.pre.2.data.2 %>% 
+       mutate(`date.AAAA-MM-JJ` = dmy(ll.pre.2.data.2$date.JJ.MM.AAAA, tz = tz)) %>%
+       mutate(`date.time.tz.orig` = dmy_hms(paste0(ll.pre.2.data.2$date.JJ.MM.AAAA," ", ll.pre.2.data.2$time.HH.MM.SS))) %>% 
+       mutate(date.time.UTC.0pre.1 = with_tz(dmy_hms(ll.pre.2.data.2$date.time.UTC.0pre, tz = tz), tzone = "UTC"))  # les heures sont ainsi ramenées à UTC +0
+     # erreur ici, causée par les fichiers vides
+     # There was 1 warning in `mutate()`.
+     # ℹ In argument: `date.time.tz.orig = dmy_hms(paste0(ll.pre.2.data.2$date.JJ.MM.AAAA, " ", ll.pre.2.data.2$time.HH.MM.SS))`.
+     # Caused by warning:
+     # ! All formats failed to parse. No formats found. 
    head(ll.pre.2.data.2) # différence de 4 heures
   
   # début et fin inscrits dans "level.logger.calibration.all.csv" (début = installation + 24h de rabattement de la NP, fin = heure de retrait)
@@ -151,9 +161,18 @@ for (i in 1:length(ll.pre)) {
   # nrow(ll.pre.2.data.3) - nrow(ll.pre.2.data.4) # différence de ~ 27  lignes, soit 27 heures (pourquoi pas 24h ? mais bon, pas grave Maryann me disait qu'elle retranche jusqu'à 48h)
   ll.pre.2.data.3 <- ll.pre.2.data.2 %>% 
     dplyr::filter(date.time.UTC.0pre.1 >= # >= date de mesure de NP plus grand ou égale à la date beginning dans cal.data, trouvé dans la ligne dont la ll.pre.2.data.2$probe.serial.no == à la cal.data$probe.serial.no.i
-                    cal.data$day.begining.aaaa.mm.dd.hh.00.01[cal.data$probe.serial.no == probe.serial.no.i][1]) %>% 
-  dplyr::filter(date.time.UTC.0pre.1 <= # <= date de mesure de NP plus petite ou égale à la date end dans cal.data [...], recoupe tous les jours entre la récupération des sondes et leur mise en arrêt
-                  cal.data$day.end.aaaa.mm.dd.hh.00.01[cal.data$probe.serial.no == probe.serial.no.i][1]) 
+                  unique(na.omit(cal.data$day.begining.aaaa.mm.dd.hh.00.01[cal.data$probe.serial.no == probe.serial.no.i]))) %>% 
+    dplyr::filter(date.time.UTC.0pre.1 <= # <= date de mesure de NP plus petite ou égale à la date end dans cal.data [...], recoupe tous les jours entre la récupération des sondes et leur mise en arrêt
+                    unique(na.omit(cal.data$day.end.aaaa.mm.dd.hh.00.01[cal.data$probe.serial.no == probe.serial.no.i])))
+                            
+    #  SUPPRIMER
+  # CI DESSOUS : [1] pas bon, si NA ça enlève toutes les données
+  # plutôt demander : lequel n'égale pas NA
+  #   # archive
+  #   dplyr::filter(date.time.UTC.0pre.1 >= # >= date de mesure de NP plus grand ou égale à la date beginning dans cal.data, trouvé dans la ligne dont la ll.pre.2.data.2$probe.serial.no == à la cal.data$probe.serial.no.i
+  #                   cal.data$day.begining.aaaa.mm.dd.hh.00.01[cal.data$probe.serial.no == probe.serial.no.i][1]) %>% 
+  # dplyr::filter(date.time.UTC.0pre.1 <= # <= date de mesure de NP plus petite ou égale à la date end dans cal.data [...], recoupe tous les jours entre la récupération des sondes et leur mise en arrêt
+  #                 cal.data$day.end.aaaa.mm.dd.hh.00.01[cal.data$probe.serial.no == probe.serial.no.i][1]) 
 
   ll.pre.2.data.3 <- ll.pre.2.data.3 %>%   # enlever l'espace entre date et heure (ISO 8601)
     mutate(date.time.UTC.0pre.2 = str_replace(ll.pre.2.data.3$date.time.UTC.0pre.1, " ", "T"))
@@ -222,7 +241,27 @@ if("ll.clean.RData" %in% list.files("connectivite/data/clean"))  { # si TRUE = S
   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
 } else { saveRDS(ll.clean, file = "connectivite/data/clean/ll.clean.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
 
- 
+## 1.1 ----
+# Examination des données
+for (j in 1:length(ll.clean)) {
+  print(j)
+  
+  # extraire no de sonde
+  metadata.line <- ll.pre.2.metadata[4] # logger serial nom, en base R
+  numbers <- gregexpr("[0-9]+", metadata.line)
+  sonde <- regmatches(metadata.line, numbers)
+  
+  # données à visualiser
+  data <- ll.clean[[j]]$data
+  if (nrow(data) > 0) {
+    hist(data$calibrated.value.mm/10, warn.unused = F, 
+         main = paste("Histogram des données de sonde no ", paste(sonde,"\n"))) # en cm
+  } 
+  # les hauteurs de nappe phréatique calibrées devraient toutes être négatives ou presque !
+}
+
+
+
 
 # CHANTIER ICI 
 
@@ -231,15 +270,91 @@ if("ll.clean.RData" %in% list.files("connectivite/data/clean"))  { # si TRUE = S
 
 
 
-# 2. Données de vérification/calibration avec bulleur
+# 2. Données de vérification/calibration avec bulleur ----
 # créé le 23 déc. pour vérifier données des Odyssey de St-Henri 2024
 
-bulleur.pre <- list.files("connectivite/data/raw", pattern = "^data_") # "^" = "starts with"
-for (i in 1:length(bulleur.pre)) {
-  print(i);  print(bulleur.pre[i])
-  bulleur.pre.i <- read_excel(paste0("connectivite/data/raw/", bulleur.pre[i]), 
-                              sheet = "well")
+# bulleur.pre <- list.files("connectivite/data/raw", pattern = "^data_") # "^" = "starts with"
+# for (i in 1:length(bulleur.pre)) {
+#   print(i);  print(bulleur.pre[i])
+#   bulleur.pre.i <- read_excel(paste0("connectivite/data/raw/", bulleur.pre[i]),
+#                               sheet = "well")
+#   bulleur.pre.i <- as.data.frame(bulleur.pre.i)
+
+
+
+
+
+# bon ci dessous
+
+# création de level.logger.calibration.clean ----
+# hauteur de nappe avec le bulleur
+ll.bulleur <- read.csv("connectivite/data/raw/level.logger.calibration.all.csv", sep = ";", dec = ",")
+str(ll.bulleur)
+
+# calcul du OUT
+ll.bulleur$`out.long.tuyau-sol.cm` <- round(ll.bulleur$pt.haut.cm - ((ll.bulleur$pt.bas1.cm + ll.bulleur$pt.bas2.cm + ll.bulleur$pt.bas3.cm)/3), digits = 2)
+
+# calcul de la profondeur de la nappe phréatiquedu (OUT - IN, où IN = mesure lue sur le bulleur)
+ll.bulleur$water.table.depth.cm <- round(ll.bulleur$bulleur.cm - ll.bulleur$`out.long.tuyau-sol.cm`, digits = 2)
+# ici, PROFONDEUR de nappe, donc quand c'est -5cm par exemple, nappe au DESSUS du sol
+
+# À FAIRE 
+# vérifier comment on présente typiquement ces données
+# enlever colonnes inutiles
+# save le csv dans clean
+
+ll.clean <- readRDS("connectivite/data/clean/ll.clean.RDS")
+# water.table.verif <- list()
+water.table.verif <- data.frame() #<- réfléchir à comment lui indiquer à quelle ligne consigner les données
+
+# pas sous forme de liste, mais de dataframe !*
+
+for (j in 1:length(ll.clean)) {
+
+  # j <- 2
   
+  print(j)
+  ll.clean.j <- ll.clean[[j]]
+  
+  # extraire no de sonde et bon format
+  metadata.line.wt <- ll.clean.j$metadata[4] # logger serial nom, en base R
+  numbers <- gregexpr("[0-9]+", metadata.line.wt)
+  sonde.wt <- data.frame("probe.no" = unlist(regmatches(metadata.line.wt, numbers)), stringsAsFactors = F)
+  probe.serial.no <- as.numeric(sonde.wt$probe.no)
+  
+  # réaliser l'exercice si fichier ll.clean[[j]]$data n'est pas vide
+  if (nrow(ll.clean[[j]]$data)!=0) {
+    
+    # hauteur de nappe capté avec la sonde au moment de la mesure avec le bulleur (dernière mesure)
+    last.probe.measure <- tail(ll.clean[[j]]$data, n = 1) 
+    water.table.verif[j,1:3] <- data.frame("probe.serial.no" = probe.serial.no,
+                                         "last.probe.measure.cm" = last.probe.measure$calibrated.value.mm/10,
+                                         "bulleur.mesure.cm" = unique(ll.bulleur$water.table.depth.cm[ll.bulleur$probe.serial.no==probe.serial.no]))
+    water.table.verif[j,1:3]
+    # différence d'une dizaine ?
+  } else { # si ll.clean[[j]]$data est vide, mettre NA dans le dataframe
+    water.table.verif[j,1:3] <- data.frame("probe.serial.no" = probe.serial.no,
+                                         "last.probe.measure.cm" = NA,
+                                         "bulleur.mesure.cm" = NA)
+    water.table.verif[j,1:3]
+    # différence d'une dizaine ? 
+  }
   
 }
+water.table.verif
+
+# .rs.restartR()
+
+
+
+
+
+# gossage à  effacer après
+# temp.cal <- as.data.frame(read.csv("connectivite/data/raw/level.logger.calibration.all.csv", sep = ";"))
+# 
+# temp.bull <- as.data.frame(read_excel("~/Desktop/TEMP_level.logger.calibration.all.xlsx",
+#           sheet = "Feuil1"))
+# str(temp.bull)
+# temp.all <- full_join(temp.cal, temp.bull, by = join_by(site.id, lab.probe.id,  probe.serial.no, well.id), relationship = "many-to-many")
+# write_xlsx(temp.all, "~/Desktop/temp.all.xlsx")
 
