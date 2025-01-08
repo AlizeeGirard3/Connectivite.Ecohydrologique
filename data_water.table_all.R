@@ -285,6 +285,7 @@ for (j in 1:length(ll.clean)) {
 
 
 # bon ci dessous
+# TRANSFÉRÉ DANS RMarkdown le 7 janvier 2025
 
 # création de level.logger.calibration.clean ----
 # hauteur de nappe avec le bulleur
@@ -311,8 +312,8 @@ water.table.verif <- data.frame() #<- réfléchir à comment lui indiquer à que
 
 for (j in 1:length(ll.clean)) {
 
-  # j <- 2
-  
+  # j <- 3
+
   print(j)
   ll.clean.j <- ll.clean[[j]]
   

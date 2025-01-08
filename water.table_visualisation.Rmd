@@ -1,9 +1,17 @@
-
 ---
-title: "Water table data visualisation graphs"
-author: Alizée Girard
-date: 2024-12-23
-output: pdf_document
+title:  |
+  ![](images/feuille_logo.png){width="30"}  
+  **Water table data visualisation graphs**
+author: "Alizée Girard"
+date: '`r format(Sys.time(), "%x")`'
+output:
+  pdf_document:
+    latex_engine: xelatex
+mainfont: "Helvetica"
+header-includes:
+    - \usepackage{setspace}\singlespacing
+geometry: margin=1in
+# spacing: single
 ---
 
 ```{=html}
@@ -17,6 +25,79 @@ pdf_document
 Sometimes you may want to use another directory as the working directory. The usual way to change the working directory is setwd(), but please note that setwd() is not persistent in R Markdown (or other types of knitr source documents), which means setwd() only works for the current code chunk, and the working directory will be restored after this code chunk has been evaluated. -->
 ```
 
+\newpage
+
+## Vérification de la calibration des sondes en fonction de la lecture au bulleur
+
+```{r, echo = FALSE, message = FALSE}
+if (!require("conflicted")) install.packages("conflicted") # ℹ Use the conflicted package to force all conflicts to become errors    ---->>>>  devtools::install_github("r-lib/conflicted")
+if (!require("readxl")) install.packages("readxl") # lire les excel
+if (!require("dplyr")) install.packages("dplyr") # entre autres : left_join()
+# if (!require("gt")) install.packages("gt") # beaux tableaux
+if (!require("stringr")) install.packages("stringr") # gosser avec des suites de caractères, str_replace, [...]
+if (!require("kableExtra")) install.packages("kableExtra") # beaux tableaux
+
+# création de level.logger.calibration.clean ----
+# hauteur de nappe avec le bulleur
+ll.bulleur <- read.csv("connectivite/data/raw/level.logger.calibration.all.csv", sep = ";", dec = ",")
+# str(ll.bulleur)
+
+# calcul du OUT
+ll.bulleur$`out.long.tuyau-sol.cm` <- round(ll.bulleur$pt.haut.cm - ((ll.bulleur$pt.bas1.cm + ll.bulleur$pt.bas2.cm + ll.bulleur$pt.bas3.cm)/3), digits = 2)
+
+# calcul de la profondeur de la nappe phréatiquedu (OUT - IN, où IN = mesure lue sur le bulleur)
+ll.bulleur$water.table.depth.cm <- round(ll.bulleur$bulleur.cm - ll.bulleur$`out.long.tuyau-sol.cm`, digits = 2)
+# ici, PROFONDEUR de nappe, donc quand c'est -5cm par exemple, nappe au DESSUS du sol
+
+# À FAIRE 
+# vérifier comment on présente typiquement ces données
+# enlever colonnes inutiles
+# save le csv dans clean
+
+ll.clean <- readRDS("connectivite/data/clean/ll.clean.RDS")
+# water.table.verif <- list()
+water.table.verif <- data.frame() #<- réfléchir à comment lui indiquer à quelle ligne consigner les données
+
+# pas sous forme de liste, mais de dataframe !*
+
+for (j in 1:length(ll.clean)) {
+  # print(j)
+  ll.clean.j <- ll.clean[[j]]
+  
+  # extraire no de sonde et bon format
+  metadata.line.wt <- ll.clean.j$metadata[4] # logger serial nom, en base R
+  numbers <- gregexpr("[0-9]+", metadata.line.wt)
+  sonde.wt <- data.frame("probe.no" = unlist(regmatches(metadata.line.wt, numbers)), stringsAsFactors = F)
+  probe.serial.no <- as.numeric(sonde.wt$probe.no)
+  
+  # réaliser l'exercice si fichier ll.clean[[j]]$data n'est pas vide
+  if (nrow(ll.clean[[j]]$data)!=0) {
+    
+    # hauteur de nappe capté avec la sonde au moment de la mesure avec le bulleur (dernière mesure)
+    last.probe.measure <- tail(ll.clean[[j]]$data, n = 1) 
+    water.table.verif[j,1:3] <- data.frame("probe.serial.no" = probe.serial.no,
+                                         "last.probe.measure.cm" = last.probe.measure$calibrated.value.mm/10,
+                                         "bulleur.mesure.cm" = unique(ll.bulleur$water.table.depth.cm[ll.bulleur$probe.serial.no==probe.serial.no]))
+    water.table.verif[j,1:3]
+    # différence d'une dizaine ?
+  } else { # si ll.clean[[j]]$data est vide, mettre NA dans le dataframe
+    water.table.verif[j,1:3] <- data.frame("probe.serial.no" = probe.serial.no,
+                                         "last.probe.measure.cm" = NA,
+                                         "bulleur.mesure.cm" = NA)
+    water.table.verif[j,1:3]
+  }
+col.names <- c("No unique de sonde", "Mesure de la sonde (heure de lecture au bulleur; cm)")
+
+}
+# renommmer les colonnes
+water.table.verif %>% 
+kbl(booktabs = TRUE, linesep = "", caption = "Vérification de la calibration de sonde en fonction de la mesure du bulleur",
+col.names =  c("No unique de sonde", "Mesure de la sonde (heure de lecture au bulleur; cm)", "Bulleur (cm)"),
+align = "ccc") %>% 
+  kable_styling(latex_options = "HOLD_position", full_width = T) # pour que le titre de section n'arrive pas après le tableau
+```
+
+## Visualisation de la variation de la nappe phréatique et du positionnement du puits le long du transect
 
 ```{r, message = FALSE, include = FALSE}
 # setwd("~/Documents/Doctorat/_R.&.Stats_PhD") # fonctions utiles et working directory
@@ -36,7 +117,7 @@ ll.clean <- readRDS("connectivite/data/clean/ll.clean.RDS")
 # obtenu via le script "/scripts/data_water.table.all.R"
 ```
 
-``` {r, echo = FALSE} 
+```{r, echo = FALSE}
 for (i in 1:length(ll.clean)) {
   paste(i)
   # extraire no de sonde
@@ -76,6 +157,7 @@ for (i in 1:length(ll.clean)) {
   # ggsave(paste0("connectivite/output/figures/",site.name, "_", probe.serial.no.i, "_", transect.id.i,".pdf"), graph.wt, width = 12, height = 8)
 }
 ```
+
 ```{r, include = FALSE}
 
 # Afficher tous les graphiques
@@ -106,6 +188,3 @@ for (i in 1:length(ll.clean)) {
 # Choix CONSCIENT d'écraser
 # ggplot2::ggsave(paste0('output/figures/Elevation_Inkerman_graph',transect[i],'.png'), graph, width = 4.7, height = 2.4)
 ```
-
-
-
