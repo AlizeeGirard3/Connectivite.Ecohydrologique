@@ -68,31 +68,31 @@ for (j in 1:length(ll.clean)) {
   metadata.line.wt <- ll.clean.j$metadata[4] # logger serial nom, en base R
   numbers <- gregexpr("[0-9]+", metadata.line.wt)
   sonde.wt <- data.frame("probe.no" = unlist(regmatches(metadata.line.wt, numbers)), stringsAsFactors = F)
-  probe.serial.no <- as.numeric(sonde.wt$probe.no)
+  probe.uid.j <- as.numeric(sonde.wt$probe.no)
   
   # réaliser l'exercice si fichier ll.clean[[j]]$data n'est pas vide
   if (nrow(ll.clean[[j]]$data)!=0) {
     
     # hauteur de nappe capté avec la sonde au moment de la mesure avec le bulleur (dernière mesure)
     last.probe.measure <- tail(ll.clean[[j]]$data, n = 1) 
-    water.table.verif[j,1:3] <- data.frame("probe.serial.no" = probe.serial.no,
+    water.table.verif[j,1:3] <- data.frame("probe.uid" = probe.uid.j,
                                          "last.probe.measure.cm" = last.probe.measure$calibrated.value.mm/10,
-                                         "bulleur.mesure.cm" = unique(ll.bulleur$water.table.depth.cm[ll.bulleur$probe.serial.no==probe.serial.no]))
+                                         "bulleur.mesure.cm" = unique(ll.bulleur$water.table.depth.cm[ll.bulleur$probe.uid==probe.uid.j]))
     water.table.verif[j,1:3]
     # différence d'une dizaine ?
   } else { # si ll.clean[[j]]$data est vide, mettre NA dans le dataframe
-    water.table.verif[j,1:3] <- data.frame("probe.serial.no" = probe.serial.no,
+    water.table.verif[j,1:3] <- data.frame("probe.uid" = probe.uid.j,
                                          "last.probe.measure.cm" = NA,
                                          "bulleur.mesure.cm" = NA)
     water.table.verif[j,1:3]
   }
-col.names <- c("No unique de sonde", "Mesure de la sonde (heure de lecture au bulleur; cm)")
+# col.names <- c("Identifiant unique (UID) de sonde", "Mesure de la sonde (heure de lecture au bulleur; cm)")
 
 }
 # renommmer les colonnes
 water.table.verif %>% 
 kbl(booktabs = TRUE, linesep = "", caption = "Vérification de la calibration de sonde en fonction de la mesure du bulleur",
-col.names =  c("No unique de sonde", "Mesure de la sonde (heure de lecture au bulleur; cm)", "Bulleur (cm)"),
+col.names =  c("Identifiant unique (UID) de sonde", "Mesure de la sonde (heure de lecture au bulleur; cm)", "Bulleur (cm)"),
 align = "ccc") %>% 
   kable_styling(latex_options = "HOLD_position", full_width = T) # pour que le titre de section n'arrive pas après le tableau
 ```

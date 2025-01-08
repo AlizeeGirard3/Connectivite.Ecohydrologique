@@ -3,7 +3,7 @@
 #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 # Description -------------------------------------------------------------
-###########################################################################
+##########################################################################-
 # Fait par :      Alizée Girard
 # Affiliation :   ULaval
 # Date création : 2024-12-09
@@ -25,8 +25,7 @@
 # load("~/Documents/Maîtrise/DonnéesAnalyses/PLS/rt_sg_large.RData") # rt_sg_large
 # load("rt_sg_large.RData") # rt_sg_large
 # obtenu via manips sur script "nettoyage_spectres_lissage_correction.R" dans le document "scripts-NETTOYAGE"
-
-###########################################################################-
+##########################################################################-
 
 # .rs.restartR()
 setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
@@ -41,15 +40,11 @@ if (!require("sf")) install.packages("sf"); if (!require("lutz")) install.packag
 if (!require("lubridate")) install.packages("lubridate")
 
 
-# 1. Donnée issues du Capacitance Water Level Logger Odyssey® ----
-
-
-# CHANTIER : il se pourrait que les données du HOBO ou autre nécessitent un autre code
-
-# Boucle principale ----
+# A Donnée issues du Capacitance Water Level Logger Odyssey® ----
+## A.1 nettoyage ----
 # fonction : modifications automatisées pour chaque fichier issus d'une période de mesures des level loggers
 
-# fichiers de consigne de données ----
+# fichiers de consigne de données
 ll.pre <- list.files("connectivite/data/raw", pattern = "^4")
 ll.clean <- list()
 
@@ -65,34 +60,34 @@ for (i in 1:length(ll.pre)) {
   ll.pre.1 <- gsub(" ,", ",", ll.pre.0); str(ll.pre.1) # replace " ," by "," 
   ll.pre.2 <- gsub(" ", "", ll.pre.1); str(ll.pre.2) # enlever tous les espaces dans le subset de données
   
-  # création des subsets data & metadata ----
+  ### création des subsets data & metadata ----
   # notes : les noms réfèrent à l'étape et non à une matrice en particulier, les objets seront remplacés au fil de la boucle. 
   # l'info importante est consignée dans la liste ll.clean[i], à la fin
   ll.pre.2.metadata <-  ll.pre.2[c(1:9)] # inclus les anciens noms de colonnes, qui sont dans un format et un ordre bizzare
   ll.pre.2.data <- ll.pre.2[-c(1:9)]
   str(ll.pre.2.data) # chr
   
-# vérification du fichier level logger brut : logger.serial.no == nom du fichier, sinon arrêter TOUT ! ----
+  ### vérification du fichier level logger brut : logger.serial.no == nom du fichier, sinon arrêter TOUT ! ----
   {
-    # probe.serial.no.i dans les metadata
-    texte <- ll.pre.2.metadata[4] # logger serial nom, en base R
+    # trouver le probe.uid.i (== probe.uid, logger serial no) dans les metadata
+    texte <- ll.pre.2.metadata[4] # logger serial no, en base R
     numbers <- gregexpr("[0-9]+", texte)
     result <- regmatches(texte, numbers)
-    probe.serial.no.i <- as.numeric(unlist(result))
+    probe.uid.i <- as.numeric(unlist(result))
     # no du level logger dans le nom du fichier brut (.csv), correspond à l'item "i" de la présente boucle
     texte <- ll.pre[i]
     numbers <- gregexpr("[0-9]+", texte)
     result <- regmatches(texte, numbers)
     fichier <- as.numeric(unlist(result))
     # test logger.serial.no == nom du fichier
-    if(!(probe.serial.no.i %in% fichier)) { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc "else" statement)
+    if(!(probe.uid.i %in% fichier)) { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc "else" statement)
       stop(paste0("Attention, le nom du fichier ne correspond pas au numéro de série du level logger. Fichier problématique : i = ", paste(i), "; ", ll.pre[i]))
     }
     # si problème : aller changer manuellement en utilisant le no de série (unique) inscrit dans le fichier et PAS son nom 
     # ** 1. créer copie -> archive; 2. s'assurer de changer partout ** : QGIS, fichier, onglet, data_site.id
   }
 
-    # création du dataframe level legger (ll) contenant données de nappe phréatique (NP) et ménage  ----
+    ### création du dataframe level legger (ll) contenant données de nappe phréatique (NP) et ménage  ----
   ll.pre.2.data.1 <- read.csv(text = ll.pre.2.data, col.names = c("scan.id", "date.JJ.MM.AAAA", "time.HH.MM.SS",'raw.value.mm',"calibrated.value.mm")) # text = argument de read.csv qui lit la valeur contenue dans l'objet / DATE mauvais format
     # vérifications
   head(ll.pre.2.data.1)
@@ -104,7 +99,7 @@ for (i in 1:length(ll.pre)) {
   str(ll.pre.2.data.1)
   
  {
-# Date et heure : format ISO date AAAA-MM-JJTHH:MM:SS,ss-/+FF:ff, voir https://fr.wikipedia.org/wiki/ISO_8601 ----
+### date et heure : format ISO date AAAA-MM-JJTHH:MM:SS,ss-/+FF:ff, voir https://fr.wikipedia.org/wiki/ISO_8601 ----
    # heure : « Z » à la fin lorsqu’il s’agit de l’heure UTC. (« Z » pour méridien zéro, aussi connu sous le nom « Zulu » dans l’alphabet radio international).
    # extraction : nom du site pour trouver les coordonnées qui serviront à connaître le fuseau horaire
    site.name.pre <- sub("SiteName","",ll.pre.2.metadata[1])
@@ -155,24 +150,15 @@ for (i in 1:length(ll.pre)) {
   head(cal.data)
   str(cal.data)
   # trouver les dates de départ et de fin - vérification
-  # ll.pre.2.data.3 <- ll.pre.2.data.2 %>% dplyr::filter(date.time.UTC.0pre.1 >= cal.data$day.begining.aaaa.mm.dd.hh.00.01[cal.data$probe.serial.no == probe.serial.no.i][1]) # >= date de mesure de NP plus grand ou égale à la date beginning dans cal.data, trouvé dans la ligne dont la ll.pre.2.data.2$probe.serial.no == à la cal.data$probe.serial.no.i
+  # ll.pre.2.data.3 <- ll.pre.2.data.2 %>% dplyr::filter(date.time.UTC.0pre.1 >= cal.data$day.begining.aaaa.mm.dd.hh.00.01[cal.data$probe.uid == probe.uid.i][1]) # >= date de mesure de NP plus grand ou égale à la date beginning dans cal.data, trouvé dans la ligne dont la ll.pre.2.data.2$probe.uid == à la cal.data$probe.uid.i
   # nrow(ll.pre.2.data.2) - nrow(ll.pre.2.data.3) # différence de ~ 27  lignes, soit 27 heures (pourquoi pas 24h ? mais bon, pas grave Maryann me disait qu'elle retranche jusqu'à 48h)
-  # ll.pre.2.data.4 <- ll.pre.2.data.3 %>% dplyr::filter(date.time.UTC.0pre.1 <= cal.data$day.end.aaaa.mm.dd.hh.00.01[cal.data$probe.serial.no == probe.serial.no.i][1]) # >= date de mesure de NP plus grand ou égale à la date beginning dans cal.data, trouvé dans la ligne dont la ll.pre.2.data.2$probe.serial.no == à la cal.data$probe.serial.no.i
+  # ll.pre.2.data.4 <- ll.pre.2.data.3 %>% dplyr::filter(date.time.UTC.0pre.1 <= cal.data$day.end.aaaa.mm.dd.hh.00.01[cal.data$probe.uid == probe.uid.i][1]) # >= date de mesure de NP plus grand ou égale à la date beginning dans cal.data, trouvé dans la ligne dont la ll.pre.2.data.2$probe.uid == à la cal.data$probe.uid.i
   # nrow(ll.pre.2.data.3) - nrow(ll.pre.2.data.4) # différence de ~ 27  lignes, soit 27 heures (pourquoi pas 24h ? mais bon, pas grave Maryann me disait qu'elle retranche jusqu'à 48h)
   ll.pre.2.data.3 <- ll.pre.2.data.2 %>% 
-    dplyr::filter(date.time.UTC.0pre.1 >= # >= date de mesure de NP plus grand ou égale à la date beginning dans cal.data, trouvé dans la ligne dont la ll.pre.2.data.2$probe.serial.no == à la cal.data$probe.serial.no.i
-                  unique(na.omit(cal.data$day.begining.aaaa.mm.dd.hh.00.01[cal.data$probe.serial.no == probe.serial.no.i]))) %>% 
+    dplyr::filter(date.time.UTC.0pre.1 >= # >= date de mesure de NP plus grand ou égale à la date beginning dans cal.data, trouvé dans la ligne dont la ll.pre.2.data.2$probe.uid == à la cal.data$probe.uid.i
+                  unique(na.omit(cal.data$day.begining.aaaa.mm.dd.hh.00.01[cal.data$probe.uid == probe.uid.i]))) %>% 
     dplyr::filter(date.time.UTC.0pre.1 <= # <= date de mesure de NP plus petite ou égale à la date end dans cal.data [...], recoupe tous les jours entre la récupération des sondes et leur mise en arrêt
-                    unique(na.omit(cal.data$day.end.aaaa.mm.dd.hh.00.01[cal.data$probe.serial.no == probe.serial.no.i])))
-                            
-    #  SUPPRIMER
-  # CI DESSOUS : [1] pas bon, si NA ça enlève toutes les données
-  # plutôt demander : lequel n'égale pas NA
-  #   # archive
-  #   dplyr::filter(date.time.UTC.0pre.1 >= # >= date de mesure de NP plus grand ou égale à la date beginning dans cal.data, trouvé dans la ligne dont la ll.pre.2.data.2$probe.serial.no == à la cal.data$probe.serial.no.i
-  #                   cal.data$day.begining.aaaa.mm.dd.hh.00.01[cal.data$probe.serial.no == probe.serial.no.i][1]) %>% 
-  # dplyr::filter(date.time.UTC.0pre.1 <= # <= date de mesure de NP plus petite ou égale à la date end dans cal.data [...], recoupe tous les jours entre la récupération des sondes et leur mise en arrêt
-  #                 cal.data$day.end.aaaa.mm.dd.hh.00.01[cal.data$probe.serial.no == probe.serial.no.i][1]) 
+                    unique(na.omit(cal.data$day.end.aaaa.mm.dd.hh.00.01[cal.data$probe.uid == probe.uid.i])))
 
   ll.pre.2.data.3 <- ll.pre.2.data.3 %>%   # enlever l'espace entre date et heure (ISO 8601)
     mutate(date.time.UTC.0pre.2 = str_replace(ll.pre.2.data.3$date.time.UTC.0pre.1, " ", "T"))
@@ -183,15 +169,15 @@ for (i in 1:length(ll.pre)) {
   colnames(ll.pre.2.data.3)
   }
   
-# changer pour un nom explicite
+  # changer pour un nom explicite
   ll.cal.pre <- ll.pre.2.data.3
   
-# calcul de calibration  ----
+  ### calcul de calibration  ----
   # notes : les longueurs doivent être en mm ; idée pour cal.data : 
   # si unité = cm -> convertir en mm, si mm-> continuer
   
   # trouver les lignes qui correspondent à la sonde à calibrer
-  cal.probe.i <- cal.data %>% dplyr::filter(cal.data$probe.serial.no == probe.serial.no.i)
+  cal.probe.i <- cal.data %>% dplyr::filter(cal.data$probe.uid == probe.uid.i)
   cal.probe.i
   
   # test: si raw.value == vecteur de "NA", on peut procédéer à la calibration, sinon ça veut dire qu'on a la cal du programme de la sonde, garder ces données (créer autre colonne)
@@ -200,7 +186,7 @@ for (i in 1:length(ll.pre)) {
     # créer une autre colonne, le cas échéant (à faire)
   }
   
-  # calcul des termes de la calibration ----
+  ### calcul des termes de la calibration ----
   # FORMULES
   # RES.NP.calibré = ((DATA.raw.value " - b.offset) / a.slope ) - longueur.fil
   # si Y = (a * X) + b,
@@ -227,10 +213,10 @@ for (i in 1:length(ll.pre)) {
   colnames(ll.cal.pre)
   head(ll.cal.pre)
 
-# format final -> nom final
+  # format final -> nom final
   ll.cal <- ll.cal.pre # ceci est donc le format final, à intégrer dans la liste ll.clean
   
-  # création de la liste dans la liste [[i]]  ----
+  ### création de la liste dans la liste [[i]]  ----
   # noted : <- le fichier du level logger correspondant à la position i; [1] : data (dataframe), [2] : metadata (character string)
   ll.clean[[i]] <- list("data" = ll.cal, "metadata" = ll.pre.2.metadata)
 } 
@@ -241,8 +227,8 @@ if("ll.clean.RData" %in% list.files("connectivite/data/clean"))  { # si TRUE = S
   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
 } else { saveRDS(ll.clean, file = "connectivite/data/clean/ll.clean.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
 
-## 1.1 ----
-# Examination des données
+
+## A.2 examination des données ----
 for (j in 1:length(ll.clean)) {
   print(j)
   
@@ -270,7 +256,7 @@ for (j in 1:length(ll.clean)) {
 
 
 
-# 2. Données de vérification/calibration avec bulleur ----
+## A.3 données de vérification/calibration avec bulleur ----
 # créé le 23 déc. pour vérifier données des Odyssey de St-Henri 2024
 
 # bulleur.pre <- list.files("connectivite/data/raw", pattern = "^data_") # "^" = "starts with"
@@ -321,20 +307,20 @@ for (j in 1:length(ll.clean)) {
   metadata.line.wt <- ll.clean.j$metadata[4] # logger serial nom, en base R
   numbers <- gregexpr("[0-9]+", metadata.line.wt)
   sonde.wt <- data.frame("probe.no" = unlist(regmatches(metadata.line.wt, numbers)), stringsAsFactors = F)
-  probe.serial.no <- as.numeric(sonde.wt$probe.no)
+  probe.uid.j <- as.numeric(sonde.wt$probe.no)
   
   # réaliser l'exercice si fichier ll.clean[[j]]$data n'est pas vide
   if (nrow(ll.clean[[j]]$data)!=0) {
     
     # hauteur de nappe capté avec la sonde au moment de la mesure avec le bulleur (dernière mesure)
     last.probe.measure <- tail(ll.clean[[j]]$data, n = 1) 
-    water.table.verif[j,1:3] <- data.frame("probe.serial.no" = probe.serial.no,
+    water.table.verif[j,1:3] <- data.frame("probe.uid" = probe.uid.j,
                                          "last.probe.measure.cm" = last.probe.measure$calibrated.value.mm/10,
-                                         "bulleur.mesure.cm" = unique(ll.bulleur$water.table.depth.cm[ll.bulleur$probe.serial.no==probe.serial.no]))
+                                         "bulleur.mesure.cm" = unique(ll.bulleur$water.table.depth.cm[ll.bulleur$probe.uid==probe.uid.j]))
     water.table.verif[j,1:3]
     # différence d'une dizaine ?
   } else { # si ll.clean[[j]]$data est vide, mettre NA dans le dataframe
-    water.table.verif[j,1:3] <- data.frame("probe.serial.no" = probe.serial.no,
+    water.table.verif[j,1:3] <- data.frame("probe.uid" = probe.uid.j,
                                          "last.probe.measure.cm" = NA,
                                          "bulleur.mesure.cm" = NA)
     water.table.verif[j,1:3]
@@ -356,6 +342,32 @@ water.table.verif
 # temp.bull <- as.data.frame(read_excel("~/Desktop/TEMP_level.logger.calibration.all.xlsx",
 #           sheet = "Feuil1"))
 # str(temp.bull)
-# temp.all <- full_join(temp.cal, temp.bull, by = join_by(site.id, lab.probe.id,  probe.serial.no, well.id), relationship = "many-to-many")
+# temp.all <- full_join(temp.cal, temp.bull, by = join_by(site.id, lab.probe.id,  probe.uid, well.id), relationship = "many-to-many")
 # write_xlsx(temp.all, "~/Desktop/temp.all.xlsx")
 
+
+
+
+
+## B Donnée issues du HOBO® ----
+# B.1 nettoyage
+# fonction : modifications automatisées pour chaque fichier issus d'une période de mesures des level loggers
+
+# important de supprijmer les objets en mémoire // 
+# ou combiner le traitement de données dans la boucle 
+# avec des if/else pour traiter différement les HOBO des ODYSSEY
+rm(list=ls())
+
+# fichiers de consigne de données
+ll.pre <- list.files("connectivite/data/raw", pattern = "hobo")
+ll.clean <- list()
+
+for (i in 1:length(ll.pre)) {
+  # import et ménage
+  print(i)
+  ll.pre[i]
+  # ll.pre.0 <- read.csv(paste0("connectivite/data/raw/", ll.pre[i]), sep = "','")
+  # ll.pre.0 <- readLines(paste0("connectivite/data/raw/",ll.pre[i])); str(ll.pre.0) # lire en format texte
+}
+  
+  # CI-DESSOUS == COPIÉ-COLLÉ DE CI-DESSUS (supprimer)

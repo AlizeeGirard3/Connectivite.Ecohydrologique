@@ -19,7 +19,7 @@ if (!require("conflicted")) install.packages("conflicted") # Use the conflicted 
 # if (!require("reshape2")) install.packages("reshape2") # pour importer Google Sheets directement
 # if (!require("plyr")) install.packages("plyr") # pour manipulation donnees
 # if (!require("dplyr")) install.packages("dplyr") # pour manipulation donnees
-# if (!require("ggplot2")) install.packages("ggplot2") 
+if (!require("ggplot2")) install.packages("ggplot2")
 # # install.packages("devtools")
 # # devtools::install_github("refunders/refund.shiny")
 # if (!require("refund.shiny")) install.packages("refund.shiny") # pour enregistrer des graphiques sous forme de RData (besoin dans ma boucle)
