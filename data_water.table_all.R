@@ -38,6 +38,11 @@ if (!require("dplyr")) install.packages("dplyr") # entre autres : left_join()
 if (!require("tidyr")) install.packages("tidyr") # entre autres : extract_numeric() / extract_numeric() is deprecated: please use readr::parse_number() instead
 if (!require("sf")) install.packages("sf"); if (!require("lutz")) install.packages("lutz") # GIS in R
 if (!require("lubridate")) install.packages("lubridate")
+options(lubridate.verbose = TRUE) # pour expliciter ce que les fonctions font
+# librairies de weathercan
+if (!require("weathercan")) install.packages("weathercan") # Integrating data from weathercan (ECCC/CCCS), Gouvernement du Canada
+# if (!require("naniar")) install.packages("naniar") # Checking data completeness
+# if (!require("mapview")) install.packages("mapview") ## Spatial analyses
 
 
 # A Donnée issues du Capacitance Water Level Logger Odyssey® ----
@@ -133,7 +138,7 @@ for (i in 1:length(ll.pre)) {
      # ℹ In argument: `date.time.tz.orig = dmy_hms(paste0(ll.pre.2.data.2$date.JJ.MM.AAAA, " ", ll.pre.2.data.2$time.HH.MM.SS))`.
      # Caused by warning:
      # ! All formats failed to parse. No formats found. 
-   head(ll.pre.2.data.2) # différence de 4 heures
+   head(ll.pre.2.data.2) # différence de X heures, vérifier
   
   # début et fin inscrits dans "level.logger.calibration.all.csv" (début = installation + 24h de rabattement de la NP, fin = heure de retrait)
   # note : données de date en format xlsx ça lit TOUT CROCHE, transformé en csv fonctionne bien
@@ -165,8 +170,7 @@ for (i in 1:length(ll.pre)) {
   ll.pre.2.data.3$date.time.UTC.0 <- str_replace_all(ll.pre.2.data.3$date.time.UTC.0pre.2, "00:01","00:01Z") # ajouter le Z à la fin (ISO 8601)
   ll.pre.2.data.3 <- ll.pre.2.data.3 %>% select(!c("date.JJ.MM.AAAA", "date.time.UTC.0pre.1", "date.time.UTC.0pre.2")) %>% # enlever les vielles colonnes
     select("scan.id", "raw.value.mm", "calibrated.value.mm", "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.tz.orig", "date.time.UTC.0") # date et time sans "UTC.0" sont dans le fuseau horaire d'origine (tz trouvé en croisant les coordonnées "coords")
-  head(ll.pre.2.data.3)
-  colnames(ll.pre.2.data.3)
+  head(ll.pre.2.data.3); colnames(ll.pre.2.data.3)
   }
   
   # changer pour un nom explicite
@@ -358,9 +362,14 @@ water.table.verif
 # avec des if/else pour traiter différement les HOBO des ODYSSEY
 rm(list=ls())
 
-# fichiers de consigne de données
+# importer si nécessaire :
+# ll.clean <- readRDS("connectivite/data/clean/ll.clean.RDS")
+# # obtenu via le script "/scripts/data_water.table.all.R"
+# # importer le graphique que topographie
+# # fichiers de consigne de données
+
 ll.pre <- list.files("connectivite/data/raw", pattern = "hobo")
-ll.clean <- list()
+ll.clean.k.hobo <- list()
 
 for (k in 1:length(ll.pre)) {
   # import et ménage
@@ -368,13 +377,14 @@ for (k in 1:length(ll.pre)) {
   ll.pre[k]
   # ll.pre.0 <- read.csv(paste0("connectivite/data/raw/", ll.pre[k]), sep = "','")
   ll.pre.0 <- readLines(paste0("connectivite/data/raw/", ll.pre[k])); str(ll.pre.0) # lire en format texte
+  # ** tz orig mentionnée dans la colonne ll.pre.0.metadata[2], coder pour l'obtenir au besoin
   # Warning message:
   #   In readLines(paste0("connectivite/data/raw/", ll.pre[k])) :
   #   incomplete final line found on 'connectivite/data/raw/20853328_INK_20250106_hobo.csv'
   
   ### création des subsets data & metadata ----
   # notes : les noms réfèrent à l'étape et non à une matrice en particulier, les objets seront remplacés au fil de la boucle. 
-  # l'info importante est consignée dans la liste ll.clean[i], à la fin
+  # l'info importante est consignée dans la liste ll.clean.k.hobo[i], à la fin
   ll.pre.0.metadata <-  ll.pre.0[c(1:2)] # inclus les anciens noms de colonnes, qui sont dans un format et un ordre bizzare
   ll.pre.0.data <- ll.pre.0[-c(1:2)]
   str(ll.pre.0.data) # chr
@@ -406,72 +416,179 @@ for (k in 1:length(ll.pre)) {
   ### création du dataframe level legger (ll) contenant données de nappe phréatique (NP) et ménage  ----
   ll.pre.0.data.0 <- read.csv(text = ll.pre.0.data, col.names = c("scan.id", "date.JJ.MM.AAAA_time.pre.HH.MM.SS_tz",	"raw.value.kPa_pres.abs",	"temperature_dC", "Coupleur détaché", "Coupleur attaché", 'Hôte connecté',	"Arrêté", "Fin de fichier")) # text = argument de read.csv qui lit la valeur contenue dans l'objet / DATE mauvais format
   ll.pre.0.data.1 <- ll.pre.0.data.0[1:4] # garder seules les colonnes pertinentes
-  colnames(ll.pre.0.data.1)
-  
-  # séparer date et heure et ménage
-  ll.pre.0.data.1$date.JJ.MM.AAAA_time.HH.MM.SS_tz <- parse_date_time(ll.pre.0.data.1$date.JJ.MM.AAAA_time.pre.HH.MM.SS_tz, '%m-%d-%y %I:%M:%S %p')
-  ll.pre.0.data.1 <- ll.pre.0.data.1 %>% select(!date.JJ.MM.AAAA_time.pre.HH.MM.SS_tz)
-  
-  # si je veux séparer en deux colonnes
-  # ll.pre.0.data.2 <- separate_wider_position(ll.pre.0.data.1, # TIBBLE
-  #                                            widths = c("date.JJ.MM.AAAA" = 9, "time.pre.HH.MM.SS_tz" = 11), 
-  #                                            cols = date.JJ.MM.AAAA_time.pre.HH.MM.SS_tz)
-  # ll.pre.0.data.2$date.JJ.MM.AAAA <- sub("[[:space:]]+$", "", ll.pre.0.data.2$date.JJ.MM.AAAA) # enlever espace à la fin
-  
-  
-  # ajouter colonne vide "calibrated value" à l'instar de ODYSSEY, où sera inséré la valeur finale de nappe phréatique
+  ll.pre.0.data.1$date.time.tz.orig <- gsub("00:00", "00:01", ll.pre.0.data.1$date.JJ.MM.AAAA_time.pre.HH.MM.SS_tz) # sinon, les données 00:00:00 étaient effacées !
+  # ménage de la date et heure
+  ll.pre.0.data.1$`date.time.tz.orig` <- parse_date_time(ll.pre.0.data.1$date.time.tz.orig, '%m-%d-%y %I:%M:%S %p') # pour convertir AM/PM en décimal (0-24h), élément %p voir documentation
+  ll.pre.0.data.2 <- data.frame(separate_wider_position(ll.pre.0.data.1, # date et time en deux colonnes (idem à ODYSSEY)
+                                             widths = c("date.AAAA.MM.JJ" = 11, "time.HH.MM.SS" = 8),
+                                             cols = date.time.tz.orig, cols_remove = F))
+  colnames(ll.pre.0.data.2)[which(names(ll.pre.0.data.2) == "date.AAAA.MM.JJ")] <- "date.AAAA-MM-JJ" # changer le nom de colonne
+  ll.pre.0.data.2$`date.AAAA-MM-JJ` <- sub("[[:space:]]+$", "", ll.pre.0.data.2$`date.AAAA-MM-JJ`) # enlever espace à la fin
+  colnames(ll.pre.0.data.2); head(ll.pre.0.data.2); str(ll.pre.0.data.2) # date et heure ne sont pas sous forme POSIX -> changer dans la section "### date et heure"
+  # ménage : ajouter colonne vide "calibrated value" à l'instar de ODYSSEY, où sera inséré la valeur finale de nappe phréatique
   ll.pre.0.data.2$"calibrated.value.mm" <- rep(NA, times = nrow(ll.pre.0.data.2))
+  colnames(ll.pre.0.data.2); head(ll.pre.0.data.2); str(ll.pre.0.data.2)
   
-  # vérifications
-  head(ll.pre.0.data.2)
-  str(ll.pre.0.data.2)
+  # nouveau nom préliminaire et retirer colonne inutile
+  ll.pre.0.data.3 <- ll.pre.0.data.2 %>% select(!date.JJ.MM.AAAA_time.pre.HH.MM.SS_tz)
+  head(ll.pre.0.data.3); str(ll.pre.0.data.3)
+  # suite :
   # si calibration intégrée avec le hobo, QUE FAIRE ? coder ici, voir procédure avec ODYSSEY
+  {
+    ### date et heure : format ISO date AAAA-MM-JJTHH:MM:SS,ss-/+FF:ff, voir https://fr.wikipedia.org/wiki/ISO_8601 ----
+    # heure : « Z » à la fin lorsqu’il s’agit de l’heure UTC. (« Z » pour méridien zéro, aussi connu sous le nom « Zulu » dans l’alphabet radio international).
+    # extraction : nom du site pour trouver les coordonnées qui serviront à connaître le fuseau horaire
+    site.name.pre <- sub("Titre de tracé : ","",ll.pre.0.metadata[1])
+    site.name <- stringr::str_to_title(gsub(",", "", site.name.pre))
+    
+    # ouvrir données du shapefile pour accéder les zones
+    zones <- read_sf("~Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectitite_PhD_Mergin_26nov24/Ecotone.restauration.zone.pt.shp")
+    zones <- as.data.frame(zones)
+    head(zones); str(zones)
+    
+    # extraire la bonne lat, long selon le nom du site
+    coords <- c(zones$latitude[zones$site==site.name], zones$longitude[zones$site==site.name])
+    
+    # trouver le UTC selon la lat long
+    (tz <- tz_lookup_coords(coords[1], coords[2], method = "fast", warn = FALSE)) 
+    
+    #  transformer en format ISO 8601
+    ll.pre.0.data.4 <- ll.pre.0.data.3 %>% 
+      mutate(`date.AAAA-MM-JJ` = ymd(ll.pre.0.data.3$`date.AAAA-MM-JJ`, tz = tz)) %>% # (re)changer dates en POSIX
+      # mutate(`date.time.tz.orig` = dmy_hms(paste0(ll.pre.2.data.2$date.JJ.MM.AAAA," ", ll.pre.2.data.2$time.HH.MM.SS))) %>% # inutile pour les HOBO
+      mutate(date.time.UTC.0pre.1 = with_tz(ymd_hms(ll.pre.0.data.3$date.time.tz.orig, tz = tz), tzone = "UTC"))  # les heures sont ainsi ramenées à UTC +0
+    str(ll.pre.0.data.4)
+    
+    # SUPPRIMER ? erreur ici, causée par les fichiers vides
+    # There was 1 warning in `mutate()`.
+    # ℹ In argument: `date.time.tz.orig = dmy_hms(paste0(ll.pre.2.data.2$date.JJ.MM.AAAA, " ", ll.pre.2.data.2$time.HH.MM.SS))`.
+    # Caused by warning:
+    # ! All formats failed to parse. No formats found. 
+    head(ll.pre.0.data.4) # différence de X heures, vérifier
+    
+    # début et fin inscrits dans "level.logger.calibration.all.csv" (début (généralement) = installation + 24h de rabattement de la NP 
+    # (ou non, si puits intallé d'avance, dans quel cas inscrire début officiel - 24h), fin = heure de retrait)
+    # note : données de date en format xlsx ça lit TOUT CROCHE, transformé en csv fonctionne bien
+    cal.data <- read.csv("connectivite/data/raw/level.logger.calibration.all.csv", sep = ";")
+    cal.data$day.begining.aaaa.mm.dd.hh.00.01 <- as.POSIXct(cal.data$day.begining.aaaa.mm.dd.hh.00.01, tz = tz)
+    cal.data$day.end.aaaa.mm.dd.hh.00.01 <- as.POSIXct(cal.data$day.end.aaaa.mm.dd.hh.00.01, tz= tz)
+    head(cal.data); tail(cal.data); str(cal.data)
+    
+    # transformer en format ISO 8601, UTC +0
+    cal.data <- cal.data %>%
+      mutate(day.begining.aaaa.mm.dd.hh.00.01 = with_tz(cal.data$day.begining.aaaa.mm.dd.hh.00.01, tzone = "UTC")) %>% # les heures sont ainsi ramenées à UTC +0 / ceci écrase la colonne du mm nom
+      mutate(day.end.aaaa.mm.dd.hh.00.01 = with_tz(cal.data$day.end.aaaa.mm.dd.hh.00.01, tzone = "UTC")) # les heures sont ainsi ramenées à UTC +0 / ceci écrase la colonne du mm nom
+    head(cal.data); tail(cal.data); str(cal.data)
+    
+    # # trouver les dates de départ et de fin - vérification
+    # ll.pre.0.data.4.verif <- ll.pre.0.data.4 %>% dplyr::filter(date.time.UTC.0pre.1 >= cal.data$day.begining.aaaa.mm.dd.hh.00.01[cal.data$probe.uid == probe.uid.k][1]) # >= : date de mesure de NP plus grand ou égale à la date beginning dans cal.data, trouvé dans la ligne dont la ll.pre.2.data.2$probe.uid == à la cal.data$probe.uid.k
+    # nrow(ll.pre.0.data.4) - nrow(ll.pre.0.data.4.verif) 
+    # ll.pre.0.data.4.verif <- ll.pre.0.data.4 %>% dplyr::filter(date.time.UTC.0pre.1 <= cal.data$day.end.aaaa.mm.dd.hh.00.01[cal.data$probe.uid == probe.uid.k][1]) # >= date de mesure de NP plus petit ou égale à la date beginning dans cal.data, trouvé dans la ligne dont la ll.pre.2.data.2$probe.uid == à la cal.data$probe.uid.k
+    # nrow(ll.pre.0.data.4) - nrow(ll.pre.0.data.4.verif)
+    
+    ll.pre.0.data. <- ll.pre.0.data.4 %>% 
+      dplyr::filter(date.time.UTC.0pre.1 >= # >= date de mesure de NP plus grand ou égale à la date beginning dans cal.data, trouvé dans la ligne dont la ll.pre.2.data.2$probe.uid == à la cal.data$probe.uid.i
+                      unique(na.omit(cal.data$day.begining.aaaa.mm.dd.hh.00.01[cal.data$probe.uid == probe.uid.k]))) %>% 
+      dplyr::filter(date.time.UTC.0pre.1 <= # <= date de mesure de NP plus petite ou égale à la date end dans cal.data [...], recoupe tous les jours entre la récupération des sondes et leur mise en arrêt
+                      unique(na.omit(cal.data$day.end.aaaa.mm.dd.hh.00.01[cal.data$probe.uid == probe.uid.k])))
+    
+    ll.pre.0.data.5 <- ll.pre.0.data.4 %>%   # enlever l'espace entre date et heure (ISO 8601)
+      mutate(date.time.UTC.0pre.2 = str_replace(ll.pre.0.data.4$date.time.UTC.0pre.1, " ", "T"))
+    ll.pre.0.data.5$date.time.UTC.0 <- str_replace_all(ll.pre.0.data.5$date.time.UTC.0pre.2, "00:01","00:01Z") # ajouter le Z à la fin (ISO 8601)
+    ll.pre.0.data.6 <- ll.pre.0.data.5 %>% select(!c("date.time.UTC.0pre.1", "date.time.UTC.0pre.2")) %>% # enlever les vielles colonnes
+      select("scan.id", "raw.value.kPa_pres.abs", "calibrated.value.mm",  "temperature_dC", "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.tz.orig", "date.time.UTC.0") # date et time sans "UTC.0" sont dans le fuseau horaire d'origine (tz trouvé en croisant les coordonnées "coords")
+    head(ll.pre.0.data.6);  colnames(ll.pre.0.data.6)
+  }
   
-    # {
-      ### date et heure : format ISO date AAAA-MM-JJTHH:MM:SS,ss-/+FF:ff, voir https://fr.wikipedia.org/wiki/ISO_8601 ----
-      # heure : « Z » à la fin lorsqu’il s’agit de l’heure UTC. (« Z » pour méridien zéro, aussi connu sous le nom « Zulu » dans l’alphabet radio international).
-      # extraction : nom du site pour trouver les coordonnées qui serviront à connaître le fuseau horaire
-      site.name.pre <- sub("Titre de tracé : ","",ll.pre.0.metadata[1])
-      site.name <- stringr::str_to_title(gsub(",", "", site.name.pre))
-      
-      # ouvrir données du shapefile pour accéder les zones
-      zones <- read_sf("~Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectitite_PhD_Mergin_26nov24/Ecotone.restauration.zone.pt.shp")
-      zones <- as.data.frame(zones)
-      head(zones)
-      str(zones)
-      
-      # extraire la bonne lat, long selon le nom du site
-      coords <- c(zones$latitude[zones$site==site.name], zones$longitude[zones$site==site.name])
-      
-      # trouver le UTC selon la lat long
-      tz <- tz_lookup_coords(coords[1], coords[2], method = "fast", warn = FALSE) 
-
-      # modifier mes colonnes pour avoir le format ISO 
-      head(ll.pre.0.data.2)
-      # fichier initial : mm/jj/aa hh:mm:ss AM/PM <- transformer vers AAAA-MM-JJ
-      
+  # changer pour un nom explicite, fichier encore à calibrer (d'où "pre")
+  ll.cal.pre.k <- ll.pre.0.data.6
   
-      
-      # RENDUE ICI
-      # ** tz orig mentionnée dans la colonne ll.pre.0.metadata[2], coder pour l'obtenir au besoin
-# si je veux séparer date et heure en deux colonnes voir ligne 415
+  ### calcul de calibration  ----
+  # * avec HOBO, calibration est faite selon une station météorologique *
+  # Référence : Jutras et Bourgault, 2024, Version 2.0, section 7 (/Users/Aliz/Documents/Doctorat/_Connectivité/Protocoles (dossiers copiés du serveur A'24)/Leveloggers & Hauteur nappe phréatique/_HOBO_Protocole de mesure de nappe_2024-11-01_NE PAS DIFFUSER.docx)
+  
+  
+  # RENDUE ICI
+  # RENDUE ICI
+  
+  
+  
+  # PROBLÈME -> CHOISIR LA MESURE QUE JE VEUX OU EXAMINER L'ERREUR SUIVANTE
+  
+  
+  
+  #### extraction des données de ECCC/CCCS et ménage ----
+  # transformer eccc.data avec le mm format de colonne que ll.cal.pre.k 0$date.time.tz.orig
+  station_ids <- unique(cal.data$cal.station_id[cal.data$probe.uid == probe.uid.k])
+  
+  
+  # eccc.data.pre <- weather_dl(station_ids, start = cal.data$day.begining.aaaa.mm.dd.hh.00.01[cal.data$probe.uid == probe.uid.k], end = cal.data$day.end.aaaa.mm.dd.hh.00.01[cal.data$probe.uid == probe.uid.k])
+  
+  ##### inscrire le time zone (tz) dans la colonne time (équivalent à "date.time.tz.orig.pre") ----
+  # trouver la station météorologique canadienne à moins de 25km de distance (inscrire manuellement dans "data/raw/ll.calibration.all.csv")
+  station_tz.pre <- stations_search(coords = c(zones$latitude[zones$site == site.name],
+                                       zones$longitude[zones$site == site.name]), dist = 25)
+  station_tz.pre.1 <- stations_search(unique(station_tz.pre$station_name[station_tz.pre$station_id == station_ids]))
+  station_tz <- unique(station_tz.pre.1$tz) # OlsonNames() compatible
+  # à l'aide de la tz, ajouter une seconde (idem aux infos temporelles dans ll.cal.pre.k)
+  eccc.data.pre$date.time.tz.orig <- force_tz(eccc.data.pre$time, tz = station_tz) + 1 # ajout d'une seconde, sinon, les données 00:00:00 étaient effacées !
+  
+  # convertir au bon format de date et manip de colonnes (idem aux infos temporelles dans ll.cal.pre.k) / date.time.UTC selon norme iso
+  
+  eccc.data.pre.1 <- eccc.data.pre %>%
+    mutate(date.time.UTC.0.pre = with_tz(ymd_hms(eccc.data.pre$date.time.tz.orig, tz = tz), tzone = "UTC")) # les heures sont ainsi ramenées à UTC +0 / ceci écrase la colonne du mm nom
+  eccc.data.pre.2 <- eccc.data.pre.1 %>%  # enlever l'espace entre date et heure (ISO 8601)
+    mutate(date.time.UTC.0.pre.1 = str_replace(eccc.data.pre.1$date.time.UTC.0.pre, " ", "T"))
+  eccc.data.pre.2$date.time.UTC.0 <- str_replace_all(eccc.data.pre.2$date.time.UTC.0.pre.1, "00:01","00:01Z") # ajouter le Z à la fin (ISO 8601)
+  eccc.data.clean <- eccc.data.pre.2 %>% select(`date.AAAA-MM-JJ` = "date", time, date.time.tz.orig, date.time.UTC.0, everything()) %>% select(!c(date.time.UTC.0.pre, date.time.UTC.0.pre.1))
 
-      
-      
-      
-      # ci-dessous seulement une fois que mes colonnes sont identiques entre HOBO et ODYSSEY (heure et date seulement)
-      
-      ll.pre.0.data.3 <- gsub("00:00", "00:01", ll.pre.0.data.2$time.HH.MM.SS_tz) # sinon, les données 00:00:00 étaient effacées !
-      # déjà date time dans mm colonne séparé d'un " " //inutile : dplyr::mutate(date.time.UTC.0pre = "date.JJ.MM.AAAA_time.HH.MM.SS_tz"
-                                                            
-        # ll.pre.0.data.1 %>% dplyr::mutate(date.time.UTC.0pre = paste0(date.JJ.MM.AAAA," ", time.HH.MM.SS)) # %>% select(!"time.HH.MM.SS") # conserver l'heure aussi ?
-      # nrow(ll.pre.2.data.2)
-      ll.pre.0.data.3$date.time.UTC.0pre <- gsub("00:00", "00:01", ll.pre.0.data.3$date.time.UTC.0pre) # sinon, les données 00:00:00 étaient effacées !
-      
-      
+  head(eccc.data); str(eccc.data); class(eccc.data)
+  
+  # # # vérif pour le join, il faut que la sytaxe soit exactement la mm
+  # c(eccc.data$date.time.UTC.0[55], ll.cal.pre.k$date.time.UTC.0[101])
+  # eccc.data$date.time.UTC.0[55] == ll.cal.pre.k$date.time.UTC.0[101] # -> doit renvoyer T
+
+  #### assembler données du HOBO et données de ECCC/CCCS selon la date et l'heure ----
+  eccc.cal.data <- left_join(ll.cal.pre.k, eccc.data)
+  
+  # IDÉES:
+  # suivant : COUPER CE RÉSULTAT EXACTEMETN AUX DATES BEGGINING ET END DE CAL.DATA, 
+  # éventuellement : RUNNER DANS HOBO ET COMPARER LES RÉSULTATS
+  
+  
+  
+  
+  
+  # notes : les longueurs doivent être en mm ; idée pour cal.data : 
+  # si unité = cm -> convertir en mm, si mm-> continuer
+  # # trouver les lignes qui correspondent à la sonde à calibrer
+  # cal.probe.k <- cal.data %>% dplyr::filter(cal.data$probe.uid == probe.uid.k)
+  # cal.probe.k
+  
+  
+  
+  # test: si raw.value == vecteur de "NA", on peut procédéer à la calibration, sinon ça veut dire qu'on a la cal du programme de la sonde, garder ces données (créer autre colonne)
+  if(FALSE %in% (!ll.cal.pre$calibrated.value.mm %in% rep("NA", times = length(ll.cal.pre$calibrated.value.mm)))) { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
+    stop(paste0("Attention, la colonne calibrated.value n'est pas vide. Sonde problématique : i = ", paste(i), "; ", ll.pre[i]))
+    # créer une autre colonne, le cas échéant (à faire)
   }
   
   
   }
-  
-  # CI-DESSOUS == COPIÉ-COLLÉ DE CI-DESSUS (supprimer)
+
+
+
+
+# SUPPRIMER APRÈS (?) 
+# modifier mes colonnes pour avoir le format ISO 
+head(ll.pre.0.data.3)
+class(ll.pre.0.data.3$`date.AAAA-MM-JJ`)
+
+# [1] "POSIXct" "POSIXt" 
+head(ll.clean[[1]]$data, n = 1) # format à atteindre
+# scan.id raw.value.mm calibrated.value.mm date.AAAA-MM-JJ time.HH.MM.SS   date.time.tz.orig      date.time.UTC.0
+# 25         2884        544.4089            2024-06-12      15:00:00     2024-06-12 15:00:00   2024-06-12T19:00:01Z
+class(ll.clean[[1]]$data$date.time.tz.orig)
+# [1] "POSIXct" "POSIXt" 
+colnames(ll.clean[[1]]$data)
+# "scan.id", "raw.value.mm", "calibrated.value.mm", "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.tz.orig", "date.time.UTC.0"

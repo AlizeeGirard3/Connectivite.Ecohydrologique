@@ -11,17 +11,16 @@
 # NOTES : 
 ###########################################################################-
 
-##### fonctions utiles et working directory
 setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
 source("general.scripts/fonctions.R") # appel du fichier de métadonnées de projet
 
-##### importer et préparer donnees dans R
+# Import de données ----
 ll.clean <- readRDS("connectivite/data/clean/ll.clean.RDS")
 # obtenu via le script "/scripts/data_water.table.all.R"
 # importer le graphique que topographie
 
 
-#### bibliotheques a charger (installer avant si pas fait)
+# Librairies ----
 library(conflicted) # ℹ Use the conflicted package to force all conflicts to become errors    ---->>>>  devtools::install_github("r-lib/conflicted")
 if (!require("dplyr")) install.packages("dplyr") # pour manipulation donnees (pipe, etc)
 if (!require("ggplot2")) install.packages("ggplot2")
