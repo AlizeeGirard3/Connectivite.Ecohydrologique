@@ -349,11 +349,11 @@ water.table.verif
 
 
 
-## B Donnée issues du HOBO® ----
+## B !INTÉGRER DANS A (QUAND TOUT EST BEAU) !!Donnée issues du HOBO® ----
 # B.1 nettoyage
 # fonction : modifications automatisées pour chaque fichier issus d'une période de mesures des level loggers
 
-# important de supprijmer les objets en mémoire // 
+# important de supprimer les objets en mémoire // 
 # ou combiner le traitement de données dans la boucle 
 # avec des if/else pour traiter différement les HOBO des ODYSSEY
 rm(list=ls())
@@ -362,12 +362,116 @@ rm(list=ls())
 ll.pre <- list.files("connectivite/data/raw", pattern = "hobo")
 ll.clean <- list()
 
-for (i in 1:length(ll.pre)) {
+for (k in 1:length(ll.pre)) {
   # import et ménage
-  print(i)
-  ll.pre[i]
-  # ll.pre.0 <- read.csv(paste0("connectivite/data/raw/", ll.pre[i]), sep = "','")
-  # ll.pre.0 <- readLines(paste0("connectivite/data/raw/",ll.pre[i])); str(ll.pre.0) # lire en format texte
-}
+  print(k)
+  ll.pre[k]
+  # ll.pre.0 <- read.csv(paste0("connectivite/data/raw/", ll.pre[k]), sep = "','")
+  ll.pre.0 <- readLines(paste0("connectivite/data/raw/", ll.pre[k])); str(ll.pre.0) # lire en format texte
+  # Warning message:
+  #   In readLines(paste0("connectivite/data/raw/", ll.pre[k])) :
+  #   incomplete final line found on 'connectivite/data/raw/20853328_INK_20250106_hobo.csv'
+  
+  ### création des subsets data & metadata ----
+  # notes : les noms réfèrent à l'étape et non à une matrice en particulier, les objets seront remplacés au fil de la boucle. 
+  # l'info importante est consignée dans la liste ll.clean[i], à la fin
+  ll.pre.0.metadata <-  ll.pre.0[c(1:2)] # inclus les anciens noms de colonnes, qui sont dans un format et un ordre bizzare
+  ll.pre.0.data <- ll.pre.0[-c(1:2)]
+  str(ll.pre.0.data) # chr
+
+  ### vérification du fichier level logger brut : logger.serial.no == nom du fichier, sinon arrêter TOUT ! ----
+  {
+    # trouver le probe.uid.i (== probe.uid, logger serial no) dans les metadata
+    # texte <- ll.pre.0.metadata[4] # logger serial no, en base R
+    # numbers <- grepl("*S/N", ll.pre.0.metadata)
+    
+    # str_match(with STR1 (.*?) STR2
+    texte <- as.data.frame(str_match(ll.pre.0.metadata, "(?s)LGR S/N: \\s*(.*?)\\s*,")) # extraire tout ce qui se trouve
+    # entre "LGR S/N: " et la "," directement subséquente, sans savoir s'il y a des sauts de ligne et peu importe les 
+    # espaces dans l'énoncé.
+    probe.uid.k <- as.numeric(texte[2,2])
+    # no du level logger dans le nom du fichier brut (.csv), correspond à l'item "k" de la présente boucle
+    texte <- ll.pre[k]
+    nombres <- gregexpr("[0-9]+", texte)
+    resultat <- regmatches(texte, nombres)
+    fichier <- as.numeric(unlist(resultat)[1])
+    # test logger.serial.no == nom du fichier
+    if(!(probe.uid.k %in% fichier)) { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc "else" statement)
+      stop(paste0("Attention, le nom du fichier ne correspond pas au numéro de série du level logger. Fichier problématique : i = ", paste(i), "; ", ll.pre[i]))
+    }
+    # si problème : aller changer manuellement en utilisant le no de série (unique) inscrit dans le fichier et PAS son nom 
+    # ** 1. créer copie -> archive; 2. s'assurer de changer partout ** : QGIS, fichier, onglet, data_site.id
+  }
+  
+  ### création du dataframe level legger (ll) contenant données de nappe phréatique (NP) et ménage  ----
+  ll.pre.0.data.0 <- read.csv(text = ll.pre.0.data, col.names = c("scan.id", "date.JJ.MM.AAAA_time.pre.HH.MM.SS_tz",	"raw.value.kPa_pres.abs",	"temperature_dC", "Coupleur détaché", "Coupleur attaché", 'Hôte connecté',	"Arrêté", "Fin de fichier")) # text = argument de read.csv qui lit la valeur contenue dans l'objet / DATE mauvais format
+  ll.pre.0.data.1 <- ll.pre.0.data.0[1:4] # garder seules les colonnes pertinentes
+  colnames(ll.pre.0.data.1)
+  
+  # séparer date et heure et ménage
+  ll.pre.0.data.1$date.JJ.MM.AAAA_time.HH.MM.SS_tz <- parse_date_time(ll.pre.0.data.1$date.JJ.MM.AAAA_time.pre.HH.MM.SS_tz, '%m-%d-%y %I:%M:%S %p')
+  ll.pre.0.data.1 <- ll.pre.0.data.1 %>% select(!date.JJ.MM.AAAA_time.pre.HH.MM.SS_tz)
+  
+  # si je veux séparer en deux colonnes
+  # ll.pre.0.data.2 <- separate_wider_position(ll.pre.0.data.1, # TIBBLE
+  #                                            widths = c("date.JJ.MM.AAAA" = 9, "time.pre.HH.MM.SS_tz" = 11), 
+  #                                            cols = date.JJ.MM.AAAA_time.pre.HH.MM.SS_tz)
+  # ll.pre.0.data.2$date.JJ.MM.AAAA <- sub("[[:space:]]+$", "", ll.pre.0.data.2$date.JJ.MM.AAAA) # enlever espace à la fin
+  
+  
+  # ajouter colonne vide "calibrated value" à l'instar de ODYSSEY, où sera inséré la valeur finale de nappe phréatique
+  ll.pre.0.data.2$"calibrated.value.mm" <- rep(NA, times = nrow(ll.pre.0.data.2))
+  
+  # vérifications
+  head(ll.pre.0.data.2)
+  str(ll.pre.0.data.2)
+  # si calibration intégrée avec le hobo, QUE FAIRE ? coder ici, voir procédure avec ODYSSEY
+  
+    # {
+      ### date et heure : format ISO date AAAA-MM-JJTHH:MM:SS,ss-/+FF:ff, voir https://fr.wikipedia.org/wiki/ISO_8601 ----
+      # heure : « Z » à la fin lorsqu’il s’agit de l’heure UTC. (« Z » pour méridien zéro, aussi connu sous le nom « Zulu » dans l’alphabet radio international).
+      # extraction : nom du site pour trouver les coordonnées qui serviront à connaître le fuseau horaire
+      site.name.pre <- sub("Titre de tracé : ","",ll.pre.0.metadata[1])
+      site.name <- stringr::str_to_title(gsub(",", "", site.name.pre))
+      
+      # ouvrir données du shapefile pour accéder les zones
+      zones <- read_sf("~Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectitite_PhD_Mergin_26nov24/Ecotone.restauration.zone.pt.shp")
+      zones <- as.data.frame(zones)
+      head(zones)
+      str(zones)
+      
+      # extraire la bonne lat, long selon le nom du site
+      coords <- c(zones$latitude[zones$site==site.name], zones$longitude[zones$site==site.name])
+      
+      # trouver le UTC selon la lat long
+      tz <- tz_lookup_coords(coords[1], coords[2], method = "fast", warn = FALSE) 
+
+      # modifier mes colonnes pour avoir le format ISO 
+      head(ll.pre.0.data.2)
+      # fichier initial : mm/jj/aa hh:mm:ss AM/PM <- transformer vers AAAA-MM-JJ
+      
+  
+      
+      # RENDUE ICI
+      # ** tz orig mentionnée dans la colonne ll.pre.0.metadata[2], coder pour l'obtenir au besoin
+# si je veux séparer date et heure en deux colonnes voir ligne 415
+
+      
+      
+      
+      # ci-dessous seulement une fois que mes colonnes sont identiques entre HOBO et ODYSSEY (heure et date seulement)
+      
+      ll.pre.0.data.3 <- gsub("00:00", "00:01", ll.pre.0.data.2$time.HH.MM.SS_tz) # sinon, les données 00:00:00 étaient effacées !
+      # déjà date time dans mm colonne séparé d'un " " //inutile : dplyr::mutate(date.time.UTC.0pre = "date.JJ.MM.AAAA_time.HH.MM.SS_tz"
+                                                            
+        # ll.pre.0.data.1 %>% dplyr::mutate(date.time.UTC.0pre = paste0(date.JJ.MM.AAAA," ", time.HH.MM.SS)) # %>% select(!"time.HH.MM.SS") # conserver l'heure aussi ?
+      # nrow(ll.pre.2.data.2)
+      ll.pre.0.data.3$date.time.UTC.0pre <- gsub("00:00", "00:01", ll.pre.0.data.3$date.time.UTC.0pre) # sinon, les données 00:00:00 étaient effacées !
+      
+      
+  }
+  
+  
+  }
   
   # CI-DESSOUS == COPIÉ-COLLÉ DE CI-DESSUS (supprimer)
