@@ -372,8 +372,8 @@ rm(list=ls())
 ll.pre <- list.files("connectivite/data/raw", pattern = "hobo")
 ll.clean.k.hobo <- list()
 
-for (k in 1:length(ll.pre)) {
-# k<-1
+# for (k in 1:length(ll.pre)) {
+k<-3
   # import et ménage
   print(k)
   ll.pre[k]
@@ -474,6 +474,27 @@ for (k in 1:length(ll.pre)) {
   cal.data$day.end.aaaa.mm.dd.hh.00.01 <-  gsub("[+]00:00", "Z",  format_iso_8601(parse_iso_8601(cal.data$day.end.aaaa.mm.dd.hh.00.01, default_tz = tz)))
   head(cal.data); tail(cal.data); str(cal.data)
   
+  
+  # idée 1.
+  # entrer dans un ifelse, 
+  # si 1 -> code ci-dessous
+  # si >1 -> coder pour dire que
+  # cal.data$day.begining.aaaa.mm.dd.hh.00.01[cal.data$probe.uid == probe.uid.k][1] avec
+  # cal.data$day.end.aaaa.mm.dd.hh.00.01[cal.data$probe.uid == probe.uid.k][1]
+  # toujours séquentiellement, car dans l'ordre de lecture des lignes du fichier original
+  
+  # idée 2
+  # loop -> de 1 : nombre de fois ou probe est répété dans le df 
+  # de toute façon, tout y sera entré au fil du temps, les mm NO seront constamment réutilisés, 
+  #  l'important, c'est que ce soit évalué LIGNE PAR LIGNE
+  # loop où j'extrait le df de UNE ligne séquentiellement
+  # où begingin et end sont évalués tel que ci-dessous
+  
+  # PROBLÈME ICI CAR +DE 1 PROBE UID POUR CERTAINS
+  
+  
+  
+  
   # recoupage de ll.pre.data selon cal.data selon début et fin des mesures et retrait de colonnes
   ll.pre.0.data.4 <- ll.pre.0.data.3 %>% 
     dplyr::filter(date.time.UTC.0 >= # >= date de mesure de NP plus grand ou égale à la date beginning dans cal.data, trouvé dans la ligne dont la ll.pre.2.data.2$probe.uid == à la cal.data$probe.uid.i
@@ -494,6 +515,8 @@ for (k in 1:length(ll.pre)) {
   
   
   
+  
+  
   # RENDUE ICI
   # RENDUE ICI
   
@@ -505,7 +528,17 @@ for (k in 1:length(ll.pre)) {
   
   #### extraction des données de ECCC/CCCS et ménage ----
   # transformer eccc.data avec le mm format de colonne que ll.cal.pre.k 0$date.time.tz.orig
-  station_ids <- cal.data$cal.station_id[cal.data$probe.uid == probe.uid.k]
+  station_ids <- unique(cal.data$cal.station_id[cal.data$probe.uid == probe.uid.k]) # pas grave ici si plusieurs probe.uid
+  
+  
+  
+  
+  
+  # PROBLÈME ICI CAR +DE 1 PROBE UID
+  
+  
+  
+  
   eccc.data.pre <- weather_dl(station_ids, start = cal.data$day.begining.aaaa.mm.dd.hh.00.01[cal.data$probe.uid == probe.uid.k], end = cal.data$day.end.aaaa.mm.dd.hh.00.01[cal.data$probe.uid == probe.uid.k])
   colnames(eccc.data.pre) <- paste0(colnames(eccc.data.pre), ".wc") # ajout de ".wc" pour identifier les colonnes issues de WeatherCan
 
