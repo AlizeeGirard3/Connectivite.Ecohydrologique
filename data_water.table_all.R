@@ -126,6 +126,17 @@ for (i in 1:length(ll.pre)) {
    # garder date.AAAA-MM-JJ"
    ll.pre.2.data.2 <- ll.pre.2.data.1 %>% dplyr::mutate(date.time.UTC.0pre = paste0(date.JJ.MM.AAAA," ", time.HH.MM.SS)) # %>% select(!"time.HH.MM.SS") # conserver l'heure aussi ?
    nrow(ll.pre.2.data.2)
+   
+   
+   
+   
+   # ICI, SI EN POSIX et en UTC+0, utiliser (exemple)
+   # ll.pre.0.data.2$date.time.UTC.0pre.1 <- format_iso_8601(ll.pre.0.data.2$date.time.UTC.0pre) # pour ensuite éviter l'étape de mettre T et Z dans l'énoncé, supprimer plus loin
+   # ll.pre.0.data.2$date.time.UTC.0 <- gsub("[+]00:00", "Z",  ll.pre.0.data.2$date.time.UTC.0pre.1)
+   
+   
+   
+   
    ll.pre.2.data.2$date.time.UTC.0pre <- gsub("00:00", "00:01", ll.pre.2.data.2$date.time.UTC.0pre) # sinon, les données 00:00:00 étaient effacées !
 
   #  transformer en format ISO 8601
