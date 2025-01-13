@@ -378,17 +378,16 @@ water.table.verif
 rm(list=ls())
 
 # importer si nécessaire :
-# ll.clean <- readRDS("connectivite/data/clean/ll.clean.RDS")
-colnames(ll.clean[[7]]$data)
+ll.clean <- readRDS("connectivite/data/clean/ll.clean.RDS")
+# colnames(ll.clean[[7]]$data)
 # # obtenu via le script "/scripts/data_water.table.all.R"
 # # importer le graphique que topographie
 # # fichiers de consigne de données
 
 ll.pre <- list.files("connectivite/data/raw", pattern = "hobo")
 ll.clean.k.hobo <- list()
-
-# for (k in 1:length(ll.pre)) {
-  k<-3
+for (k in 1:length(ll.pre)) {
+  # k<-3
   # import et ménage
   print(k)
   ll.pre[k]
@@ -483,7 +482,7 @@ ll.clean.k.hobo <- list()
   # inscrits dans "level.logger.calibration.all.csv" (début (généralement) = installation + 24h de rabattement de la NP 
   # (ou non, si puits intallé d'avance, dans quel cas inscrire début officiel - 24h), fin = heure de retrait)
   # note : données de date en format xlsx ça lit TOUT CROCHE, transformé en csv fonctionne bien
-  cal.data <- read.csv("connectivite/data/raw/level.logger.calibration.all.csv", sep = ";")
+  cal.data <- read.csv("connectivite/data/raw/level.logger.calibration.all.csv", sep = ";", dec = ",")
   # transformer en format ISO 8601, UTC +0 pour comparaison
   cal.data$day.begining.aaaa.mm.dd.hh.00.01 <- gsub("[+]00:00", "Z",  format_iso_8601(parse_iso_8601(cal.data$day.begining.aaaa.mm.dd.hh.00.01, default_tz = tz)))
   cal.data$day.end.aaaa.mm.dd.hh.00.01 <-  gsub("[+]00:00", "Z",  format_iso_8601(parse_iso_8601(cal.data$day.end.aaaa.mm.dd.hh.00.01, default_tz = tz)))
@@ -522,42 +521,26 @@ ll.clean.k.hobo <- list()
   for (l in 1:nrow(cal.data[cal.data$probe.uid == probe.uid.k,])) {
     print(l)
     cal.data.k.l <- cal.data[cal.data$probe.uid == probe.uid.k,][l,]
-    
     # recoupage de ll.pre.data selon cal.data selon début et fin des mesures et retrait de colonnes
     ll.pre.0.data.4.l.pre <- ll.pre.0.data.3 %>% 
       dplyr::filter(date.time.UTC.0 >= # >= date de mesure de NP plus grand ou égale à la date beginning dans cal.data, trouvé dans la ligne dont la ll.pre.2.data.2$probe.uid == à la cal.data$probe.uid.i
                       unique(na.omit(cal.data.k.l$day.begining.aaaa.mm.dd.hh.00.01[cal.data.k.l$probe.uid == probe.uid.k]))) %>% 
       dplyr::filter(date.time.UTC.0 <= # <= date de mesure de NP plus petite ou égale à la date end dans cal.data [...], recoupe tous les jours entre la récupération des sondes et leur mise en arrêt
-                      unique(na.omit(cal.data.k.l$day.end.aaaa.mm.dd.hh.00.01[cal.data.k.l$probe.uid == probe.uid.k]))) %>% # enlever les vielles colonnes
+                      unique(na.omit(cal.data.k.l$day.end.aaaa.mm.dd.hh.00.01[cal.data.k.l$probe.uid == probe.uid.k]))) %>% 
       select("scan.id", "raw.value.kPa_pres.abs", "calibrated.value.mm",  "temperature_dC", "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.tz.orig", "date.time.UTC.0") # %>%  # date et time sans "UTC.0" sont dans le fuseau horaire d'origine (tz trouvé en croisant les coordonnées "coords")
-      
-      # cal.data.k.l.long <- pivot_longer(cal.data.k.l, )
-      colnames(cal.data.k.l)
-      cal.data.k.l.rep <- cbind(cal.data.k.l, rep(row.names(cal.data.k.l), each = nrow(ll.pre.0.data.4.l.pre)), row.names = NULL)
-      cal.data.k.l.rep
-      
-      ll.pre.0.data.4.l <- bind_cols(ll.pre.0.data.4.l.pre, cal.data.k.l)
+    # répliquer les données cal.data.k.l à chaque ligne de ll.pre.0.data.4.l.pre
+    cal.data.k.l.rep <- cbind(cal.data.k.l, rep(row.names(cal.data.k.l), each = nrow(ll.pre.0.data.4.l.pre)), row.names = NULL)
+    cal.data.k.l.rep
+    # assembler les colonnes
+    ll.pre.0.data.4.l <- bind_cols(ll.pre.0.data.4.l.pre, cal.data.k.l) # AUCUNE raison pour que les lignes soietn mélangées : les lignes de cal.data.k.l sont identiques (répétées pour la section k.l) et répétées pour chaque ligne de ll.pre.0.data.4.l.pre
+    # chaque cal.data.k = une section de mesures de la sonde k, durant l'été, associée ou non à une mesure au bulleur et à une longueur de fil
     # vérifications
     head(ll.pre.0.data.4.l); colnames(ll.pre.0.data.4.l); nrow(ll.pre.0.data.4.l)
-  
     # changer pour un nom explicite, fichier encore à calibrer (d'où "pre")
     ll.cal.pre.k.l[[l]] <- ll.pre.0.data.4.l
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    # CHANTIER ICI : 
-   # POURSUIVRE : OK J'AI append toutes les colonnes de cal.data.k 
-    # assurer que tt est ebau et poursuivre avec la calibration
-  
-    
   }
-  ll.cal.pre.k <- do.call(rbind, ll.cal.pre.k.l)
+  # coller toutes les données de la sonde k ensemble (différentes mesures temporelles, mm trmnt.année)
+  ll.cal.pre.k <- do.call(rbind, ll.cal.pre.k.l) # row bind -> on colle deux df de structure identique (les ll.cal.pre.k) de différents k.l, associées à différents temps de la période de mesure de la sonde k
   
   ### calcul de calibration  ----
   # * avec HOBO, calibration est faite selon une station météorologique *
@@ -567,12 +550,18 @@ ll.clean.k.hobo <- list()
   # transformer eccc.data avec le mm format de colonne que ll.cal.pre.k 0$date.time.tz.orig
   station_ids <- unique(cal.data$cal.station_id[cal.data$probe.uid == probe.uid.k]) # pas grave ici si plusieurs probe.uid
   
-  eccc.data.pre <- weather_dl(station_ids, start = min(ll.cal.pre.k$date.time.tz.orig), end = max(ll.cal.pre.k$date.time.tz.orig), time_disp = "none") 
+  eccc.data.pre.0 <- weather_dl(station_ids, start = min(ll.cal.pre.k$date.time.tz.orig), end = max(ll.cal.pre.k$date.time.tz.orig), time_disp = "none") 
   # **dates absentes du ll.cal.pre.k si, p. ex sonde retirée momentanément, seront enlevées dans le left_join**
   # As of weathercan v0.3.0 time display is either local time or UTC
   # See Details under ?weather_dl for more information.
   # This message is shown once per session
   
+  # sélection des colonnes pertinentes à la présente manoeuvre
+  eccc.data.pre <- eccc.data.pre.0[, !names(eccc.data.pre.0) %in% 
+                                     c("WMO_id","TC_id", "wind_chill", "year", "month", "day", "hour", "weather", "hmdx", 
+                                       "hmdx_flag", "precip_amt", "precip_amt_flag", "pressure_flag", "rel_hum", "rel_hum_flag", 
+                                       "temp", "temp_dew", "temp_dew_flag", "temp_flag", "visib", "visib_flag", "wind_chill_flag", 
+                                       "wind_dir", "wind_dir_flag", "wind_spd", "wind_spd_flag")] 
   # changement de nom pour identifier quelles colonnes du futur cal.eccc.data proviennent de eccc/cccs
   colnames(eccc.data.pre) <- paste0(colnames(eccc.data.pre), ".wc") # ajout de ".wc" pour identifier les colonnes issues de WeatherCan
   
@@ -593,8 +582,7 @@ ll.clean.k.hobo <- list()
   eccc.data.pre.1 <- eccc.data.pre %>%
     mutate(date.time.UTC.0.pre = with_tz(ymd_hms(eccc.data.pre$date.time.tz.orig.wc, tz = tz), tzone = "GMT")) # les heures sont ainsi ramenées à UTC +0 / ceci écrase la colonne du mm nom
   head(eccc.data.pre.1$date.time.UTC.0.pre) # ok ici
-  
-  
+
   eccc.data.pre.2 <- eccc.data.pre.1 %>%  # enlever l'espace entre date et heure (ISO 8601)
     mutate(date.time.UTC.0.pre.1 = str_replace(eccc.data.pre.1$date.time.UTC.0.pre, " ", "T")) %>% 
     select(date.time.tz.orig.wc, time.wc, date.time.UTC.0.pre, date.time.UTC.0.pre.1, everything())
@@ -615,29 +603,63 @@ ll.clean.k.hobo <- list()
   
   #### assembler données du HOBO et données de ECCC/CCCS selon la date et l'heure ----
   # Jutras&Bourgault V2.0, 2024; étape a) Associer par dates et par heures les données mesurées par les sondes de niveau hydrostatique et la pression atmosphérique
-  
   cal.eccc.data <- left_join(ll.cal.pre.k, eccc.data, by = join_by(date.time.UTC.0)) %>% 
     select("scan.id", "date.time.UTC.0","raw.value.kPa_pres.abs", "temperature_dC", "calibrated.value.mm",
            `date.AAAA-MM-JJ` = "date.AAAA-MM-JJ.x", "time.HH.MM.SS", `date.time.tz.orig`,
            "date.time.tz.orig.wc", "station_name.wc", pressure.kPa.wc = "pressure.wc", everything()) %>% 
-    select(!c(`date.AAAA-MM-JJ.y`, "time.wc"))
+    select(!c(`date.AAAA-MM-JJ.y`, "time.wc")) # enlever les nombreuses colonnes qui n'ont pas rapport dans ces démarches
   colnames(cal.eccc.data)
-
-
-# SUITE ICI
 
   # Jutras&Bourgault V2.0, 2024; étape b)	Calculer la hauteur d’eau au-dessus de la sonde par la soustraction de la pression atmosphérique, convertie en cm d’eau, à la pression mesurée par la sonde
   # Jutras&Bourgault V2.0, 2024; étape b.i)	La conversion de kPa en cm d’eau est : 1 kPa = 10,1972 cm d’eau 
- 
   cal.eccc.data$pression.eau.kPa = cal.eccc.data$raw.value.kPa_pres.abs - cal.eccc.data$pressure.kPa.wc
   cal.eccc.data$hauteur.eau.cm = cal.eccc.data$pression.eau.kPa * 10.1972 # règle de trois
   cal.eccc.data <- cal.eccc.data %>% select("scan.id", "date.time.UTC.0","raw.value.kPa_pres.abs", pression.eau.kPa, hauteur.eau.cm, everything()) 
 
-# Jutras&Bourgault V2.0, 2024; étape c)	Convertir la hauteur d’eau au-dessus de la sonde en profondeur de la nappe phréatique par rapport à la surface du sol
-# Jutras&Bourgault V2.0, 2024; étape c.i)	La profondeur de la nappe phréatique par rapport à la surface du sol = (La distance qui sépare l’intérieur du capuchon au trou situé à la base de la sonde – La longueur du puits d’observation qui dépasse la surface du sol) – La hauteur d’eau au-dessus de la sonde
-  cal.eccc.data$calibrated.value.mm <- ( - ) - (cal.eccc.data$hauteur.eau.cm*10) # hauteur d'eau en cm -> mm = *10
+  # Jutras&Bourgault V2.0, 2024; étape c)	Convertir la hauteur d’eau au-dessus de la sonde en profondeur de la nappe phréatique par rapport à la surface du sol
+  # Jutras&Bourgault V2.0, 2024; étape c.i)	La profondeur de la nappe phréatique par rapport à la surface du sol = (La distance qui sépare l’intérieur du capuchon au trou situé à la base de la sonde – La longueur du puits d’observation qui dépasse la surface du sol) – La hauteur d’eau au-dessus de la sonde
+  str(cal.eccc.data$long.fil.cm) # characters
+  str(cal.eccc.data$out.long.tuyau.sol.cm) # characters
+  cal.eccc.data$calibrated.value.mm <- (cal.eccc.data$long.fil.cm - cal.eccc.data$out.long.tuyau.sol.cm) - (cal.eccc.data$hauteur.eau.cm*10) # hauteur d'eau en cm -> mm = *10
 
-# }
+  # retirer des colonnes intermédiaires et mm format que ll.clean[[i]]$data
+  colnames(ll.clean[[7]]$data)
+  # "scan.id"             "raw.value.mm"        "calibrated.value.mm" "date.AAAA-MM-JJ"     "time.HH.MM.SS"       "date.time.tz.orig"  
+  # [7] "date.time.UTC.0"
+  colnames(cal.eccc.data)
+
+  
+  cal.eccc.data
+  head(cal.eccc.data)
+
+  # format final -> nom final
+  ll.cal.k <- cal.eccc.data %>%  # ceci est donc le format final, à intégrer dans la liste ll.clean
+    select(scan.id, raw.value.kPa_pres.abs, calibrated.value.mm, `date.AAAA-MM-JJ`, time.HH.MM.SS, date.time.tz.orig, 
+           date.time.UTC.0)
+  
+  ### création de la liste dans la liste [[i]]  ----
+  # noted : <- le fichier du level logger correspondant à la position i; [1] : data (dataframe), [2] : metadata (character string)
+  ll.clean.k.hobo[[k]] <- list("data" = ll.cal.k, "metadata" = ll.pre.0.metadata)
+  
+}
+# vérifier que les erreurs sont tjrs la meme affaire inutile -> incomplete final line, tenté de régler le problème, mais sans succès;
+# et different length (ça le dit quand le "cal" est vide, et ça met des NA, ce qui est parfait)
+
+
+
+
+# rendue ici
+
+
+
+
+
+# if("ll.clean.RData" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
+#   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
+# } else { saveRDS(ll.clean, file = "connectivite/data/clean/ll.clean.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
+
+
+
 
 
 
