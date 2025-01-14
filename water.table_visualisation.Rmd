@@ -29,7 +29,12 @@ Sometimes you may want to use another directory as the working directory. The us
 
 ## Vérification de la calibration des sondes en fonction de la lecture au bulleur
 
+# QUESTION :
+# longueur du fil à bulleur, donc nappe en dessous, doit poser problème non ?
+
 ```{r, echo = FALSE, message = FALSE}
+setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
+
 if (!require("conflicted")) install.packages("conflicted") # ℹ Use the conflicted package to force all conflicts to become errors    ---->>>>  devtools::install_github("r-lib/conflicted")
 if (!require("readxl")) install.packages("readxl") # lire les excel
 if (!require("dplyr")) install.packages("dplyr") # entre autres : left_join()
@@ -100,7 +105,7 @@ align = "ccc") %>%
 ## Visualisation de la variation de la nappe phréatique et du positionnement du puits le long du transect
 
 ```{r, message = FALSE, include = FALSE}
-# setwd("~/Documents/Doctorat/_R.&.Stats_PhD") # fonctions utiles et working directory
+setwd("~/Documents/Doctorat/_R.&.Stats_PhD") # fonctions utiles et working directory
 # sys.source("general.scripts/fonctions.R") # envir = knitr::knit_global())
 # load("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/raw/metadata_all.RDS")
 

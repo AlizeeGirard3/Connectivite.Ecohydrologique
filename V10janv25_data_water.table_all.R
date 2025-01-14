@@ -47,7 +47,7 @@ if (!require("parsedate")) install.packages("parsedate") # lire les excel
 
 
 # A Donnée issues du Capacitance Water Level Logger Odyssey® ----
-## A.1 nettoyage ----
+## A.1 nettoyage et enregistrement en RDS ----
 # fonction : modifications automatisées pour chaque fichier issus d'une période de mesures des level loggers
 
 # fichiers de consigne de données
@@ -242,7 +242,7 @@ for (i in 1:length(ll.pre)) {
 # vérifier que les erreurs sont tjrs la meme affaire inutile -> incomplete final line, tenté de régler le problème, mais sans succès; 
 # et different length (ça le dit quand le "cal" est vide, et ça met des NA, ce qui est parfait)
 
-if("ll.clean.RData" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
+if("ll.clean.RDS" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
 } else { saveRDS(ll.clean, file = "connectivite/data/clean/ll.clean.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
 
@@ -368,8 +368,8 @@ water.table.verif
 
 
 
-## B !INTÉGRER DANS A (QUAND TOUT EST BEAU) !!Donnée issues du HOBO® ----
-# B.1 nettoyage
+# B !INTÉGRER DANS A (QUAND TOUT EST BEAU) !!Donnée issues du HOBO® ----
+## B.1 nettoyage et enregistrement en RDS ----
 # fonction : modifications automatisées pour chaque fichier issus d'une période de mesures des level loggers
 
 # important de supprimer les objets en mémoire // 
@@ -378,7 +378,7 @@ water.table.verif
 rm(list=ls())
 
 # importer si nécessaire :
-ll.clean <- readRDS("connectivite/data/clean/ll.clean.RDS")
+# ll.clean <- readRDS("connectivite/data/clean/ll.clean.RDS")
 # colnames(ll.clean[[7]]$data)
 # # obtenu via le script "/scripts/data_water.table.all.R"
 # # importer le graphique que topographie
@@ -466,8 +466,7 @@ for (k in 1:length(ll.pre)) {
   
   # ajouter colonne vide "calibrated value" à l'instar de ODYSSEY, où sera inséré la valeur finale de nappe phréatique
   ll.pre.0.data.2$"calibrated.value.mm" <- rep(NA, times = nrow(ll.pre.0.data.2))
-  colnames(ll.pre.0.data.2); head(ll.pre.0.data.2); str(ll.pre.0.data.2)
-  
+
   # vérifications
   colnames(ll.pre.0.data.2); head(ll.pre.0.data.2); str(ll.pre.0.data.2) # date et heure ne sont pas sous forme POSIX -> changer dans la section "### date et heure"
   # nouveau nom préliminaire (et retirer colonnes inutiles)
@@ -478,55 +477,42 @@ for (k in 1:length(ll.pre)) {
   # suite :
   # si calibration intégrée avec le hobo, QUE FAIRE ? coder ici, voir procédure avec ODYSSEY
   
-  #### début et fin des mesures ----
+  #### début et fin des mesures par PROBE.WELL.UID ----
   # inscrits dans "level.logger.calibration.all.csv" (début (généralement) = installation + 24h de rabattement de la NP 
   # (ou non, si puits intallé d'avance, dans quel cas inscrire début officiel - 24h), fin = heure de retrait)
   # note : données de date en format xlsx ça lit TOUT CROCHE, transformé en csv fonctionne bien
+  
+  ##### import et nettoyage ----
   cal.data <- read.csv("connectivite/data/raw/level.logger.calibration.all.csv", sep = ";", dec = ",")
+  # out = (pt haut - moyenne pt bas)
+  cal.data$out.R = round(cal.data$pt.haut.cm - ((cal.data$pt.bas1.cm+cal.data$pt.bas2.cm+cal.data$pt.bas3.cm)/3), digits = 1)
+  cal.data <- cal.data %>% select("site.id", "well.uid", "trmnt.uid", "lab.probe.id", "probe.uid", "probe.brand", 
+                                  "cal.length.cm", "cal.length.mm", "cal.order", "cal.value", "comment", 
+                                  "day.begining.aaaa.mm.dd.hh.00.01", "day.end.aaaa.mm.dd.hh.00.01", "distance.m", "out.R", "out.long.tuyau.sol.cm", everything())
+  cal.data$probe.well.uid <- paste0(cal.data$well.uid, ".", cal.data$probe.uid)
+  # vérification de valeurs OUT
+  if(any(cal.data$out.R == round(cal.data$out.long.tuyau.sol.cm, digits = 1)))  { # si TOUS TRUE (fonction any()) = changer nom de out.R et supprimer la mesure entrée manuellement // si FALSE = avertissement
+    cal.data$out.long.tuyau.sol.cm <- cal.data$out.R
+    cal.data <- cal.data %>% select(!out.R)
+  } else { stop("Attention, le out entré dans cal.data (syn. level.logger.calibration.all.csv) n'est pas identique à la moyenne des points bas soustraite du point haut du puits.") } 
   # transformer en format ISO 8601, UTC +0 pour comparaison
   cal.data$day.begining.aaaa.mm.dd.hh.00.01 <- gsub("[+]00:00", "Z",  format_iso_8601(parse_iso_8601(cal.data$day.begining.aaaa.mm.dd.hh.00.01, default_tz = tz)))
   cal.data$day.end.aaaa.mm.dd.hh.00.01 <-  gsub("[+]00:00", "Z",  format_iso_8601(parse_iso_8601(cal.data$day.end.aaaa.mm.dd.hh.00.01, default_tz = tz)))
   head(cal.data); tail(cal.data); str(cal.data)
-  
-  
-  # PROBLÈME ICI CAR +DE 1 PROBE UID POUR CERTAINS
-  
-  # idée 1.
-  # entrer dans un ifelse, 
-  # si 1 -> code ci-dessous
-  # si >1 -> coder pour dire que
-  # cal.data$day.begining.aaaa.mm.dd.hh.00.01[cal.data$probe.uid == probe.uid.k][1] avec
-  # cal.data$day.end.aaaa.mm.dd.hh.00.01[cal.data$probe.uid == probe.uid.k][1]
-  # toujours séquentiellement, car dans l'ordre de lecture des lignes du fichier original
-  # CADUQUE
-  
-  # idée 2 PRÉFÉRÉE, MAIS + DE GOSSAGE
-  # loop -> de 1 : nombre de fois ou probe est répété dans le df 
-  # de toute façon, tout y sera entré au fil du temps, les mm NO seront constamment réutilisés, 
-  #  l'important, c'est que ce soit évalué LIGNE PAR LIGNE
-  # loop où j'extrait le df de UNE ligne séquentiellement
-  # où begingin et end sont évalués tel que ci-dessous
-  
-  
-  # if else -> si mm trmt.uid, append les données filtrées après la calibration
-  # else créer un autre ll.clean.k.hobo <- les ll.clean.k ou i sont des FICHIERS issus des level loggers,
-  # ils sont uniques et conservés brut dans data/raw avec le no série (probe.uid) et la date de retrait de la sonde.
-  # ce if else ou for() va se terminer avec le bon NO DE répétition dans ll.clean pour s'ajouter au bon emplacement de la liste de ll.clean.
-  # cette dernière étape est encore à réfléchir
-  # a priori, je crois que c'est l'appariement PUITS(trmnt.uid, indiquant l'année) - SONDE qui est importantE, la NP à cet emplacement pour 
-  # une même année et une mm sonde. Si le NO de sonde a changé pr un puits, alors autre graphique car tout y est différent (ex. calibration, erreur propre)
-  
-  
+
+  ##### boucle de concaténation des données (sonde+puits+année ensemble, sinon autre calibration et graphique disctinct) ----
   ll.cal.pre.k.l <- list()
-  for (l in 1:nrow(cal.data[cal.data$probe.uid == probe.uid.k,])) {
+  # for (l in 1:nrow(cal.data[cal.data$probe.uid == probe.uid.k,])) {
+  for (l in 1:sum(grepl(probe.uid.k, cal.data$probe.well.uid))) {
+    # assurer que la même probe a été utilisée dans le même puits afin de coller ensemble les données : colonne UNIQUE
     print(l)
-    cal.data.k.l <- cal.data[cal.data$probe.uid == probe.uid.k,][l,]
+    cal.data.k.l <- cal.data[which(grepl(probe.uid.k, cal.data$probe.well.uid)),][l,]
     # recoupage de ll.pre.data selon cal.data selon début et fin des mesures et retrait de colonnes
     ll.pre.0.data.4.l.pre <- ll.pre.0.data.3 %>% 
       dplyr::filter(date.time.UTC.0 >= # >= date de mesure de NP plus grand ou égale à la date beginning dans cal.data, trouvé dans la ligne dont la ll.pre.2.data.2$probe.uid == à la cal.data$probe.uid.i
-                      unique(na.omit(cal.data.k.l$day.begining.aaaa.mm.dd.hh.00.01[cal.data.k.l$probe.uid == probe.uid.k]))) %>% 
+                    unique(na.omit(cal.data.k.l$day.begining.aaaa.mm.dd.hh.00.01[cal.data.k.l$probe.uid == probe.uid.k]))) %>% 
       dplyr::filter(date.time.UTC.0 <= # <= date de mesure de NP plus petite ou égale à la date end dans cal.data [...], recoupe tous les jours entre la récupération des sondes et leur mise en arrêt
-                      unique(na.omit(cal.data.k.l$day.end.aaaa.mm.dd.hh.00.01[cal.data.k.l$probe.uid == probe.uid.k]))) %>% 
+                    unique(na.omit(cal.data.k.l$day.end.aaaa.mm.dd.hh.00.01[cal.data.k.l$probe.uid == probe.uid.k]))) %>% 
       select("scan.id", "raw.value.kPa_pres.abs", "calibrated.value.mm",  "temperature_dC", "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.tz.orig", "date.time.UTC.0") # %>%  # date et time sans "UTC.0" sont dans le fuseau horaire d'origine (tz trouvé en croisant les coordonnées "coords")
     # répliquer les données cal.data.k.l à chaque ligne de ll.pre.0.data.4.l.pre
     cal.data.k.l.rep <- cbind(cal.data.k.l, rep(row.names(cal.data.k.l), each = nrow(ll.pre.0.data.4.l.pre)), row.names = NULL)
@@ -538,9 +524,23 @@ for (k in 1:length(ll.pre)) {
     head(ll.pre.0.data.4.l); colnames(ll.pre.0.data.4.l); nrow(ll.pre.0.data.4.l)
     # changer pour un nom explicite, fichier encore à calibrer (d'où "pre")
     ll.cal.pre.k.l[[l]] <- ll.pre.0.data.4.l
-  }
-  # coller toutes les données de la sonde k ensemble (différentes mesures temporelles, mm trmnt.année)
+    }
+  # coller toutes les données de la sonde k ensemble (différentes mesures temporelles, mm puits.trmnt.année) ----
   ll.cal.pre.k <- do.call(rbind, ll.cal.pre.k.l) # row bind -> on colle deux df de structure identique (les ll.cal.pre.k) de différents k.l, associées à différents temps de la période de mesure de la sonde k
+  # explications de cette loop ----
+  # mm trmt.uid (loop extrait séquentiellement toutes les lignes de chaque # de HOBO, qui peuvent être uniques ou multiples pour un HOBO donné);
+  # la loop teste si toutes les lignes de ce # de HOBO ont le même well.uid (incl. année) (if = TRUE {})
+  # dans ce cas, toutes les données de la sonde doivent être traitées ensemble comme des portions de l'année
+  # donc, on peut "append" ou coller les données filtrées par les beggining et end, toutes ensemble pour un # de sonde d'une même well.uid
+  # chaque fois qu'on a été véfifier la NP avec le bulleur, ajouter des colonnes, mais la vérification prendra toujours les colonnes "bulleur.1"
+  
+  # else créer un autre ll.clean.k.hobo <- les ll.clean.k ou i sont des FICHIERS issus des level loggers, (if = FALSE; donc else{})
+  # ils sont uniques et conservés brut dans data/raw avec le no série (probe.uid) et la date de retrait de la sonde.
+  
+  # cette loop va se terminer avec le bon NO DE répétition dans ll.clean pour s'ajouter au bon emplacement de la liste de ll.clean.
+  # cette dernière étape est encore à réfléchir
+  # a priori, je crois que c'est l'appariement PUITS(trmnt.uid, indiquant l'année) - SONDE qui est importantE, la NP à cet emplacement pour 
+  # une même année et une mm sonde. Si le NO de sonde a changé pr un puits, alors autre graphique car tout y est différent (ex. calibration, erreur propre)
   
   ### calcul de calibration  ----
   # * avec HOBO, calibration est faite selon une station météorologique *
@@ -622,19 +622,9 @@ for (k in 1:length(ll.pre)) {
   str(cal.eccc.data$out.long.tuyau.sol.cm) # characters
   cal.eccc.data$calibrated.value.mm <- (cal.eccc.data$long.fil.cm - cal.eccc.data$out.long.tuyau.sol.cm) - (cal.eccc.data$hauteur.eau.cm*10) # hauteur d'eau en cm -> mm = *10
 
-  # retirer des colonnes intermédiaires et mm format que ll.clean[[i]]$data
-  colnames(ll.clean[[7]]$data)
-  # "scan.id"             "raw.value.mm"        "calibrated.value.mm" "date.AAAA-MM-JJ"     "time.HH.MM.SS"       "date.time.tz.orig"  
-  # [7] "date.time.UTC.0"
-  colnames(cal.eccc.data)
-
-  
-  cal.eccc.data
-  head(cal.eccc.data)
-
   # format final -> nom final
   ll.cal.k <- cal.eccc.data %>%  # ceci est donc le format final, à intégrer dans la liste ll.clean
-    select(scan.id, raw.value.kPa_pres.abs, calibrated.value.mm, `date.AAAA-MM-JJ`, time.HH.MM.SS, date.time.tz.orig, 
+    select(scan.id, raw.value.kPa_pres.abs, calibrated.value.mm, `date.AAAA-MM-JJ`, time.HH.MM.SS, date.time.tz.orig, # retirer des colonnes intermédiaires et mm format que ll.clean[[i]]$data
            date.time.UTC.0)
   
   ### création de la liste dans la liste [[i]]  ----
@@ -644,36 +634,7 @@ for (k in 1:length(ll.pre)) {
 }
 # vérifier que les erreurs sont tjrs la meme affaire inutile -> incomplete final line, tenté de régler le problème, mais sans succès;
 # et different length (ça le dit quand le "cal" est vide, et ça met des NA, ce qui est parfait)
+if("ll.clean.k.hobo.RDS" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
+  stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
+} else { saveRDS(ll.clean.k.hobo, file = "connectivite/data/clean/ll.clean.k.hobo.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
 
-
-
-
-# rendue ici
-
-
-
-
-
-# if("ll.clean.RData" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
-#   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
-# } else { saveRDS(ll.clean, file = "connectivite/data/clean/ll.clean.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
-
-
-
-
-
-
-
-# SUPPRIMER APRÈS (?) 
-# modifier mes colonnes pour avoir le format ISO 
-head(ll.pre.0.data.3)
-class(ll.pre.0.data.3$`date.AAAA-MM-JJ`)
-
-# [1] "POSIXct" "POSIXt" 
-head(ll.clean[[1]]$data, n = 1) # format à atteindre
-# scan.id raw.value.mm calibrated.value.mm date.AAAA-MM-JJ time.HH.MM.SS   date.time.tz.orig      date.time.UTC.0
-# 25         2884        544.4089            2024-06-12      15:00:00     2024-06-12 15:00:00   2024-06-12T19:00:01Z
-class(ll.clean[[1]]$data$date.time.tz.orig)
-# [1] "POSIXct" "POSIXt" 
-colnames(ll.clean[[1]]$data)
-# "scan.id", "raw.value.mm", "calibrated.value.mm", "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.tz.orig", "date.time.UTC.0"
