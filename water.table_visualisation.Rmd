@@ -30,7 +30,9 @@ Sometimes you may want to use another directory as the working directory. The us
 ## Vérification de la calibration des sondes en fonction de la lecture au bulleur
 
 # QUESTION :
+
 # longueur du fil à bulleur, donc nappe en dessous, doit poser problème non ?
+# ODYSSEY calibration nous donne la profondeur ou la distance sol-np ?
 
 ```{r, echo = FALSE, message = FALSE}
 setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
@@ -45,13 +47,21 @@ if (!require("kableExtra")) install.packages("kableExtra") # beaux tableaux
 # création de level.logger.calibration.clean ----
 # hauteur de nappe avec le bulleur
 ll.bulleur <- read.csv("connectivite/data/raw/level.logger.calibration.all.csv", sep = ";", dec = ",")
-# str(ll.bulleur)
+str(ll.bulleur)
+# out = (pt haut - moyenne pt bas)
+ll.bulleur$out.R = round(ll.bulleur$pt.haut.cm - ((ll.bulleur$pt.bas1.cm+ll.bulleur$pt.bas2.cm+ll.bulleur$pt.bas3.cm)/3), digits = 1)
+ll.bulleur <- ll.bulleur %>% select("site.id", "well.uid", "trmnt.uid", "lab.probe.id", "probe.uid", "probe.brand",
+                                "cal.length.cm", "cal.length.mm", "cal.order", "cal.value", "comment",
+                                "day.begining.aaaa.mm.dd.hh.mm", "day.end.aaaa.mm.dd.hh.mm", "distance.m", "out.R", "out.long.tuyau.sol.cm", everything())
+# vérification de valeurs OUT
+if(all(ll.bulleur$out.R == round(ll.bulleur$out.long.tuyau.sol.cm, digits = 1)))  { # si TOUS TRUE (fonction any()) = changer nom de out.R et supprimer la mesure entrée manuellement // si FALSE = avertissement
+  ll.bulleur$out.long.tuyau.sol.cm <- ll.bulleur$out.R
+  ll.bulleur <- ll.bulleur %>% select(!out.R)
+} else { stop("Attention, le out entré dans cal.data (syn. level.logger.calibration.all.csv) n'est pas identique à la moyenne des points bas soustraite du point haut du puits.") } 
 
-# calcul du OUT
-ll.bulleur$`out.long.tuyau-sol.cm` <- round(ll.bulleur$pt.haut.cm - ((ll.bulleur$pt.bas1.cm + ll.bulleur$pt.bas2.cm + ll.bulleur$pt.bas3.cm)/3), digits = 2)
 
 # calcul de la profondeur de la nappe phréatiquedu (OUT - IN, où IN = mesure lue sur le bulleur)
-ll.bulleur$water.table.depth.cm <- round(ll.bulleur$bulleur.cm - ll.bulleur$`out.long.tuyau-sol.cm`, digits = 2)
+ll.bulleur$water.table.depth.cm <- round(ll.bulleur$bulleur.1.cm - ll.bulleur$out.long.tuyau.sol.cm, digits = 2)
 # ici, PROFONDEUR de nappe, donc quand c'est -5cm par exemple, nappe au DESSUS du sol
 
 # À FAIRE 
@@ -59,11 +69,31 @@ ll.bulleur$water.table.depth.cm <- round(ll.bulleur$bulleur.cm - ll.bulleur$`out
 # enlever colonnes inutiles
 # save le csv dans clean
 
+
+
+
 ll.clean <- readRDS("connectivite/data/clean/ll.clean.RDS")
 # water.table.verif <- list()
 water.table.verif <- data.frame() #<- réfléchir à comment lui indiquer à quelle ligne consigner les données
 
 # pas sous forme de liste, mais de dataframe !*
+
+
+
+
+
+
+
+
+
+
+# PROBLÈMES ICI VOIR DATA.WATER.TABLE.ALL...
+
+
+
+
+
+
 
 for (j in 1:length(ll.clean)) {
   # print(j)
