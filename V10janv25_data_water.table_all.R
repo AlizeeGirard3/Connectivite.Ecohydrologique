@@ -478,8 +478,9 @@ for (k in 1:length(ll.pre)) {
   # si calibration intégrée avec le hobo, QUE FAIRE ? coder ici, voir procédure avec ODYSSEY
   
   #### début et fin des mesures par PROBE.WELL.UID ----
-  # inscrits dans "level.logger.calibration.all.csv" (début (généralement) = installation + 24h de rabattement de la NP 
-  # (ou non, si puits intallé d'avance, dans quel cas inscrire début officiel - 24h), fin = heure de retrait)
+  # inscrits dans "level.logger.calibration.all.csv"
+  # début (généralement) = installation + 24h de rabattement de la NP / ou non, si puits intallé d'avance, dans quel cas inscrire début officiel - 24h)
+  # fin = heure de retrait
   # note : données de date en format xlsx ça lit TOUT CROCHE, transformé en csv fonctionne bien
   
   ##### import et nettoyage ----
