@@ -20,14 +20,22 @@
 #         |—— scripts
 # NOTES : 
 
-# créer des RData
-# exemple de code pour ouvrir : 
-# load("~/Documents/Maîtrise/DonnéesAnalyses/PLS/rt_sg_large.RData") # rt_sg_large
-# load("rt_sg_large.RData") # rt_sg_large
-# obtenu via manips sur script "nettoyage_spectres_lissage_correction.R" dans le document "scripts-NETTOYAGE"
-
+# LEXIQUE :
+# SNH : sonde de niveau hydrostatique / synonymes : LL : level logger; sonde, probe
+# NP : Nappe phréatique / synonymes : water table
+# ECCC/CSSS : Environnement and Climate Change Canada / Canadian Centre for Climate Services 
+# tz : time zone, syn. fuseau horaire
+# lettres de l'alphabet : i, j, k, l -> boucles / a, b, x et y -> équations mathématiques
 # 15 janvier : lettres de boucle UTILISÉES : i, j, k, l (en désordre), où i,k et l dans A.1; j dans A.2
+# cal.data, syn. connectivite/data/raw/level.logger.calibration.all.csv
+# pattern universel d'appellation des fichiers de SNH : probe.uid_site.uid_datedextraction_probe.brand.csv
+
 ##########################################################################-
+
+# retrouver code source dans les backups pré 15 janvier**** ci-dessous
+readRDS("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/raw/metadata.all.RDS")
+
+
 
 # .rs.restartR()
 setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
@@ -51,20 +59,21 @@ if (!require("parsedate")) install.packages("parsedate") # lire les excel
 options(error=pause)
 # options(error=NULL) # annuler
 
-# A CADUQUE Donnée issues du Capacitance Water Level Logger Odyssey®
 # A  Donnée issues des sonde de niveau hydrostatique ----
 SNH <- as.vector(c("_odyssey", "_hobo"), mode = "character") # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque" est traitée de façon différente
+
 ## A.1 nettoyage et enregistrement en RDS ----
 # fonction : modifications automatisées pour chaque fichier issus d'une période de mesures des level loggers
 
 # fichiers de consigne de données
-ll.pre <- list.files("connectivite/data/raw", pattern = "_odyssey|_hobo") # mettre ici tout les ID de SNH listés dans l'objet SNH
+ll.pre <- list.files("connectivite/data/raw", pattern = "_odyssey|_hobo") # mettre dans "pattern" tous les ID de SNH listés dans l'objet SNH
 ll.clean <- list()
-fichier.uid.liste <- list()
+fichier.uid.df <- data.frame(fichier.uid = NA, file.name = NA, probe.uid = NA, "extraction.donnees.aaaammjj" = NA, "tz_orig" = NA) # pour stocker les fihcier.uid (aussi première colonne de cal.data)
 for (i in 1:length(ll.pre)) {
-  # i<-3
+  # i<-11
   print(i)
   ll.pre[i]
+  
   if (grepl(SNH[1], ll.pre[i])) {
     # import et ménage
     ll.pre.0 <- readLines(paste0("connectivite/data/raw/",ll.pre[i])); str(ll.pre.0) # lire en format texte
@@ -103,7 +112,10 @@ for (i in 1:length(ll.pre)) {
     }
     # création du fichier.uid.i, nom unique du FICHIER qui ne pourra JAMAIS être dupliqué (utila dans seciton début et fin des mesures par périodes, pour un mm FICHIER)
     fichier.uid.i <- paste0(unlist(result)[1], "_", unlist(result)[2]) # ceci sera écrasé à la prochaine itération
-    fichier.uid.liste[[i]] <- paste0(unlist(result)[1], "_", unlist(result)[2]) # ceci sera gardé en mémoire (doit être identique à la colonne fichier.uid dans cal.data)
+    fichier.uid.df[i,1:4] <- c(paste0(unlist(result)[1], "_", unlist(result)[2]), ll.pre[i], probe.uid.i, as.numeric(unlist(result)[2])) # ceci sera gardé en mémoire (doit être identique à la colonne fichier.uid dans cal.data)
+    # ajouts aux métadonnées des fichiers
+    ll.pre.2.metadata[10:13] <- c(paste0("fichier.uid : ", unlist(result)[1], "_", unlist(result)[2]), paste0('file.name : ', "`", ll.pre[i], "`"), 
+                               paste0("probe.uid : ", probe.uid.i), paste0("date d'extraction des données : ", as.numeric(unlist(result)[2])))
     
     ### création du dataframe level legger (ll) contenant données de nappe phréatique (NP) et ménage  ----
     ll.pre.2.data.1 <- read.csv(text = ll.pre.2.data, col.names = c("scan.id", "date.JJ.MM.AAAA", "time.HH.MM.SS",'raw.value.mm',"calibrated.value.mm")) # text = argument de read.csv qui lit la valeur contenue dans l'objet / DATE mauvais format
@@ -130,6 +142,9 @@ for (i in 1:length(ll.pre)) {
     
     # trouver le UTC selon la lat long
     (tz <- tz_lookup_coords(coords[1], coords[2], method = "fast", warn = FALSE))
+    # ajouts aux métadonnées des fichiers
+    fichier.uid.df[i,5] <- tz
+    ll.pre.2.metadata[14] <- paste0("original time zone : ", tz)
     
     #### ménage de la date et heure  ----
     # modifier mes colonnes pour avoir le format ISO (manque encore le UTC à ajouter à la fin)
@@ -174,6 +189,7 @@ for (i in 1:length(ll.pre)) {
                                     "cal.length.cm", "cal.length.mm", "cal.order", "cal.value", "comment", 
                                     "day.begining.aaaa.mm.dd.hh.mm", "day.end.aaaa.mm.dd.hh.mm", "distance.m", "out.R", "out.long.tuyau.sol.cm", everything())
     cal.data$period.fichier.uid <- paste0(cal.data$day.begining.aaaa.mm.dd.hh.mm, "--", cal.data$day.end.aaaa.mm.dd.hh.mm, ".",cal.data$fichier.uid)
+    
     # vérification de valeurs OUT
     if(any(cal.data$out.R == round(cal.data$out.long.tuyau.sol.cm, digits = 1)))  { # si TOUS TRUE (fonction any()) = changer nom de out.R et supprimer la mesure entrée manuellement // si FALSE = avertissement
       cal.data$out.long.tuyau.sol.cm <- cal.data$out.R
@@ -275,11 +291,6 @@ for (i in 1:length(ll.pre)) {
     
     #### vérification du fichier level logger brut : logger.serial.no == nom du fichier, sinon arrêter TOUT ! ----
     {
-      # trouver le probe.uid.i (== probe.uid, logger serial no) dans les metadata
-      # texte <- ll.pre.0.metadata[4] # logger serial no, en base R
-      # numbers <- grepl("*S/N", ll.pre.0.metadata)
-      
-      # str_match(with STR1 (.*?) STR2
       texte <- as.data.frame(str_match(ll.pre.0.metadata, "(?s)LGR S/N: \\s*(.*?)\\s*,")) # extraire tout ce qui se trouve
       # entre "LGR S/N: " et la "," directement subséquente, sans savoir s'il y a des sauts de ligne et peu importe les 
       # espaces dans l'énoncé.
@@ -298,8 +309,10 @@ for (i in 1:length(ll.pre)) {
     }
     # création du fichier.uid.i, nom unique du FICHIER qui ne pourra JAMAIS être dupliqué (utila dans seciton début et fin des mesures par périodes, pour un mm FICHIER)
     fichier.uid.i <- paste0(unlist(resultat)[1], "_", unlist(resultat)[2]) # ceci sera écrasé à la prochaine itération
-    fichier.uid.liste[[i]] <- paste0(unlist(resultat)[1], "_", unlist(resultat)[2]) # ceci sera gardé en mémoire (doit être identique à la colonne fichier.uid dans cal.data)
-    
+    fichier.uid.df[i,1:4] <- c(paste0(unlist(resultat)[1], "_", unlist(resultat)[2]), ll.pre[i], probe.uid.k, as.numeric(unlist(resultat)[2])) # ceci sera gardé en mémoire (doit être identique à la colonne fichier.uid dans cal.data)
+    # ajouts aux métadonnées des fichiers
+    ll.pre.0.metadata[3:6] <-c(paste0("fichier.uid : ", unlist(resultat)[1], "_", unlist(resultat)[2]), paste0('file.name : ', "`", ll.pre[i], "`"), 
+                               paste0("probe.uid : ", probe.uid.k), paste0("date d'extraction des données : ", as.numeric(unlist(resultat)[2])))
     
     #### création du dataframe level legger (ll) contenant données de nappe phréatique (NP) et ménage  ----
     ll.pre.0.data.0 <- read.csv(text = ll.pre.0.data, header = F, col.names = c("scan.id", "date.JJ.MM.AAAA_time.HH.MM.SS",	"raw.value.kPa_pres.abs",	"temperature_dC", "Coupleur détaché", "Coupleur attaché", 'Hôte connecté',	"Arrêté", "Fin de fichier")) # text = argument de read.csv qui lit la valeur contenue dans l'objet / DATE mauvais format
@@ -321,6 +334,9 @@ for (i in 1:length(ll.pre)) {
     
     # trouver le UTC selon la lat long
     (tz <- tz_lookup_coords(coords[1], coords[2], method = "fast", warn = FALSE))
+    # ajouts aux métadonnées des fichiers
+    fichier.uid.df[i,5] <- tz
+    ll.pre.0.metadata[7] <- paste0("original time zone : ", tz)
     
     #### ménage de la date et heure  ----
     # coller le tz dans la colonne "date.JJ.MM.AAAA_time.pre.HH.MM.SS"
@@ -507,20 +523,36 @@ for (i in 1:length(ll.pre)) {
 # vérifier que les erreurs sont tjrs la meme affaire inutile -> incomplete final line, tenté de régler le problème, mais sans succès; 
 # et different length (ça le dit quand le "cal" est vide, et ça met des NA, ce qui est parfait)
 
+# enregistrer le tableau des métadonnées de fichier
+if("metadata_SNH_fichiers.csv" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
+  stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
+} else { write.csv(fichier.uid.df, file = "connectivite/data/clean/metadata_SNH_fichiers.csv") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
+
 if("ll.clean.RDS" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
 } else { saveRDS(ll.clean, file = "connectivite/data/clean/ll.clean.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
 
 
 # A.2 examination des données ----
+ll.clean <- readRDS("connectivite/data/clean/ll.clean.RDS")
+SNH <- as.vector(c("_odyssey", "_hobo"), mode = "character") # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque" est traitée de façon différente
 for (j in 1:length(ll.clean)) {
+  # j<-1
   print(j)
+  ll.clean.j <- ll.clean[[j]]
   
-  # extraire no de sonde
-  metadata.line <- ll.pre.2.metadata[4] # logger serial nom, en base R
-  numbers <- gregexpr("[0-9]+", metadata.line)
-  sonde <- regmatches(metadata.line, numbers)
-  
+  # ODYSSEY
+  if (grepl(SNH[1], ll.clean.j$metadata[11])) {
+    # où trouver no de sonde dans ODYSSEY
+    metadata.line <- ll.clean.j$metadata[12] # probe.uid
+    numbers <- gregexpr("[0-9]+", metadata.line)
+    sonde <- regmatches(metadata.line, numbers)
+  } else if (grepl(SNH[2], ll.clean.j$metadata[4])) {
+    # où trouver no de sonde dans HOBO
+    metadata.line <- ll.clean.j$metadata[5] # probe.uid
+    numbers <- gregexpr("[0-9]+", metadata.line)
+    sonde <- regmatches(metadata.line, numbers)
+  }
   # données à visualiser
   data <- ll.clean[[j]]$data
   if (nrow(data) > 0) {
@@ -530,16 +562,6 @@ for (j in 1:length(ll.clean)) {
   # les hauteurs de nappe phréatique calibrées devraient toutes être négatives ou presque !
   # ou alors est-ce que les ODYSSEY donnent en + ?
 }
-
-
-
-
-# CHANTIER ICI 
-
-
-
-
-
 
 ## A.3 données de vérification/calibration avec bulleur ----
 # créé le 23 déc. pour vérifier données des Odyssey de St-Henri 2024
@@ -602,32 +624,70 @@ ll.clean <- readRDS("connectivite/data/clean/ll.clean.RDS")
 # water.table.verif <- list()
 water.table.verif <- data.frame() #<- réfléchir à comment lui indiquer à quelle ligne consigner les données
 # pas sous forme de liste, mais de dataframe !*
-for (j in 1:length(ll.clean)) {
-  # j <- 3
-  print(j)
-  ll.clean.j <- ll.clean[[j]]
-  ll.clean[[j]]
+for (m in 1:length(ll.clean)) {
+  # m <- 4
+  print(m)
+  ll.clean.m <- ll.clean[[m]]
+  ll.clean[[m]]
   
   # extraire no de sonde et bon format
   # repartir de zéro ici, pour afficher no de sonde dans le graph
   # les .RDS changent le stockage des données dans [[]] et $...
   # probe.uid.j <-
-    
+  
   # réaliser l'exercice si fichier ll.clean[[j]]$data n'est pas vide
-  if (nrow(ll.clean[[j]]$data) != 0) {
-    
+  if (nrow(ll.clean[[m]]$data) != 0) {
+    if (grepl(SNH[1], ll.clean.m$metadata[11])) {
+    # où trouver no de sonde dans ODYSSEY metadata
+    metadata.line <- ll.clean.m$metadata[12] # probe.uid
+    numbers <- gregexpr("[0-9]+", metadata.line)
+    sonde.m <- regmatches(metadata.line, numbers)
+    # où trouver le tz dans HOBO metadata
+    tz.line <- ll.clean.m$metadata[14]
+    tz <- sub(".*: ", "", tz.line)
+  } else if (grepl(SNH[2], ll.clean.m$metadata[4])) {
+    # où trouver no de sonde dans HOBO metadata
+    metadata.line <- ll.clean.m$metadata[5] # probe.uid
+    numbers <- gregexpr("[0-9]+", metadata.line)
+    sonde.m <- regmatches(metadata.line, numbers)
+    # où trouver le tz dans HOBO metadata
+    tz.line <- ll.clean.m$metadata[7]
+    tz <- sub(".*: ", "", tz.line)
+  }
     # hauteur de nappe capté avec la sonde au moment de la mesure avec le bulleur (dernière mesure)
-    last.probe.measure <- tail(ll.clean[[j]]$data, n = 1) 
-    water.table.verif[j,1:3] <- data.frame("probe.uid" = probe.uid.j,
+    # last.probe.measure <- tail(ll.clean[[m]]$data, n = 1) 
+    # last.probe.measure_time.stamp <- as.POSIXct(last.probe.measure$date.time.tz.orig, tz = "ADT") # POSIX
+    # ll.bulleur$day.end.aaaa.mm.dd.hh.mm <- as.POSIXct(ll.bulleur$day.end.aaaa.mm.dd.hh.mm)
+
+    # RENDUE ICI : NE FONCTIONNE PAS
+    # parce que dans ll.clean, je choisis la mesure : tail() alors que avec le bulleur je peux venir mesurer la nappe
+    # à n'importe quel moment. Ainsi, je devrai SOIT
+    # convertir les dates begingin et end en POSIX du mm UTC que ll.clean$tz orig ou utc0, créer un UID (probe + temps mesure arrondie)
+    # et extraire cette mesure de bulleur de ll.bulleur
+    # OU SOIT utiliser utc0 en charactère et avoir exactement ce UID utc0 + heure dans ll.bulleur
+    # aussi, il faudrait que j'ajoute une boucle pour chaque ll.bulleur qui a plusieurs lignes du mm fichier.uid 
+    # -> cela signifie qu'on a pris plusieurs mesures de bulleur, aussi bien les comparer
+    #  donc le 1:lenght(ll.bulleur$period.fichier.uid) comme dans la boucle A
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    ll.bulleur$water.table.depth.cm[last.probe.measure_time.stamp == ll.bulleur$day.end.aaaa.mm.dd.hh.mm]
+    water.table.verif[m,1:3] <- data.frame("probe.uid" = sonde.m,
                                            "last.probe.measure.cm" = last.probe.measure$calibrated.value.mm/10,
-                                           "bulleur.mesure.cm" = unique(ll.bulleur$water.table.depth.cm[ll.bulleur$probe.uid==probe.uid.j]))
-    water.table.verif[j,1:3]
+                                           "bulleur.mesure.cm" = unique(ll.bulleur$water.table.depth.cm[ll.bulleur$probe.uid==sonde.m]))
+    water.table.verif[m,1:3]
     # différence d'une dizaine ?
-  } else { # si ll.clean[[j]]$data est vide, mettre NA dans le dataframe
-    water.table.verif[j,1:3] <- data.frame("probe.uid" = probe.uid.j,
+  } else if (nrow(ll.clean[[m]]$data) == 0)  { # si ll.clean[[j]]$data est vide, mettre NA dans le dataframe
+    water.table.verif[m,1:3] <- data.frame("probe.uid" = sonde.m,
                                            "last.probe.measure.cm" = NA,
                                            "bulleur.mesure.cm" = NA)
-    water.table.verif[j,1:3]
+    water.table.verif[m,1:3]
     # différence d'une dizaine ? 
   }
   

@@ -27,11 +27,43 @@ Sometimes you may want to use another directory as the working directory. The us
 
 \newpage
 
+``` {r, echo = FALSE, message = FALSE}
+ll.clean <- readRDS("connectivite/data/clean/ll.clean.RDS")
+SNH <- as.vector(c("_odyssey", "_hobo"), mode = "character") # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque" est traitée de façon différente
+for (j in 1:length(ll.clean)) {
+  # j<-1
+  print(j)
+  ll.clean.j <- ll.clean[[j]]
+  
+  # ODYSSEY
+  if (grepl(SNH[1], ll.clean.j$metadata[11])) {
+    # où trouver no de sonde dans ODYSSEY
+    metadata.line <- ll.clean.j$metadata[12] # probe.uid
+    numbers <- gregexpr("[0-9]+", metadata.line)
+    sonde <- regmatches(metadata.line, numbers)
+  } else if (grepl(SNH[2], ll.clean.j$metadata[4])) {
+    # où trouver no de sonde dans HOBO
+    metadata.line <- ll.clean.j$metadata[5] # probe.uid
+    numbers <- gregexpr("[0-9]+", metadata.line)
+    sonde <- regmatches(metadata.line, numbers)
+  }
+  # données à visualiser
+  data <- ll.clean[[j]]$data
+  if (nrow(data) > 0) {
+    hist(data$calibrated.value.mm/10, warn.unused = F, 
+         main = paste("Histogram des données de sonde no ", paste(sonde,"\n"))) # en cm
+  } 
+  # les hauteurs de nappe phréatique calibrées devraient toutes être négatives ou presque !
+  # ou alors est-ce que les ODYSSEY donnent en + ?
+}
+```
+
 ## Vérification de la calibration des sondes en fonction de la lecture au bulleur
 
 # QUESTION :
 
 # longueur du fil à bulleur, donc nappe en dessous, doit poser problème non ?
+
 # ODYSSEY calibration nous donne la profondeur ou la distance sol-np ?
 
 ```{r, echo = FALSE, message = FALSE}
