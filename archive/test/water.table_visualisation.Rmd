@@ -28,15 +28,10 @@ Sometimes you may want to use another directory as the working directory. The us
 \newpage
 
 ``` {r, echo = FALSE, message = FALSE}
-setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
-# Libraries
-if (!require("knitr")) install.packages("knitr") # Integrating data from weathercan (ECCC/CCCS), Gouvernement du Canada
-if (!require("kableExtra")) install.packages("kableExtra") # Integrating data from weathercan (ECCC/CCCS), Gouvernement du Canada
-
-# import
 ll.clean <- readRDS("connectivite/data/clean/ll.clean.RDS")
 SNH <- as.vector(c("_odyssey", "_hobo"), mode = "character") # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque" est traitée de façon différente
 for (j in 1:length(ll.clean)) {
+  # j<-1
   print(j)
   ll.clean.j <- ll.clean[[j]]
   
@@ -72,70 +67,99 @@ for (j in 1:length(ll.clean)) {
 # ODYSSEY calibration nous donne la profondeur ou la distance sol-np ?
 
 ```{r, echo = FALSE, message = FALSE}
-# créé le 23 déc. pour vérifier données des Odyssey de St-Henri 2024
-# TRANSFÉRÉ DANS RMarkdown le 7 janvier 2025 / retravaillé 17 janvier et retransféré (en cours)
 setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
-# Libraries
-if (!require("knitr")) install.packages("knitr") # Integrating data from weathercan (ECCC/CCCS), Gouvernement du Canada
-if (!require("kableExtra")) install.packages("kableExtra") # Integrating data from weathercan (ECCC/CCCS), Gouvernement du Canada
-## import et ménage ----
-SNH <- as.vector(c("_odyssey", "_hobo"), mode = "character") # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque" est traitée de façon différente
-ll.bulleur <- read.csv("connectivite/data/clean/ll.bulleur.csv")
+
+if (!require("conflicted")) install.packages("conflicted") # ℹ Use the conflicted package to force all conflicts to become errors    ---->>>>  devtools::install_github("r-lib/conflicted")
+if (!require("readxl")) install.packages("readxl") # lire les excel
+if (!require("dplyr")) install.packages("dplyr") # entre autres : left_join()
+# if (!require("gt")) install.packages("gt") # beaux tableaux
+if (!require("stringr")) install.packages("stringr") # gosser avec des suites de caractères, str_replace, [...]
+if (!require("kableExtra")) install.packages("kableExtra") # beaux tableaux
+
+# création de level.logger.calibration.clean ----
+# hauteur de nappe avec le bulleur
+ll.bulleur <- read.csv("connectivite/data/raw/level.logger.calibration.all.csv", sep = ";", dec = ",")
+str(ll.bulleur)
+# out = (pt haut - moyenne pt bas)
+ll.bulleur$out.R = round(ll.bulleur$pt.haut.cm - ((ll.bulleur$pt.bas1.cm+ll.bulleur$pt.bas2.cm+ll.bulleur$pt.bas3.cm)/3), digits = 1)
+ll.bulleur <- ll.bulleur %>% select("site.id", "well.uid", "trmnt.uid", "lab.probe.id", "probe.uid", "probe.brand",
+                                "cal.length.cm", "cal.length.mm", "cal.order", "cal.value", "comment",
+                                "day.begining.aaaa.mm.dd.hh.mm", "day.end.aaaa.mm.dd.hh.mm", "distance.m", "out.R", "out.long.tuyau.sol.cm", everything())
+# vérification de valeurs OUT
+if(all(ll.bulleur$out.R == round(ll.bulleur$out.long.tuyau.sol.cm, digits = 1)))  { # si TOUS TRUE (fonction any()) = changer nom de out.R et supprimer la mesure entrée manuellement // si FALSE = avertissement
+  ll.bulleur$out.long.tuyau.sol.cm <- ll.bulleur$out.R
+  ll.bulleur <- ll.bulleur %>% select(!out.R)
+} else { stop("Attention, le out entré dans cal.data (syn. level.logger.calibration.all.csv) n'est pas identique à la moyenne des points bas soustraite du point haut du puits.") } 
+
+
+# calcul de la profondeur de la nappe phréatiquedu (OUT - IN, où IN = mesure lue sur le bulleur)
+ll.bulleur$water.table.depth.cm <- round(ll.bulleur$bulleur.1.cm - ll.bulleur$out.long.tuyau.sol.cm, digits = 2)
+# ici, PROFONDEUR de nappe, donc quand c'est -5cm par exemple, nappe au DESSUS du sol
+
+# À FAIRE 
+# vérifier comment on présente typiquement ces données
+# enlever colonnes inutiles
+# save le csv dans clean
+
+
+
+
 ll.clean <- readRDS("connectivite/data/clean/ll.clean.RDS")
+# water.table.verif <- list()
+water.table.verif <- data.frame() #<- réfléchir à comment lui indiquer à quelle ligne consigner les données
 
-## boucle de vérification au bulleur pour chaque SNH (de ll.clean) ----
-# fichiers de consigne de données
-water.table.verif <- data.frame()
-for (m in 1:length(ll.clean)) {
-  ll.clean.m <- ll.clean[[m]]; ll.clean[[m]]
-  # extraire # sonde des différentes marques de SNH
-  if (grepl(SNH[1], ll.clean.m$metadata[11])) { # ODYSSEY
-    # où trouver no de sonde dans ODYSSEY metadata
-    metadata.line <- ll.clean.m$metadata[12] # probe.uid
-    numbers <- gregexpr("[0-9]+", metadata.line)
-    sonde.m <- regmatches(metadata.line, numbers)
-    # où trouver la date d'extraction dans ODYSSEY metadata
-    date.line <- ll.clean.m$metadata[13] # probe.uid
-    date.numbers <- gregexpr("[0-9]+", date.line)
-    date.m <- unlist(regmatches(date.line, date.numbers))
-  } else if (grepl(SNH[2], ll.clean.m$metadata[4])) { # HOBO
-    # où trouver no de sonde dans HOBO metadata
-    metadata.line <- ll.clean.m$metadata[5] # probe.uid
-    numbers <- gregexpr("[0-9]+", metadata.line)
-    sonde.m <- unlist(regmatches(metadata.line, numbers))
-    # où trouver la date d'extraction dans HOBO metadata
-    date.line <- ll.clean.m$metadata[6]
-    date.numbers <- gregexpr("[0-9]+", date.line)
-    date.m <- unlist(regmatches(date.line, date.numbers))
+# pas sous forme de liste, mais de dataframe !*
+
+
+
+
+
+
+
+
+
+
+# PROBLÈMES ICI VOIR DATA.WATER.TABLE.ALL...
+
+
+
+
+
+
+
+for (j in 1:length(ll.clean)) {
+  # print(j)
+  ll.clean.j <- ll.clean[[j]]
+  
+  # extraire no de sonde et bon format
+  metadata.line.wt <- ll.clean.j$metadata[4] # logger serial nom, en base R
+  numbers <- gregexpr("[0-9]+", metadata.line.wt)
+  sonde.wt <- data.frame("probe.no" = unlist(regmatches(metadata.line.wt, numbers)), stringsAsFactors = F)
+  probe.uid.j <- as.numeric(sonde.wt$probe.no)
+  
+  # réaliser l'exercice si fichier ll.clean[[j]]$data n'est pas vide
+  if (nrow(ll.clean[[j]]$data)!=0) {
+    
+    # hauteur de nappe capté avec la sonde au moment de la mesure avec le bulleur (dernière mesure)
+    last.probe.measure <- tail(ll.clean[[j]]$data, n = 1) 
+    water.table.verif[j,1:3] <- data.frame("probe.uid" = probe.uid.j,
+                                         "last.probe.measure.cm" = last.probe.measure$calibrated.value.mm/10,
+                                         "bulleur.mesure.cm" = unique(ll.bulleur$water.table.depth.cm[ll.bulleur$probe.uid==probe.uid.j]))
+    water.table.verif[j,1:3]
+    # différence d'une dizaine ?
+  } else { # si ll.clean[[j]]$data est vide, mettre NA dans le dataframe
+    water.table.verif[j,1:3] <- data.frame("probe.uid" = probe.uid.j,
+                                         "last.probe.measure.cm" = NA,
+                                         "bulleur.mesure.cm" = NA)
+    water.table.verif[j,1:3]
   }
-  # création du dataframe pour chaque vérification au bulleur pour chaque SNH
-  if (nrow(ll.clean[[m]]$data) != 0) { # si le fichier SNH n'est pas vide
-    water.table.verif.n <- data.frame()
-    ll.bulleur.m <- ll.bulleur[ll.bulleur$probe.uid == sonde.m,] # filtrer ll.bulleur par no de sonde "m"
-    for (n in 1:nrow(ll.bulleur.m)) {
-      ll.bulleur.m.n <- ll.bulleur.m[n,] # filtrer ll.bulleur (level.logger.calibration.all.csv) par le ligne "n" (vérification n au bulleur)
-      ll.clean.m.n <- ll.clean.m$data[ll.clean.m$data$date.time.UTC.0 == # fitlrer les données du fichier SNH par la période (unique) de la ligne n = vérification au bulleur
-                                        ll.bulleur.m$bulleur.1.date.time.UTC.0,]
-      water.table.verif.n[n, 1:4] <- data.frame("probe.uid" = sonde.m, # créer le dataframe de vérification pour les lignes "n" de la SNH "m"
-                                                "file.extraction.date" = date.m,
-                                                "probe.measure.cm" = ll.clean.m.n$calibrated.value.mm/10,
-                                                "bulleur.mesure.cm" = ll.bulleur.m.n$bulleur.1.cm)
-    } 
-    water.table.verif[nrow(water.table.verif) + 1:nrow(water.table.verif.n), 1:4] <- water.table.verif.n # inscrire les données dans le dataframe final, à la dernière ligne
-  } else if (nrow(ll.clean[[m]]$data) == 0)  {
-    water.table.verif[nrow(water.table.verif) + 1, 1:4] <- data.frame("probe.uid" = sonde.m, # si ll.clean[[j]]$data est vide, mettre NA dans le dataframe
-                                                                      "file.extraction.date" = date.m,
-                                                                      "probe.measure.cm" = NA,
-                                                                      "bulleur.mesure.cm" = NA)
-    } 
-  } 
-water.table.verif <- water.table.verif[!duplicated(water.table.verif),]
-rownames(water.table.verif) <- NULL
+# col.names <- c("Identifiant unique (UID) de sonde", "Mesure de la sonde (heure de lecture au bulleur; cm)")
 
+}
 # renommmer les colonnes
 water.table.verif %>% 
 kbl(booktabs = TRUE, linesep = "", caption = "Vérification de la calibration de sonde en fonction de la mesure du bulleur",
-col.names =  c("Identifiant unique (UID) de sonde", "Date d'extraction des données de la SNH", "Mesure de la sonde (heure de lecture au bulleur; cm)", "Bulleur (cm)"),
+col.names =  c("Identifiant unique (UID) de sonde", "Mesure de la sonde (heure de lecture au bulleur; cm)", "Bulleur (cm)"),
 align = "ccc") %>% 
   kable_styling(latex_options = "HOLD_position", full_width = T) # pour que le titre de section n'arrive pas après le tableau
 ```
