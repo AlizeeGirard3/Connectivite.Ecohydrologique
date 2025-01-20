@@ -27,7 +27,7 @@ Sometimes you may want to use another directory as the working directory. The us
 
 \newpage
 
-``` {r, echo = FALSE, message = FALSE}
+```{r, echo = FALSE, message = FALSE}
 setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
 # Libraries
 if (!require("knitr")) install.packages("knitr") # Integrating data from weathercan (ECCC/CCCS), Gouvernement du Canada
@@ -138,6 +138,62 @@ kbl(booktabs = TRUE, linesep = "", caption = "Vérification de la calibration de
 col.names =  c("Identifiant unique (UID) de sonde", "Date d'extraction des données de la SNH", "Mesure de la sonde (heure de lecture au bulleur; cm)", "Bulleur (cm)"),
 align = "ccc") %>% 
   kable_styling(latex_options = "HOLD_position", full_width = T) # pour que le titre de section n'arrive pas après le tableau
+```
+
+## Aperçu du code de calibration - Sonde Odyssey
+
+```         
+# Sondes ODYSSEY
+### calcul des termes de la calibration ----
+# FORMULES
+# RES.NP.calibré = ((DATA.raw.value - b.offset) / a.slope ) - longueur.fil
+# si Y = (a * X) + b,
+# X = ( Y - b ) / a, puis on enlève la longueur du fil à la mesure de NP
+# où 
+# y = raw.value aux longueurs 1 et 2 du test de calibration (p. ex. 200 mm et 800 mm ou 1400 mm, pour STH)
+# b.offset = y1 - a.slope * x1
+# a.slope = ( y2 - y1 ) / ( x2 - x1 ), soit la proportion de changement de y pour chaque changement de x
+# a.slope = longueur de fil (mm)
+# x2 = longueur fil test #2 (V = "cal.order"), x1 = longueur fil test #1 (V = "cal.order")
+# y2 = raw.value à du test #2 (V = "cal.value"), y1 = raw.value à du test #1 (V = "cal.value")
+{
+  longueur.fil = cal.probe.i$cal.length.cm[cal.probe.i$cal.order==1]*10
+  x2 = cal.probe.i$cal.length.cm[cal.probe.i$cal.order==2]*10
+  x1 = cal.probe.i$cal.length.cm[cal.probe.i$cal.order==1]*10
+  y2 = cal.probe.i$cal.value[cal.probe.i$cal.order==2]
+  y1 = cal.probe.i$cal.value[cal.probe.i$cal.order==1]
+  a.slope = ( y2 - y1 ) / ( x2 - x1 )
+  b.offset = y1 - (a.slope * x1)
+}
+
+# changer la colonne calibrated pour les données corrigées
+ll.cal.pre.i$calibrated.value.mm = ((ll.cal.pre.i$raw.value.mm - b.offset) / a.slope ) - longueur.fil
+colnames(ll.cal.pre.i); head(ll.cal.pre.i)
+```
+
+### Aperçu du code de calibration - Sonde HOBO
+
+``` r
+#### assembler données du HOBO et données de ECCC/CCCS selon la date et l'heure ----
+    # Jutras&Bourgault V2.0, 2024; étape a) Associer par dates et par heures les données mesurées par les sondes de niveau hydrostatique et la pression atmosphérique
+    cal.eccc.data <- left_join(ll.cal.pre.i, eccc.data, by = join_by(date.time.UTC.0)) %>% 
+      select("scan.id", "date.time.UTC.0","raw.value.kPa_pres.abs", "temperature_dC", "calibrated.value.mm",
+             `date.AAAA-MM-JJ` = "date.AAAA-MM-JJ.x", "time.HH.MM.SS", `date.time.tz.orig`,
+             "date.time.tz.orig.wc", "station_name.wc", pressure.kPa.wc = "pressure.wc", everything()) %>% 
+      select(!c(`date.AAAA-MM-JJ.y`, "time.wc")) # enlever les nombreuses colonnes qui n'ont pas rapport dans ces démarches
+    colnames(cal.eccc.data)
+    
+    # Jutras&Bourgault V2.0, 2024; étape b) Calculer la hauteur d’eau au-dessus de la sonde par la soustraction de la pression atmosphérique, convertie en cm d’eau, à la pression mesurée par la sonde
+    # Jutras&Bourgault V2.0, 2024; étape b.i)   La conversion de kPa en cm d’eau est : 1 kPa = 10,1972 cm d’eau 
+    cal.eccc.data$pression.eau.kPa = cal.eccc.data$raw.value.kPa_pres.abs - cal.eccc.data$pressure.kPa.wc
+    cal.eccc.data$hauteur.eau.cm = cal.eccc.data$pression.eau.kPa * 10.1972 # règle de trois
+    cal.eccc.data <- cal.eccc.data %>% select("scan.id", "date.time.UTC.0","raw.value.kPa_pres.abs", pression.eau.kPa, hauteur.eau.cm, everything()) 
+    
+    # Jutras&Bourgault V2.0, 2024; étape c) Convertir la hauteur d’eau au-dessus de la sonde en profondeur de la nappe phréatique par rapport à la surface du sol
+    # Jutras&Bourgault V2.0, 2024; étape c.i)   La profondeur de la nappe phréatique par rapport à la surface du sol = (La distance qui sépare l’intérieur du capuchon au trou situé à la base de la sonde – La longueur du puits d’observation qui dépasse la surface du sol) – La hauteur d’eau au-dessus de la sonde
+    str(cal.eccc.data$long.fil.cm) # characters
+    str(cal.eccc.data$out.long.tuyau.sol.cm) # characters
+    cal.eccc.data$calibrated.value.mm <- (cal.eccc.data$long.fil.cm - cal.eccc.data$out.long.tuyau.sol.cm) - (cal.eccc.data$hauteur.eau.cm*10) # hauteur d'eau en cm -> mm = *10
 ```
 
 ## Visualisation de la variation de la nappe phréatique et du positionnement du puits le long du transect

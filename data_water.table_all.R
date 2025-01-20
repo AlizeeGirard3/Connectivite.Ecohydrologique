@@ -33,7 +33,8 @@
 ##########################################################################-
 
 # retrouver code source dans les backups pré 15 janvier**** ci-dessous
-readRDS("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/raw/metadata.all.RDS")
+# code source introuvable # readRDS("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/raw/metadata.all.RDS")
+# ll.clean<-readRDS("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/clean/ll.clean.RDS") # issu de section A.1 du code ci-présent
 
 # .rs.restartR()
 setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
@@ -42,6 +43,7 @@ source("general.scripts/fonctions.R")
 # Librairies ----
 if (!require("conflicted")) install.packages("conflicted") # ℹ Use the conflicted package to force all conflicts to become errors    ---->>>>  devtools::install_github("r-lib/conflicted")
 if (!require("readxl")) install.packages("readxl") # lire les excel
+if (!require("openxlsx")) install.packages("openxlsx") # lire les excel
 if (!require("stringr")) install.packages("stringr") # gosser avec des suites de caractères, str_replace, [...]
 if (!require("dplyr")) install.packages("dplyr") # entre autres : left_join()
 if (!require("tidyr")) install.packages("tidyr") # entre autres : extract_numeric() / extract_numeric() is deprecated: please use readr::parse_number() instead
@@ -236,7 +238,7 @@ for (i in 1:length(ll.pre)) {
     
     ### calcul des termes de la calibration ----
     # FORMULES
-    # RES.NP.calibré = ((DATA.raw.value " - b.offset) / a.slope ) - longueur.fil
+    # RES.NP.calibré = ((DATA.raw.value - b.offset) / a.slope ) - longueur.fil
     # si Y = (a * X) + b,
     # X = ( Y - b ) / a, puis on enlève la longueur du fil à la mesure de NP
     # où 
@@ -525,9 +527,16 @@ if("metadata_SNH_fichiers.csv" %in% list.files("connectivite/data/clean"))  { # 
   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
 } else { write.csv(fichier.uid.df, file = "connectivite/data/clean/metadata_SNH_fichiers.csv") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
 
+# format R des ll.clean
 if("ll.clean.RDS" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
 } else { saveRDS(ll.clean, file = "connectivite/data/clean/ll.clean.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
+
+# À FAIRE
+# format excel des ll.clean -> arranger pr que ça fonctionne
+# if("ll.clean.xlsx" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
+#   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
+# } else { write.xlsx(ll.clean, file = "connectivite/data/clean/ll.clean.xlsx") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
 
 
 # A.2 examination des données ----
