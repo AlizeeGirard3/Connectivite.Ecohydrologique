@@ -6,6 +6,11 @@
 ###########################################################################-
 # Fait par :      Alizée Girard
 # Affiliation :   ULaval
+
+# TEST 
+
+
+
 # Date création : Oct. 23rd 2024
 # Fonction : pour visualiser les données d'élévation à Inkerman
 # NOTES : données caduques, ces données d'élévation sont issues de données DSM, alors que je cherchais le DEM
