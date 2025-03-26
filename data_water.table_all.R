@@ -38,7 +38,7 @@
 
 # .rs.restartR()
 setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
-source("general.scripts/fonctions.R")
+source("general.scripts/scripts/fonctions.R")
 
 # Librairies ----
 if (!require("conflicted")) install.packages("conflicted") # ℹ Use the conflicted package to force all conflicts to become errors    ---->>>>  devtools::install_github("r-lib/conflicted")
@@ -56,7 +56,7 @@ if (!require("weathercan")) install.packages("weathercan") # Integrating data fr
 # if (!require("mapview")) install.packages("mapview") ## Spatial analyses
 if (!require("parsedate")) install.packages("parsedate") # lire les excel
 # option d'arrêter le code si message d'erreur (source fonctions.R)
-options(error=pause)
+# options(error=pause)
 # options(error=NULL) # annuler
 
 # A  Donnée issues des sonde de niveau hydrostatique ----
@@ -70,10 +70,10 @@ ll.pre <- list.files("connectivite/data/raw", pattern = "_odyssey|_hobo") # mett
 ll.clean <- list()
 fichier.uid.df <- data.frame(fichier.uid = NA, file.name = NA, probe.uid = NA, "extraction.donnees.aaaammjj" = NA, "tz_orig" = NA) # pour stocker les fihcier.uid (aussi première colonne de cal.data)
 for (i in 1:length(ll.pre)) {
-  # i<-11
+  i<-2
   print(i)
-  ll.pre[i]
-  if (grepl(SNH[1], ll.pre[i])) {
+  ll.pre[i] # début de la loop pour les ODYSSEY (if() prochaine ligne)
+  if (grepl(SNH[1], ll.pre[i])) {  # début de la loop pour les ODYSSEY
     # import et ménage
     ll.pre.0 <- readLines(paste0("connectivite/data/raw/",ll.pre[i])); str(ll.pre.0) # lire en format texte
     # Warning message:
@@ -137,7 +137,8 @@ for (i in 1:length(ll.pre)) {
     head(zones); str(zones)
     
     # extraire la bonne lat, long selon le nom du site
-    coords <- c(zones$latitude[zones$site==site.name], zones$longitude[zones$site==site.name])
+    # coords <- c(zones$latitude[zones$site==site.name], zones$longitude[zones$site==site.name])
+    coords <- c(zones$latitude[zones$site==site.name][1], zones$longitude[zones$site==site.name][1])
     
     # trouver le UTC selon la lat long
     (tz <- tz_lookup_coords(coords[1], coords[2], method = "fast", warn = FALSE))
@@ -162,8 +163,9 @@ for (i in 1:length(ll.pre)) {
     ll.pre.2.data.3$date.time.UTC.0pre.1 <- format_iso_8601(ll.pre.2.data.3$date.time.UTC.0pre)
     ll.pre.2.data.3$date.time.UTC.0 <- gsub("[+]00:00", "Z",  ll.pre.2.data.3$date.time.UTC.0pre.1)
 
-    # telq ue codé actuellement, il peut y avoir un décalage de +/- une heure à cause que TZ prend l'heure basée sur Sys.timezone, qui dépend de l'heure d'été ou d'hiver
-    # ARRANGER UN JOUR (langage C++ pour plus de complications)
+    # tel que codé actuellement, il peut y avoir un décalage de +/- une heure à cause que TZ prend l'heure basée sur Sys.timezone, qui dépend de l'heure d'été ou d'hiver
+    # ARRANGER UN JOUR (langage C++ pour plus de complications) 
+    # ou alors setter cette date manuellement (voir à chaque année la date de changement d'heure)
     # Sys.timezone(location = F) essayé, n'aide pas
     
     # vérifications
@@ -238,14 +240,13 @@ for (i in 1:length(ll.pre)) {
     
     ### calcul des termes de la calibration ----
     # FORMULES
-    # RES.NP.calibré = ((DATA.raw.value - b.offset) / a.slope ) - longueur.fil
+    # RES.NP.calibré = ((DATA.raw.value - b.offset) / a.slope ) - OUT
     # si Y = (a * X) + b,
     # X = ( Y - b ) / a, puis on enlève la longueur du fil à la mesure de NP
     # où 
     # y = raw.value aux longueurs 1 et 2 du test de calibration (p. ex. 200 mm et 800 mm ou 1400 mm, pour STH)
     # b.offset = y1 - a.slope * x1
     # a.slope = ( y2 - y1 ) / ( x2 - x1 ), soit la proportion de changement de y pour chaque changement de x
-    # a.slope = longueur de fil (mm)
     # x2 = longueur fil test #2 (V = "cal.order"), x1 = longueur fil test #1 (V = "cal.order")
     # y2 = raw.value à du test #2 (V = "cal.value"), y1 = raw.value à du test #1 (V = "cal.value")
     {
@@ -256,10 +257,11 @@ for (i in 1:length(ll.pre)) {
       y1 = cal.probe.i$cal.value[cal.probe.i$cal.order==1]
       a.slope = ( y2 - y1 ) / ( x2 - x1 )
       b.offset = y1 - (a.slope * x1)
+      out = cal.probe.i$out.long.tuyau.sol.cm[cal.probe.i$cal.order==1]*10
     }
     
     # changer la colonne calibrated pour les données corrigées
-    ll.cal.pre.i$calibrated.value.mm = ((ll.cal.pre.i$raw.value.mm - b.offset) / a.slope ) - longueur.fil
+    ll.cal.pre.i$calibrated.value.mm = ((ll.cal.pre.i$raw.value.mm - b.offset) / a.slope ) - out  # ERREUR - longueur.fil
     colnames(ll.cal.pre.i); head(ll.cal.pre.i)
     
     # format final -> nom final
@@ -268,8 +270,9 @@ for (i in 1:length(ll.pre)) {
     ### création de la liste dans la liste [[i]]  ----
     # noted : <- le fichier du level logger correspondant à la position i; [1] : data (dataframe), [2] : metadata (character string)
     ll.clean[[i]] <- list("data" = ll.cal, "metadata" = ll.pre.2.metadata) 
-    } 
-  else if (grepl(SNH[2], ll.pre[i])) {
+  } # fin de la loop pour les ODYSSEY / # début de la loop pour les HOBO (else if() prochaine ligne)
+
+  else if (grepl(SNH[2], ll.pre[i])) { # début de la loop pour les HOBO
     # import et ménage
     k <- i
     print(k)
@@ -329,7 +332,7 @@ for (i in 1:length(ll.pre)) {
     head(zones); str(zones)
     
     # extraire la bonne lat, long selon le nom du site
-    coords <- c(zones$latitude[zones$site==site.name], zones$longitude[zones$site==site.name])
+    coords <- c(zones$latitude[zones$site==site.name][1], zones$longitude[zones$site==site.name][1])
     
     # trouver le UTC selon la lat long
     (tz <- tz_lookup_coords(coords[1], coords[2], method = "fast", warn = FALSE))
@@ -450,8 +453,8 @@ for (i in 1:length(ll.pre)) {
     
     ##### inscrire le time zone (tz) dans la colonne time (équivalent à "date.time.tz.orig.pre") ----
     # trouver la station météorologique canadienne à moins de 25km de distance (inscrire manuellement dans "data/raw/ll.calibration.all.csv")
-    station_tz.pre <- stations_search(coords = c(zones$latitude[zones$site == site.name],
-                                                 zones$longitude[zones$site == site.name]), dist = 25)
+    station_tz.pre <- stations_search(coords = c(zones$latitude[zones$site == site.name][1],
+                                                 zones$longitude[zones$site == site.name][1]), dist = 25)
     station_tz.pre.1 <- stations_search(unique(station_tz.pre$station_name[station_tz.pre$station_id == station_ids]))
     station_tz <- unique(station_tz.pre.1$tz) # OlsonNames() compatible
     
@@ -496,7 +499,7 @@ for (i in 1:length(ll.pre)) {
     # Jutras&Bourgault V2.0, 2024; étape b)	Calculer la hauteur d’eau au-dessus de la sonde par la soustraction de la pression atmosphérique, convertie en cm d’eau, à la pression mesurée par la sonde
     # Jutras&Bourgault V2.0, 2024; étape b.i)	La conversion de kPa en cm d’eau est : 1 kPa = 10,1972 cm d’eau 
     cal.eccc.data$pression.eau.kPa = cal.eccc.data$raw.value.kPa_pres.abs - cal.eccc.data$pressure.kPa.wc
-    cal.eccc.data$hauteur.eau.cm = cal.eccc.data$pression.eau.kPa * 10.1972 # règle de trois
+    cal.eccc.data$hauteur.eau.cm = cal.eccc.data$pression.eau.kPa * 10.197162129779 # règle de trois
     cal.eccc.data <- cal.eccc.data %>% select("scan.id", "date.time.UTC.0","raw.value.kPa_pres.abs", pression.eau.kPa, hauteur.eau.cm, everything()) 
     
     # Jutras&Bourgault V2.0, 2024; étape c)	Convertir la hauteur d’eau au-dessus de la sonde en profondeur de la nappe phréatique par rapport à la surface du sol
@@ -518,7 +521,7 @@ for (i in 1:length(ll.pre)) {
     # else {
     #  stop("ERREUR : CODER ICI") # si nécessaire, ajouter 3e type de traitement de SNH
     # }
-}
+}  # fin de la loop pour les HOBO
 # vérifier que les erreurs sont tjrs la meme affaire inutile -> incomplete final line, tenté de régler le problème, mais sans succès; 
 # et different length (ça le dit quand le "cal" est vide, et ça met des NA, ce qui est parfait)
 
