@@ -6,7 +6,8 @@
 ##########################################################################-
 # Fait par :      Alizée Girard
 # Affiliation :   ULaval
-# Date création : 2024-12-09
+# Date création initiale : 2024-12-09
+# Date mise à jour : 2025-03-27
 # Pourquoi : pour l'ensemble du traitement des données de nappe phréatique 
 # Structure :
 # —— connectivite
@@ -68,9 +69,12 @@ SNH <- as.vector(c("_odyssey", "_hobo"), mode = "character") # liste des types d
 # fichiers de consigne de données
 ll.pre <- list.files("connectivite/data/raw", pattern = "_odyssey|_hobo") # mettre dans "pattern" tous les ID de SNH listés dans l'objet SNH
 ll.clean <- list()
-fichier.uid.df <- data.frame(fichier.uid = NA, file.name = NA, probe.uid = NA, "extraction.donnees.aaaammjj" = NA, "tz_orig" = NA) # pour stocker les fihcier.uid (aussi première colonne de cal.data)
+fichier.uid.df <- data.frame(fichier.uid = NA, file.name = NA, probe.uid = NA, "extraction.donnees.aaaammjj" = NA, "tz_orig" = NA,
+                          a.slope_excel = NA,	b.verticalIntercept_excel = NA, `prof_nappe_bulleur_cm_+out` = NA,
+                          pre_prof_nappe_odyssey_mm_to_cm = NA,	`prof_nappe_odyssey_cm_+out` = NA, offset.last_cm = NA, offset.last_date = NA) # pour stocker les fichier.uid (aussi première colonne de cal.data) et autres données intérimaires
+
 for (i in 1:length(ll.pre)) {
-  # i<-2
+  i<-7 # 41362(27 mars 2025)
   print(i)
   ll.pre[i] # début de la loop pour les ODYSSEY (if() prochaine ligne)
   if (grepl(SNH[1], ll.pre[i])) {  # début de la loop pour les ODYSSEY
@@ -114,7 +118,7 @@ for (i in 1:length(ll.pre)) {
     fichier.uid.df[i,1:4] <- c(paste0(unlist(result)[1], "_", unlist(result)[2]), ll.pre[i], probe.uid.i, as.numeric(unlist(result)[2])) # ceci sera gardé en mémoire (doit être identique à la colonne fichier.uid dans cal.data)
     # ajouts aux métadonnées des fichiers
     ll.pre.2.metadata[10:13] <- c(paste0("fichier.uid : ", unlist(result)[1], "_", unlist(result)[2]), paste0('file.name : ', "`", ll.pre[i], "`"), 
-                               paste0("probe.uid : ", probe.uid.i), paste0("date d'extraction des données : ", as.numeric(unlist(result)[2])))
+                                  paste0("probe.uid : ", probe.uid.i), paste0("date d'extraction des données : ", as.numeric(unlist(result)[2])))
     
     ### création du dataframe level legger (ll) contenant données de nappe phréatique (NP) et ménage  ----
     ll.pre.2.data.1 <- read.csv(text = ll.pre.2.data, col.names = c("scan.id", "date.JJ.MM.AAAA", "time.HH.MM.SS",'raw.value.mm',"calibrated.value.mm")) # text = argument de read.csv qui lit la valeur contenue dans l'objet / DATE mauvais format
@@ -150,7 +154,7 @@ for (i in 1:length(ll.pre)) {
     # modifier mes colonnes pour avoir le format ISO (manque encore le UTC à ajouter à la fin)
     # garder date.AAAA-MM-JJ"
     ll.pre.2.data.2 <- ll.pre.2.data.1 %>% dplyr::mutate(date.JJ.MM.AAAA_time.HH.MM.SS_tz = paste0(date.JJ.MM.AAAA," ", time.HH.MM.SS, " ", tz)) %>% 
-      select(!c(date.JJ.MM.AAAA, time.HH.MM.SS)) # supprimer ces colonnes en format character, recréer bientôt en POSIX
+      dplyr::select(!c(date.JJ.MM.AAAA, time.HH.MM.SS)) # supprimer ces colonnes en format character, recréer bientôt en POSIX
     ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz <- gsub("00:00", "00:01", ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz) # sinon, les données 00:00:00 étaient effacées !
     ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz <- gsub("24:00:", "00:00:", ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz)
     ll.pre.2.data.2$date.time.tz.orig <- readr::parse_datetime(ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz, format = '%d/%m/%Y %H:%M:%S %Z', locale = readr::locale(tz = tz)) # pour convertir AM/PM en décimal (0-24h), élément %p voir documentation
@@ -162,7 +166,7 @@ for (i in 1:length(ll.pre)) {
     tz(ll.pre.2.data.3$date.time.UTC.0pre) # UTC
     ll.pre.2.data.3$date.time.UTC.0pre.1 <- format_iso_8601(ll.pre.2.data.3$date.time.UTC.0pre)
     ll.pre.2.data.3$date.time.UTC.0 <- gsub("[+]00:00", "Z",  ll.pre.2.data.3$date.time.UTC.0pre.1)
-
+    
     # tel que codé actuellement, il peut y avoir un décalage de +/- une heure à cause que TZ prend l'heure basée sur Sys.timezone, qui dépend de l'heure d'été ou d'hiver
     # ARRANGER UN JOUR (langage C++ pour plus de complications) 
     # ou alors setter cette date manuellement (voir à chaque année la date de changement d'heure)
@@ -171,10 +175,10 @@ for (i in 1:length(ll.pre)) {
     # vérifications
     colnames(ll.pre.2.data.3); head(ll.pre.2.data.3); str(ll.pre.2.data.3) # date et heure ne sont pas sous forme POSIX -> changer dans la section "### date et heure"
     # nouveau nom préliminaire (et retirer colonnes inutiles)
-    ll.pre.2.data.4 <- ll.pre.2.data.3 %>% select(!c(date.AAAA.MM.JJ,  "date.time.UTC.0pre", "date.time.UTC.0pre.1")) %>% 
-      select("scan.id", "raw.value.mm", "calibrated.value.mm", "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.tz.orig", date.time.UTC.0) # date et time sans "UTC.0" sont dans le fuseau horaire d'origine (tz trouvé en croisant les coordonnées "coords")
+    ll.pre.2.data.4 <- ll.pre.2.data.3 %>% dplyr::select(!c(date.AAAA.MM.JJ,  "date.time.UTC.0pre", "date.time.UTC.0pre.1")) %>% 
+      dplyr::select("scan.id", "raw.value.mm", "calibrated.value.mm", "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.tz.orig", date.time.UTC.0) # date et time sans "UTC.0" sont dans le fuseau horaire d'origine (tz trouvé en croisant les coordonnées "coords")
     head(ll.pre.2.data.4); str(ll.pre.2.data.4)
-
+    
     #### début et fin des mesures par fichier.uid.i ----
     # inscrits dans "level.logger.calibration.all.csv"
     # début (généralement) = installation + 24h de rabattement de la NP / ou non, si puits intallé d'avance, dans quel cas inscrire début officiel - 24h)
@@ -183,25 +187,48 @@ for (i in 1:length(ll.pre)) {
     
     ##### import et nettoyage ----
     # cal.data <- read.csv("connectivite/data/raw/level.logger.calibration.all.csv", sep = ";", dec = ",")
-    cal.data <- read.csv("connectivite/data/raw/level.logger.calibration.all.csv", sep = ";", dec = ",")
+    # cal.data <- read.csv("connectivite/data/raw/level.logger.calibration.all.csv", sep = ";", dec = ",") # SUPPRIMER ANCIEN
+    cal.data <- read.csv("connectivite/data/raw/level_logger_calibration_all.csv", sep = ";", dec = ",")
+    cal.data$probe.uid <- as.character(cal.data$probe.uid)
+    colnames(cal.data)
+    
     # out = (pt haut - moyenne pt bas)
     cal.data$out.R = round(cal.data$pt.haut.cm - ((cal.data$pt.bas1.cm+cal.data$pt.bas2.cm+cal.data$pt.bas3.cm)/3), digits = 1)
-    cal.data <- cal.data %>% select("fichier.uid", "site.id", "well.uid", "trmnt.uid", "lab.probe.id", "probe.uid", "probe.brand", 
-                                    "cal.length.cm", "cal.length.mm", "cal.order", "cal.value", "comment", 
-                                    "day.begining.aaaa.mm.dd.hh.mm", "day.end.aaaa.mm.dd.hh.mm", "distance.m", "out.R", "out.long.tuyau.sol.cm", everything())
+    cal.data$long_negative_cal.length_mm_y <- cal.data$cal.length.cm*-10 # longueur de fil nécessaire : en mm et au négatif / les NA seront calculé prochainement
+    
+    # [1] "fichier.uid"                     "measure_type"                    "measure_status"                 
+    # [4] "site.id"                         "well.uid"                        "trmnt.uid"                      
+    # [7] "lab.probe.id"                    "probe.uid"                       "probe.brand"                    
+    # [10] "cal.length.cm"                   "long_positive_cal.length_mm"     "cal.order"                      
+    # [13] "long_negative_cal.length_mm_y"   "cal.value_x"                     "comment"                        
+    # [16] "day.begining.aaaa.mm.dd.hh.mm"   "day.end.aaaa.mm.dd.hh.mm"        "distance.m"                     
+    # [19] "out.long.tuyau.sol.cm"           "pt.haut.cm"                      "pt.bas1.cm"                     
+    # [22] "pt.bas2.cm"                      "pt.bas3.cm"                      "long.fil.cm"                    
+    # [25] "bulleur.1.positive.cm"           "bulleur.1.negative.cm"           "bulleur.1.date.aaaa.mm.dd"      
+    # [28] "bulleur.1.time.tz.orig"          "bulleur.1.date.time.UTC.0"       "bulleur.1.obs"                  
+    # [31] "cal.station_id"                  "bulleur.2.cm"                    "bulleur.2.date.aaaa.mm.dd"      
+    # [34] "bulleur.2.time.tz.orig"          "bulleur.2.obs"                   "offset.1_cm"                    
+    # [37] "offset.1_date"                   "prof_nappe_bulleur_cm_.out"      "pre_prof_nappe_odyssey_mm_to_cm"
+    # [40] "prof_nappe_odyssey_cm_.out"      "a.slope_excel"                   "b.verticalIntercept_excel"      
+    # [43] "caduque.long.fil.cm"  "out.R"
+    
+    cal.data <- cal.data %>% dplyr::select("fichier.uid","measure_type", "measure_status", "site.id", "well.uid", "trmnt.uid", "lab.probe.id", "probe.uid", "probe.brand", 
+                                    "cal.length.cm", "long_positive_cal.length_mm", "cal.order", "long_negative_cal.length_mm_y", "cal.value_x", "comment", 
+                                    "day.begining.aaaa.mm.dd.hh.mm", "day.end.aaaa.mm.dd.hh.mm", "distance.m", "out.R", "out.long.tuyau.sol.cm", everything(), -"caduque.long.fil.cm")
     cal.data$period.fichier.uid <- paste0(cal.data$day.begining.aaaa.mm.dd.hh.mm, "--", cal.data$day.end.aaaa.mm.dd.hh.mm, ".",cal.data$fichier.uid)
     
+    # cal.data$out.R[1] <- 2 # tester si une valeur FALSE, if ci-dessous devrait donner un avertissement
     # vérification de valeurs OUT
-    if(any(cal.data$out.R == round(cal.data$out.long.tuyau.sol.cm, digits = 1)))  { # si TOUS TRUE (fonction any()) = changer nom de out.R et supprimer la mesure entrée manuellement // si FALSE = avertissement
+    if(all(cal.data$out.R == round(cal.data$out.long.tuyau.sol.cm, digits = 1)))  { # si TOUS TRUE (fonction any()) = changer nom de out.R et supprimer la mesure entrée manuellement // si FALSE = avertissement
       cal.data$out.long.tuyau.sol.cm <- cal.data$out.R
-      cal.data <- cal.data %>% select(!out.R)
+      cal.data <- cal.data %>% dplyr::select(!out.R) # out.R DISPARAÎT ! NE PLUS LA CHERCHER !
     } else { stop("Attention, le out entré dans cal.data (syn. level.logger.calibration.all.csv) n'est pas identique à la moyenne des points bas soustraite du point haut du puits.") }
     # format POSIX begining et end
     cal.data$day.begining.aaaa.mm.dd.hh.mm <- ymd_hm(cal.data$day.begining.aaaa.mm.dd.hh.mm, tz = tz)
     cal.data$day.end.aaaa.mm.dd.hh.mm <- ymd_hm(cal.data$day.end.aaaa.mm.dd.hh.mm, tz = tz)
     head(cal.data); tail(cal.data); str(cal.data)
     
-    ##### boucle de concaténation des données (fichier.uid ensemble, sinon autre calibration et graphique disctinct) ----
+    ##### boucle de concaténation des données (fichier.uid ensemble, sinon autre calibration et graphique distinct) ----
     ll.cal.pre.i.l <- list()
     for (l in 1:length(unique(cal.data$period.fichier.uid[which(grepl(fichier.uid.i, cal.data$fichier.uid))]))) { # si mm fichier.uid.i, coller les périodes ensemble (ainsi, retirer et remettre ne demande pas plus de manipulations et surtout ps des manipulations incividuelles)
       # l<-1
@@ -213,14 +240,14 @@ for (i in 1:length(ll.pre)) {
       ll.pre.2.data.4.l <- ll.pre.2.data.4 %>%
         dplyr::filter(date.time.tz.orig >= cal.data.i.l$day.begining.aaaa.mm.dd.hh.mm) %>% # >= date de mesure de NP plus grand ou égale à la date beginning dans cal.data.i.l
         dplyr::filter(date.time.tz.orig <= cal.data.i.l$day.end.aaaa.mm.dd.hh.mm) %>% # <= date de mesure de NP plus petite ou égale à la date end dans cal.data.i.l 
-        select("scan.id", "raw.value.mm", "calibrated.value.mm", "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.tz.orig", "date.time.UTC.0") # %>%  # date et time sans "UTC.0" sont dans le fuseau horaire d'origine (tz trouvé en croisant les coordonnées "coords")
+        dplyr::select("scan.id", "raw.value.mm", "calibrated.value.mm", "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.tz.orig", "date.time.UTC.0") # %>%  # date et time sans "UTC.0" sont dans le fuseau horaire d'origine (tz trouvé en croisant les coordonnées "coords")
       # vérifications
       head(ll.pre.2.data.4.l); colnames(ll.pre.2.data.4.l); nrow(ll.pre.2.data.4.l)
       # changer pour un nom explicite, fichier encore à calibrer (d'où "pre")
       ll.cal.pre.i.l[[l]] <- ll.pre.2.data.4.l
       nrow(ll.cal.pre.i.l[[l]])
     }
-  
+    
     # coller toutes les données de la sonde k ensemble (différentes mesures temporelles, mm puits.trmnt.année) ----
     ll.cal.pre.i <- do.call(rbind, ll.cal.pre.i.l) # row bind -> on colle deux df de structure identique (les l nombre de ll.cal.pre.i.l) de différents k.l, associées à différents temps de la période de mesure de la sonde k
     # explications de cette loop ----
@@ -229,15 +256,63 @@ for (i in 1:length(ll.pre)) {
     # la boucle coupe le fichier pour chaque période différente (l), et ensuite réassemble le fichier avec seules les périodes à conserver
     
     ### calcul de calibration  ----
-    # * avec ODYSSEY, calibration est faite selon les colonnes "cal." du fichier cal.data // # notes : les longueurs doivent être en mm ; idée pour cal.data : si unité = cm -> convertir en mm, si mm-> continuer
-    # trouver les lignes qui correspondent à la sonde à calibrer
-    cal.probe.i <- cal.data %>% dplyr::filter(cal.data$fichier.uid == fichier.uid.i)
+    # * avec ODYSSEY, calibration est faite selon les colonnes "cal." du fichier cal.data
+    cal.probe.i <- cal.data %>% dplyr::filter(cal.data$fichier.uid == fichier.uid.i) %>% dplyr::mutate_at("cal.order", ~replace(., is.na(.), 0)) # remplacer les NA dans cal.order par 0, sinon inclus dans les résultats
     # test: si raw.value == vecteur de "NA", on peut procédéer à la calibration, sinon ça veut dire qu'on a la cal du programme de la sonde, garder ces données (créer autre colonne)
     if(FALSE %in% (!ll.cal.pre.i$calibrated.value.mm %in% rep("NA", times = length(ll.cal.pre.i$calibrated.value.mm)))) { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
       stop(paste0("Attention, la colonne calibrated.value n'est pas vide. Sonde problématique : i = ", paste(i), "; ", ll.pre[i]))
       # créer une autre colonne, le cas échéant (à faire)
     }
+
+    # RENDUE ICI 27 mars 2025
+    ### Calibration ----
+    # PRÉALABLE : utiliser la valeur NÉGATIVE de longueur de fil à la calibration
+    #### étape 1 : si y=ax+b, calcul des termes a et b  ----
+    # FORMULES
+    # a.slope = ( y2 - y1 ) / ( x2 - x1 ), soit la proportion de changement de y pour chaque changement de x
+    # où
+    # y = raw.value aux longueurs 1 et 2 du test de calibration (p. ex. 200 mm et 800 mm ou 1400 mm, pour STH)
+    # x2 = longueur fil test où "cal.order"=2, x1 = longueur fil test où "cal.order"=1
+    # et finalement
+    # b.verticalIntercept = y1 - a.slope * x1
+    {
+      # long_negative_cal.length_mm_y.R = cal.probe.i$cal.length.cm[cal.probe.i$cal.order==1]*-10 # en cm et au négatif
+      x2 = cal.probe.i$long_negative_cal.length_mm_y[cal.probe.i$cal.order==2]*-10
+      x1 = cal.probe.i$long_negative_cal.length_mm_y[cal.probe.i$cal.order==1]
+      y2 = cal.probe.i$cal.value_x[cal.probe.i$cal.order==2]
+      y1 = cal.probe.i$cal.value_x[cal.probe.i$cal.order==1]
+      a.slope = ( y2 - y1 ) / ( x2 - x1 )
+      b.offset = y1 - (a.slope * x1)
+      out = cal.probe.i$out.long.tuyau.sol.cm[cal.probe.i$cal.order==1]*10
+    }
+    # inscrire les données utilisées dans 
+    cal.data$long_negative_cal.length_mm_y.R[which(grepl(fichier.uid.i, cal.data$fichier.uid))] <- long_negative_cal.length_mm_y.R.val
     
+    
+    
+    cal.data %>% dplyr::filter(where(fichier.uid.df$probe.uid[i] %in% cal.data$probe.uid))
+    
+    cal.data$long_negative_cal.length_mm_y.R.val[where(fichier.uid.df$probe.uid[i] %in% cal.data$probe.uid)] <- long_negative_cal.length_mm_y.R
+    
+    class(cal.data$probe.uid)
+    
+    class(fichier.uid.df$probe.uid)
+    
+    #### étape 2 : appliquer a et b pour trouver le offsets à appliquer aux données ----
+    # pour les lignes de measure_type == offset_measurement :
+    # convertir la valeur de longueur en cm (/10) : "pre_prof_nappe_odyssey_mm_to_cm.R" = long_negative_cal.length_mm_y/10
+    # prof_nappe_odyssey_cm_+out.R = pre_prof_nappe_odyssey_mm_to_cm.R + out.long.tuyau.sol.cm # NOTER L'ADDITION DU OUT
+    # prof_nappe_bulleur_cm_+out.R = prof_nappe_bulleur_cm_+out.R + out.long.tuyau.sol.cm # NOTER L'ADDITION DU OUT
+    # offset_cm = prof_nappe_odyssey_cm_+out.R - prof_nappe_bulleur_cm_+out.R # Noter : SOUSTRACTION et ordre
+    
+    
+    
+    
+    
+    
+    
+    
+    # CADUQUE
     ### calcul des termes de la calibration ----
     # FORMULES
     # RES.NP.calibré = ((DATA.raw.value - b.offset) / a.slope ) - OUT
@@ -271,7 +346,7 @@ for (i in 1:length(ll.pre)) {
     # noted : <- le fichier du level logger correspondant à la position i; [1] : data (dataframe), [2] : metadata (character string)
     ll.clean[[i]] <- list("data" = ll.cal, "metadata" = ll.pre.2.metadata) 
   } # fin de la loop pour les ODYSSEY / # début de la loop pour les HOBO (else if() prochaine ligne)
-
+  
   else if (grepl(SNH[2], ll.pre[i])) { # début de la loop pour les HOBO
     # import et ménage
     k <- i
@@ -356,7 +431,7 @@ for (i in 1:length(ll.pre)) {
     
     # ajouter colonne vide "calibrated value" à l'instar de ODYSSEY, où sera inséré la valeur finale de nappe phréatique
     ll.pre.0.data.2$"calibrated.value.mm" <- rep(NA, times = nrow(ll.pre.0.data.2))
-
+    
     # vérifications
     colnames(ll.pre.0.data.2); head(ll.pre.0.data.2); str(ll.pre.0.data.2) # date et heure ne sont pas sous forme POSIX -> changer dans la section "### date et heure"
     # nouveau nom préliminaire (et retirer colonnes inutiles)
@@ -419,13 +494,13 @@ for (i in 1:length(ll.pre)) {
         head(ll.pre.0.data.4.l); colnames(ll.pre.0.data.4.l); nrow(ll.pre.0.data.4.l)
         # changer pour un nom explicite, fichier encore à calibrer (d'où "pre")
         ll.cal.pre.i.l[[l]] <- ll.pre.0.data.4.l
-        }
-    # coller toutes les données de la sonde k ensemble (différentes mesures temporelles, mm puits.trmnt.année) ----
-    ll.cal.pre.i <- do.call(rbind, ll.cal.pre.i.l) # row bind -> on colle deux df de structure identique (les ll.cal.pre.i) de différents k.l, associées à différents temps de la période de mesure de la sonde k
-    # explications de cette loop ----
-    # mm fichier.uid (loop extrait séquentiellement toutes les lignes de chaque # de SNH, qui peuvent être uniques ou multiples pour un SNH donné);
-    # la loop teste si toutes les lignes de ce # de SNH ont le même fichier.uid (i), dans quel cas, si les périodes sont différentes, 
-    # la boucle coupe le fichier pour chaque période différente (l), et ensuite réassemble le fichier avec seules les périodes à conserver
+      }
+      # coller toutes les données de la sonde k ensemble (différentes mesures temporelles, mm puits.trmnt.année) ----
+      ll.cal.pre.i <- do.call(rbind, ll.cal.pre.i.l) # row bind -> on colle deux df de structure identique (les ll.cal.pre.i) de différents k.l, associées à différents temps de la période de mesure de la sonde k
+      # explications de cette loop ----
+      # mm fichier.uid (loop extrait séquentiellement toutes les lignes de chaque # de SNH, qui peuvent être uniques ou multiples pour un SNH donné);
+      # la loop teste si toutes les lignes de ce # de SNH ont le même fichier.uid (i), dans quel cas, si les périodes sont différentes, 
+      # la boucle coupe le fichier pour chaque période différente (l), et ensuite réassemble le fichier avec seules les périodes à conserver
     }
     
     ### calcul de calibration  ----
@@ -517,10 +592,10 @@ for (i in 1:length(ll.pre)) {
     # noted : <- le fichier du level logger correspondant à la position i; [1] : data (dataframe), [2] : metadata (character string)
     
     ll.clean[[i]] <- list("data" = ll.cal.k, "metadata" = ll.pre.0.metadata) 
-    }
-    # else {
-    #  stop("ERREUR : CODER ICI") # si nécessaire, ajouter 3e type de traitement de SNH
-    # }
+  }
+  # else {
+  #  stop("ERREUR : CODER ICI") # si nécessaire, ajouter 3e type de traitement de SNH
+  # }
 }  # fin de la loop pour les HOBO
 # vérifier que les erreurs sont tjrs la meme affaire inutile -> incomplete final line, tenté de régler le problème, mais sans succès; 
 # et different length (ça le dit quand le "cal" est vide, et ça met des NA, ce qui est parfait)
@@ -584,8 +659,8 @@ ll.bulleur <- read.csv("connectivite/data/raw/level.logger.calibration.all.csv",
 # out = (pt haut - moyenne pt bas)
 ll.bulleur$out.R = round(ll.bulleur$pt.haut.cm - ((ll.bulleur$pt.bas1.cm+ll.bulleur$pt.bas2.cm+ll.bulleur$pt.bas3.cm)/3), digits = 1)
 ll.bulleur <- ll.bulleur %>% select("site.id", "well.uid", "trmnt.uid", "lab.probe.id", "probe.uid", "probe.brand",
-                                "cal.length.cm", "cal.length.mm", "cal.order", "cal.value", "comment",
-                                "day.begining.aaaa.mm.dd.hh.mm", "day.end.aaaa.mm.dd.hh.mm", "distance.m", "out.R", "out.long.tuyau.sol.cm", everything())
+                                    "cal.length.cm", "cal.length.mm", "cal.order", "cal.value", "comment",
+                                    "day.begining.aaaa.mm.dd.hh.mm", "day.end.aaaa.mm.dd.hh.mm", "distance.m", "out.R", "out.long.tuyau.sol.cm", everything())
 # vérification de valeurs OUT
 if(all(ll.bulleur$out.R == round(ll.bulleur$out.long.tuyau.sol.cm, digits = 1)))  { # si TOUS TRUE (fonction any()) = changer nom de out.R et supprimer la mesure entrée manuellement // si FALSE = avertissement
   ll.bulleur$out.long.tuyau.sol.cm <- ll.bulleur$out.R
@@ -596,6 +671,11 @@ if(all(ll.bulleur$out.R == round(ll.bulleur$out.long.tuyau.sol.cm, digits = 1)))
 ll.bulleur$water.table.depth.cm <- round(ll.bulleur$bulleur.1.cm - ll.bulleur$out.long.tuyau.sol.cm, digits = 2)
 # ici, PROFONDEUR de nappe, donc quand c'est -5cm par exemple, nappe au DESSUS du sol
 
+
+
+
+
+# REFAIRE LL.BULLEUR
 if("ll.bulleur.csv" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
 } else { write.csv(ll.bulleur, "connectivite/data/clean/ll.bulleur.csv") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
@@ -647,8 +727,8 @@ for (m in 1:length(ll.clean)) {
                                                                       "file.extraction.date" = date.m,
                                                                       "probe.measure.cm" = NA,
                                                                       "bulleur.mesure.cm" = NA)
-    } 
   } 
+} 
 water.table.verif
 water.table.verif <- water.table.verif[!duplicated(water.table.verif),]
 rownames(water.table.verif) <- NULL
