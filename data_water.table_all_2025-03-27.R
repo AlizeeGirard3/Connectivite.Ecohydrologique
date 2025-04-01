@@ -190,6 +190,8 @@ for (i in 1:length(ll.pre)) {
     # cal.data <- read.csv("connectivite/data/raw/level.logger.calibration.all.csv", sep = ";", dec = ",") # SUPPRIMER ANCIEN
     cal.data <- read.csv("connectivite/data/raw/level_logger_calibration_all.csv", sep = ";", dec = ",")
     cal.data$probe.uid <- as.character(cal.data$probe.uid)
+    cal.data$pre_prof_nappe_odyssey_mm_to_cm <- as.numeric(cal.data$pre_prof_nappe_odyssey_mm_to_cm)
+    
     colnames(cal.data)
     
     # out = (pt haut - moyenne pt bas)
@@ -213,12 +215,14 @@ for (i in 1:length(ll.pre)) {
     # [43] "caduque.long.fil.cm"  "out.R"
     
     cal.data <- cal.data %>% dplyr::select("fichier.uid","measure_type", "measure_status", "site.id", "well.uid", "trmnt.uid", "lab.probe.id", "probe.uid", "probe.brand", 
-                                    "cal.length.cm", "long_positive_cal.length_mm", "cal.order", "long_negative_cal.length_mm_y", "cal.value_x", "comment", 
+                                    "cal.length.cm", "caduque.long_positive_cal.length_mm", "cal.order", "long_negative_cal.length_mm_y", "cal.value_x", "comment", 
                                     "day.begining.aaaa.mm.dd.hh.mm", "day.end.aaaa.mm.dd.hh.mm", "distance.m", "out.R", "out.long.tuyau.sol.cm", everything(), -"caduque.long.fil.cm")
     cal.data$period.fichier.uid <- paste0(cal.data$day.begining.aaaa.mm.dd.hh.mm, "--", cal.data$day.end.aaaa.mm.dd.hh.mm, ".",cal.data$fichier.uid)
     
     # cal.data$out.R[1] <- 2 # tester si une valeur FALSE, if ci-dessous devrait donner un avertissement
     # vérification de valeurs OUT
+    cal.data$out.R
+    round(cal.data$out.long.tuyau.sol.cm, digits = 1)
     if(all(cal.data$out.R == round(cal.data$out.long.tuyau.sol.cm, digits = 1)))  { # si TOUS TRUE (fonction any()) = changer nom de out.R et supprimer la mesure entrée manuellement // si FALSE = avertissement
       cal.data$out.long.tuyau.sol.cm <- cal.data$out.R
       cal.data <- cal.data %>% dplyr::select(!out.R) # out.R DISPARAÎT ! NE PLUS LA CHERCHER !
@@ -256,14 +260,21 @@ for (i in 1:length(ll.pre)) {
     # la boucle coupe le fichier pour chaque période différente (l), et ensuite réassemble le fichier avec seules les périodes à conserver
     
     ### calcul de calibration  ----
-    # * avec ODYSSEY, calibration est faite selon les colonnes "cal." du fichier cal.data
+    # * avec ODYSSEY, calibration est faite selon les colonnes "cal." du fichier cal.data et la donnée de bulleur (qui donne le offset**)
+    # ** le offset doit être ensuite appliqué à toute les données
+    
+    # extraire les données de calibration pour le fichier.uid
     cal.probe.i <- cal.data %>% dplyr::filter(cal.data$fichier.uid == fichier.uid.i) %>% dplyr::mutate_at("cal.order", ~replace(., is.na(.), 0)) # remplacer les NA dans cal.order par 0, sinon inclus dans les résultats
+    
     # test: si raw.value == vecteur de "NA", on peut procédéer à la calibration, sinon ça veut dire qu'on a la cal du programme de la sonde, garder ces données (créer autre colonne)
     if(FALSE %in% (!ll.cal.pre.i$calibrated.value.mm %in% rep("NA", times = length(ll.cal.pre.i$calibrated.value.mm)))) { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
       stop(paste0("Attention, la colonne calibrated.value n'est pas vide. Sonde problématique : i = ", paste(i), "; ", ll.pre[i]))
       # créer une autre colonne, le cas échéant (à faire)
     }
 
+    
+    
+    
     # RENDUE ICI 27 mars 2025
     ### Calibration ----
     # PRÉALABLE : utiliser la valeur NÉGATIVE de longueur de fil à la calibration
@@ -276,13 +287,21 @@ for (i in 1:length(ll.pre)) {
     # et finalement
     # b.verticalIntercept = y1 - a.slope * x1
     {
-      # long_negative_cal.length_mm_y.R = cal.probe.i$cal.length.cm[cal.probe.i$cal.order==1]*-10 # en cm et au négatif
-      x2 = cal.probe.i$long_negative_cal.length_mm_y[cal.probe.i$cal.order==2]*-10
-      x1 = cal.probe.i$long_negative_cal.length_mm_y[cal.probe.i$cal.order==1]
-      y2 = cal.probe.i$cal.value_x[cal.probe.i$cal.order==2]
-      y1 = cal.probe.i$cal.value_x[cal.probe.i$cal.order==1]
+      # long_negative_cal.length_mm_y.R déjà calculé ci-haut// ou sinon  = cal.probe.i$cal.length.cm[cal.probe.i$cal.order==1]*-10 # en cm et au négatif
+      y2 = cal.probe.i$long_negative_cal.length_mm_y[cal.probe.i$cal.order==2]
+      y1 = cal.probe.i$long_negative_cal.length_mm_y[cal.probe.i$cal.order==1]
+      x2 = cal.probe.i$cal.value_x[cal.probe.i$cal.order==2]
+      x1 = cal.probe.i$cal.value_x[cal.probe.i$cal.order==1]
       a.slope = ( y2 - y1 ) / ( x2 - x1 )
       b.offset = y1 - (a.slope * x1)
+      
+      # avec les valeurs a.slope et b.offset, calcluler la "longueur équivalente" de fil, avec la donnée de ll au moment de la mesure de bulleur
+      cal.probe.i$long_negative_cal.length_mm_y[cal.probe.i$measure_type=="offset_measurement"] # sensé donner NA, on va remplir cette donnée avec la formule obtenue y=ax+b
+      cal.probe.i$long_negative_cal.length_mm_y[cal.probe.i$measure_type=="offset_measurement"] <- (cal.probe.i$cal.value_x[cal.probe.i$measure_type=="offset_measurement"]*a.slope)+b.offset
+      cal.probe.i$long_negative_cal.length_mm_y[cal.probe.i$measure_type=="offset_measurement"] # vérification de la valeur
+      
+      cal.probe.i$pre_prof_nappe_odyssey_mm_to_cm
+      
       out = cal.probe.i$out.long.tuyau.sol.cm[cal.probe.i$cal.order==1]*10
     }
     # inscrire les données utilisées dans 
