@@ -69,12 +69,10 @@ SNH <- as.vector(c("_odyssey", "_hobo"), mode = "character") # liste des types d
 # fichiers de consigne de données
 ll.pre <- list.files("connectivite/data/raw", pattern = "_odyssey|_hobo") # mettre dans "pattern" tous les ID de SNH listés dans l'objet SNH
 ll.clean <- list()
-fichier.uid.df <- data.frame(fichier.uid = NA, file.name = NA, probe.uid = NA, "extraction.donnees.aaaammjj" = NA, "tz_orig" = NA,
-                          a.slope_excel = NA,	b.verticalIntercept_excel = NA, `prof_nappe_bulleur_cm_+out` = NA,
-                          pre_prof_nappe_odyssey_mm_to_cm = NA,	`prof_nappe_odyssey_cm_+out` = NA, offset.last_cm = NA, offset.last_date = NA) # pour stocker les fichier.uid (aussi première colonne de cal.data) et autres données intérimaires
-odyssey_offset_archives <- data.frame(fichier.uid = NA, offset_date = NA) # celui qui sera toujours remplacé, dont les données seront jointes avec level.logger_odyssey.offset_archive.xlsx
+fichier.uid.df <- data.frame(fichier.uid = NA, file.name = NA, probe.uid = NA, "extraction.donnees.aaaammjj" = NA, "tz_orig" = NA) # pour stocker les fichier.uid (aussi première colonne de cal.data) et autres données intérimaires
+odyssey_offset_archives <- data.frame(fichier.uid = NA, offset_date = NA, a.slope_excel = NA,	b.verticalIntercept = NA) #, `prof_nappe_bulleur_cm_plus.out` = NA, pre_prof_nappe_odyssey_mm_to_cm = NA,	`prof_nappe_odyssey_cm_plus.out` = NA)
 for (i in 1:length(ll.pre)) {
-  i<-7 # 41362(27 mars 2025)
+  # i<-7 # 8 9 10 11 12 13 14 15 16# 41362(27 mars 2025)
   print(i)
   ll.pre[i] # début de la loop pour les ODYSSEY (if() prochaine ligne)
   if (grepl(SNH[1], ll.pre[i])) {  # début de la loop pour les ODYSSEY
@@ -186,41 +184,23 @@ for (i in 1:length(ll.pre)) {
     # note : données de date en format xlsx ça lit TOUT CROCHE, transformé en csv fonctionne bien
     
     ##### import et nettoyage ----
-    # cal.data <- read.csv("connectivite/data/raw/level.logger.calibration.all.csv", sep = ";", dec = ",")
-    # cal.data <- read.csv("connectivite/data/raw/level.logger.calibration.all.csv", sep = ";", dec = ",") # SUPPRIMER ANCIEN
-    cal.data <- read.csv("connectivite/data/raw/level_logger_calibration_all.csv", sep = ";", dec = ",")
-    cal.data$probe.uid <- as.character(cal.data$probe.uid)
-    cal.data$pre_prof_nappe_odyssey_mm_to_cm <- as.numeric(cal.data$pre_prof_nappe_odyssey_mm_to_cm)
-    cal.data$prof_nappe_bulleur_cm_plus.out <- as.numeric(cal.data$prof_nappe_bulleur_cm_plus.out)
-    cal.data$prof_nappe_odyssey_cm_plus.out <- as.numeric(cal.data$prof_nappe_odyssey_cm_plus.out)
-    cal.data$last_offset_cm <- as.numeric(cal.data$last_offset_cm)
-    cal.data$last_offset_date <- as.numeric(cal.data$last_offset_date)
+    cal.data.pre <- read.csv("connectivite/data/raw/level_logger_calibration_all.csv", sep = ";", dec = ",")
+    str(cal.data.pre)
+    # cal.data <- cal.data.pre %>% mutate_at(c("pre_prof_nappe_odyssey_mm_to_cm", "prof_nappe_bulleur_cm_plus.out", "prof_nappe_odyssey_cm_plus.out",
+    #                                                  "last_offset_cm"), as.numeric) %>% mutate_at("probe.uid", as.character)
+    cal.data <- cal.data.pre %>% mutate_at("probe.uid", as.character)
     
+    # cal.data$last_offset_date <- as.numeric(cal.data$last_offset_date)
     colnames(cal.data); str(cal.data)
     
     # out = (pt haut - moyenne pt bas)
     cal.data$out.R = round(cal.data$pt.haut.cm - ((cal.data$pt.bas1.cm+cal.data$pt.bas2.cm+cal.data$pt.bas3.cm)/3), digits = 1)
+    # long négative en mm = cal.length.cm*-10
     cal.data$long_negative_cal.length_mm_y <- cal.data$cal.length.cm*-10 # longueur de fil nécessaire : en mm et au négatif / les NA seront calculé prochainement
     
-    # [1] "fichier.uid"                     "measure_type"                    "measure_status"                 
-    # [4] "site.id"                         "well.uid"                        "trmnt.uid"                      
-    # [7] "lab.probe.id"                    "probe.uid"                       "probe.brand"                    
-    # [10] "cal.length.cm"                   "long_positive_cal.length_mm"     "cal.order"                      
-    # [13] "long_negative_cal.length_mm_y"   "cal.value_x"                     "comment"                        
-    # [16] "day.begining.aaaa.mm.dd.hh.mm"   "day.end.aaaa.mm.dd.hh.mm"        "distance.m"                     
-    # [19] "out.long.tuyau.sol.cm"           "pt.haut.cm"                      "pt.bas1.cm"                     
-    # [22] "pt.bas2.cm"                      "pt.bas3.cm"                      "long.fil.cm"                    
-    # [25] "bulleur.1.positive.cm"           "bulleur.1.negative.cm"           "bulleur.1.date.aaaa.mm.dd"      
-    # [28] "bulleur.1.time.tz.orig"          "bulleur.1.date.time.UTC.0"       "bulleur.1.obs"                  
-    # [31] "cal.station_id"                  "bulleur.2.cm"                    "bulleur.2.date.aaaa.mm.dd"      
-    # [34] "bulleur.2.time.tz.orig"          "bulleur.2.obs"                   "offset.1_cm"                    
-    # [37] "offset.1_date"                   "prof_nappe_bulleur_cm_plus.out""      "pre_prof_nappe_odyssey_mm_to_cm"
-    # [40] "prof_nappe_odyssey_cm_plus.out"      "a.slope_excel"                   "b.verticalIntercept_excel"      
-    # [43] "caduque.long.fil.cm"  "out.R"
-    
     cal.data <- cal.data %>% dplyr::select("fichier.uid","measure_type", "measure_status", "site.id", "well.uid", "trmnt.uid", "lab.probe.id", "probe.uid", "probe.brand", 
-                                    "cal.length.cm", "caduque.long_positive_cal.length_mm", "cal.order", "long_negative_cal.length_mm_y", "cal.value_x", "comment", 
-                                    "day.begining.aaaa.mm.dd.hh.mm", "day.end.aaaa.mm.dd.hh.mm", "distance.m", "out.R", "out.long.tuyau.sol.cm", everything(), -"caduque.long.fil.cm")
+                                    "cal.length.cm", "cal.order", "long_negative_cal.length_mm_y", "cal.value_x", "comment", 
+                                    "day.begining.aaaa.mm.dd.hh.mm", "day.end.aaaa.mm.dd.hh.mm", "distance.m", "out.R", "out.long.tuyau.sol.cm", everything()) #, -"caduque.long.fil.cm")
     cal.data$period.fichier.uid <- paste0(cal.data$day.begining.aaaa.mm.dd.hh.mm, "--", cal.data$day.end.aaaa.mm.dd.hh.mm, ".",cal.data$fichier.uid)
     
     # cal.data$out.R[1] <- 2 # tester si une valeur FALSE, if ci-dessous devrait donner un avertissement
@@ -279,12 +259,7 @@ for (i in 1:length(ll.pre)) {
       stop(paste0("Attention, la colonne calibrated.value n'est pas vide. Sonde problématique : i = ", paste(i), "; ", ll.pre[i]))
       # créer une autre colonne, le cas échéant (à faire)
     }
-
-    
-    
-    
-    # RENDUE ICI 27 mars 2025
-    ### Calibration ----
+    ### calibration ----
     # PRÉALABLE : utiliser la valeur NÉGATIVE de longueur de fil à la calibration
     #### étape 1 : si y=ax+b, calcul des termes a et b  ----
     # FORMULES
@@ -301,7 +276,7 @@ for (i in 1:length(ll.pre)) {
       x2 = cal.probe.i$cal.value_x[cal.probe.i$cal.order==2]
       x1 = cal.probe.i$cal.value_x[cal.probe.i$cal.order==1]
       a.slope = ( y2 - y1 ) / ( x2 - x1 )
-      b.offset = y1 - (a.slope * x1)
+      b.verticalIntercept = y1 - (a.slope * x1)
     }
 
     #### étape 2 : appliquer a et b pour trouver le offsets à appliquer aux données ----
@@ -311,70 +286,40 @@ for (i in 1:length(ll.pre)) {
     # prof_nappe_bulleur_cm_plus.out.R = prof_nappe_bulleur_cm_+out.R + out.long.tuyau.sol.cm # NOTER L'ADDITION DU OUT
     # offset_cm = prof_nappe_odyssey_cm_plus.out.R - prof_nappe_bulleur_cm_plus.out.R # Noter : SOUSTRACTION et ordre
     # placer la valeur de offset_cm dans un dataframe de consigne de toutes les valeurs de offset obtenus + autres métadonnées importantes
-    
-    {
-      cal.probe.i$long_negative_cal.length_mm_y[cal.probe.i$measure_type=="offset_measurement"] # sensé donner NA, on va remplir cette donnée avec la formule obtenue y=ax+b
-      cal.probe.i$long_negative_cal.length_mm_y[cal.probe.i$measure_type=="offset_measurement"] <- (cal.probe.i$cal.value_x[cal.probe.i$measure_type=="offset_measurement"]*a.slope)+b.offset
-      cal.probe.i$long_negative_cal.length_mm_y[cal.probe.i$measure_type=="offset_measurement"] # vérification de la valeur
+      long_negative_cal.length_mm_y <- (cal.probe.i$cal.value_x[cal.probe.i$measure_type=="offset_measurement"]*a.slope)+b.verticalIntercept
+      pre_prof_nappe_odyssey_mm_to_cm <- long_negative_cal.length_mm_y/10 #  sensé donner NA (mais actuellement remplis, à écraser avec calcul automatisé), on va remplir cette donnée avec les nouvelles valeurs -> longueur fictive em mm transformée en cm
+      prof_nappe_odyssey_cm_plus.out <- pre_prof_nappe_odyssey_mm_to_cm + cal.probe.i$out.long.tuyau.sol.cm[cal.probe.i$measure_type=="offset_measurement"]
+      prof_nappe_bulleur_cm_plus.out <- cal.probe.i$`bulleur.1.rel.to.surface.cm`[cal.probe.i$measure_type=="offset_measurement"] + cal.probe.i$out.long.tuyau.sol.cm[cal.probe.i$measure_type=="offset_measurement"]
+      offset_cm <- prof_nappe_odyssey_cm_plus.out - prof_nappe_bulleur_cm_plus.out
+
+      # FAIRE DU MÉNAGE caduque
+      # cal.probe.i$long_negative_cal.length_mm_y[cal.probe.i$measure_type=="offset_measurement"] # sensé donner NA, on va remplir cette donnée avec la formule obtenue y=ax+b
+      # cal.probe.i$long_negative_cal.length_mm_y[cal.probe.i$measure_type=="offset_measurement"] <- (cal.probe.i$cal.value_x[cal.probe.i$measure_type=="offset_measurement"]*a.slope)+b.verticalIntercept
+      # cal.probe.i$long_negative_cal.length_mm_y[cal.probe.i$measure_type=="offset_measurement"] # vérification de la valeur
       
-      cal.probe.i$pre_prof_nappe_odyssey_mm_to_cm[cal.probe.i$measure_type=="offset_measurement"] #  sensé donner NA (mais actuellement remplis, à écraser avec calcul automatisé), on va remplir cette donnée avec les nouvelles valeurs
-      cal.probe.i$pre_prof_nappe_odyssey_mm_to_cm[cal.probe.i$measure_type=="offset_measurement"] <- cal.probe.i$long_negative_cal.length_mm_y[cal.probe.i$measure_type=="offset_measurement"]/10 #  sensé donner NA (mais actuellement remplis, à écraser avec calcul automatisé), on va remplir cette donnée avec les nouvelles valeurs -> longueur fictive em mm transformée en cm
-      cal.probe.i$pre_prof_nappe_odyssey_mm_to_cm[cal.probe.i$measure_type=="offset_measurement"] #  vérification de la valeur
+      # cal.probe.i$pre_prof_nappe_odyssey_mm_to_cm[cal.probe.i$measure_type=="offset_measurement"] #  sensé donner NA (mais actuellement remplis, à écraser avec calcul automatisé), on va remplir cette donnée avec les nouvelles valeurs
+      # cal.probe.i$pre_prof_nappe_odyssey_mm_to_cm[cal.probe.i$measure_type=="offset_measurement"] <- cal.probe.i$long_negative_cal.length_mm_y[cal.probe.i$measure_type=="offset_measurement"]/10 #  sensé donner NA (mais actuellement remplis, à écraser avec calcul automatisé), on va remplir cette donnée avec les nouvelles valeurs -> longueur fictive em mm transformée en cm
+      # cal.probe.i$pre_prof_nappe_odyssey_mm_to_cm[cal.probe.i$measure_type=="offset_measurement"] #  vérification de la valeur
       
-      cal.probe.i$prof_nappe_odyssey_cm_plus.out[cal.probe.i$measure_type=="offset_measurement"]
-      cal.probe.i$prof_nappe_odyssey_cm_plus.out[cal.probe.i$measure_type=="offset_measurement"] <- cal.probe.i$pre_prof_nappe_odyssey_mm_to_cm[cal.probe.i$measure_type=="offset_measurement"] + cal.probe.i$out.long.tuyau.sol.cm[cal.probe.i$measure_type=="offset_measurement"]
-      cal.probe.i$prof_nappe_odyssey_cm_plus.out[cal.probe.i$measure_type=="offset_measurement"]
+      # cal.probe.i$prof_nappe_odyssey_cm_plus.out[cal.probe.i$measure_type=="offset_measurement"]
+      # cal.probe.i$prof_nappe_odyssey_cm_plus.out[cal.probe.i$measure_type=="offset_measurement"] <- cal.probe.i$pre_prof_nappe_odyssey_mm_to_cm[cal.probe.i$measure_type=="offset_measurement"] + cal.probe.i$out.long.tuyau.sol.cm[cal.probe.i$measure_type=="offset_measurement"]
+      # cal.probe.i$prof_nappe_odyssey_cm_plus.out[cal.probe.i$measure_type=="offset_measurement"]
       
-      cal.probe.i$prof_nappe_bulleur_cm_plus.out[cal.probe.i$measure_type=="offset_measurement"]
-      cal.probe.i$prof_nappe_bulleur_cm_plus.out[cal.probe.i$measure_type=="offset_measurement"] <- cal.probe.i$bulleur.1.negative.cm[cal.probe.i$measure_type=="offset_measurement"] + cal.probe.i$out.long.tuyau.sol.cm[cal.probe.i$measure_type=="offset_measurement"]
-      cal.probe.i$prof_nappe_bulleur_cm_plus.out[cal.probe.i$measure_type=="offset_measurement"]
-    }
-    
+      # cal.probe.i$prof_nappe_bulleur_cm_plus.out[cal.probe.i$measure_type=="offset_measurement"]
+      # cal.probe.i$prof_nappe_bulleur_cm_plus.out[cal.probe.i$measure_type=="offset_measurement"] <- cal.probe.i$`bulleur.1.rel.to.surface.cm`[cal.probe.i$measure_type=="offset_measurement"] + cal.probe.i$out.long.tuyau.sol.cm[cal.probe.i$measure_type=="offset_measurement"]
+      # cal.probe.i$prof_nappe_bulleur_cm_plus.out[cal.probe.i$measure_type=="offset_measurement"]
     
     # Consigne du offset par date et par fichier.uid dans un format d'archivage (non-écrasable)
     # NOTE : je suis encore dans la loop par fichier.uid (période, site, probe.uid); la calibration est valide et doit être appliquée à tout le fichier
     odyssey_offset_archives[i, 1] <- fichier.uid.i
-    odyssey_offset_archives[i, 2] <- paste0(cal.probe.i$prof_nappe_odyssey_cm_plus.out[cal.probe.i$measure_type=="offset_measurement"] - cal.probe.i$prof_nappe_bulleur_cm_plus.out[cal.probe.i$measure_type=="offset_measurement"], "-", Sys.Date())
-    
-    cal.probe.i$last_offset_cm[cal.probe.i$measure_type=="offset_measurement"] <- cal.probe.i$prof_nappe_odyssey_cm_plus.out[cal.probe.i$measure_type=="offset_measurement"] - cal.probe.i$prof_nappe_bulleur_cm_plus.out[cal.probe.i$measure_type=="offset_measurement"]
-    cal.probe.i$last_offset_date[cal.probe.i$measure_type=="offset_measurement"] <- Sys.Date()
-    
-    
-    # # CADUQUE
-    # ### calcul des termes de la calibration ----
-    # # FORMULES
-    # # RES.NP.calibré = ((DATA.raw.value - b.offset) / a.slope ) - OUT
-    # # si Y = (a * X) + b,
-    # # X = ( Y - b ) / a, puis on enlève la longueur du fil à la mesure de NP
-    # # où 
-    # # y = raw.value aux longueurs 1 et 2 du test de calibration (p. ex. 200 mm et 800 mm ou 1400 mm, pour STH)
-    # # b.offset = y1 - a.slope * x1
-    # # a.slope = ( y2 - y1 ) / ( x2 - x1 ), soit la proportion de changement de y pour chaque changement de x
-    # # x2 = longueur fil test #2 (V = "cal.order"), x1 = longueur fil test #1 (V = "cal.order")
-    # # y2 = raw.value à du test #2 (V = "cal.value"), y1 = raw.value à du test #1 (V = "cal.value")
-    # {
-    #   longueur.fil = cal.probe.i$cal.length.cm[cal.probe.i$cal.order==1]*10
-    #   x2 = cal.probe.i$cal.length.cm[cal.probe.i$cal.order==2]*10
-    #   x1 = cal.probe.i$cal.length.cm[cal.probe.i$cal.order==1]*10
-    #   y2 = cal.probe.i$cal.value[cal.probe.i$cal.order==2]
-    #   y1 = cal.probe.i$cal.value[cal.probe.i$cal.order==1]
-    #   a.slope = ( y2 - y1 ) / ( x2 - x1 )
-    #   b.offset = y1 - (a.slope * x1)
-    #   out = cal.probe.i$out.long.tuyau.sol.cm[cal.probe.i$cal.order==1]*10
-    # }
-    
-    
-    
-    
-    # RENDUE ICI 1 avril 2025
-    # ll.cal.pre.i$calibrated.value.mm = ((ll.cal.pre.i$raw.value.mm - b.offset) / a.slope ) - off  # ERREUR - longueur.fil
-    # ll.cal.pre.i$pre.cal.val <- REFAIRE TOUS LES CALCULS INTÉRMÉDIAIRES ?
-    
+    odyssey_offset_archives[i, 2] <- paste0(round(prof_nappe_odyssey_cm_plus.out - prof_nappe_bulleur_cm_plus.out, 3), "-", Sys.Date())
+    odyssey_offset_archives[i, 3] <- paste0(round(a.slope, 3), "-", Sys.Date())
+    odyssey_offset_archives[i, 4] <- paste0(round(b.verticalIntercept, 3), "-", Sys.Date())
     
     
     # changer la colonne calibrated pour les données corrigées
-    ll.cal.pre.i$calibrated.value.mm = ((ll.cal.pre.i$raw.value.mm - b.offset) / a.slope ) - out  # ERREUR - longueur.fil
-    colnames(ll.cal.pre.i); head(ll.cal.pre.i)
+    ll.cal.pre.i$calibrated.value.mm = (((ll.cal.pre.i$raw.value.mm*a.slope) + b.verticalIntercept)/10)+cal.probe.i$out.long.tuyau.sol.cm[cal.probe.i$measure_type=="offset_measurement"] - offset_cm
+    colnames(ll.cal.pre.i); head(ll.cal.pre.i); tail(ll.cal.pre.i)
     
     # format final -> nom final
     ll.cal <- ll.cal.pre.i # ceci est donc le format final, à intégrer dans la liste ll.clean
@@ -382,6 +327,17 @@ for (i in 1:length(ll.pre)) {
     ### création de la liste dans la liste [[i]]  ----
     # noted : <- le fichier du level logger correspondant à la position i; [1] : data (dataframe), [2] : metadata (character string)
     ll.clean[[i]] <- list("data" = ll.cal, "metadata" = ll.pre.2.metadata) 
+    
+    ### création de fichiers excels propres  ----
+    # À FAIRE : excel [[i]] avec un onglet metadata et onglet data
+    # # noted : <- le fichier du level logger correspondant à la position i; [1] : data (dataframe), [2] : metadata (character string)
+    # ll.clean[[i]] <- list("data" = ll.cal, "metadata" = ll.pre.2.metadata) 
+    # À FAIRE
+    # format excel des ll.clean -> arranger pr que ça fonctionne
+    # if("ll.clean.xlsx" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
+    #   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
+    # } else { write.xlsx(ll.clean, file = "connectivite/data/clean/ll.clean.xlsx") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
+    # 
   } # fin de la loop pour les ODYSSEY / # début de la loop pour les HOBO (else if() prochaine ligne)
   
   else if (grepl(SNH[2], ll.pre[i])) { # début de la loop pour les HOBO
@@ -647,11 +603,15 @@ if("ll.clean.RDS" %in% list.files("connectivite/data/clean"))  { # si TRUE = STO
   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
 } else { saveRDS(ll.clean, file = "connectivite/data/clean/ll.clean.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
 
-# À FAIRE
-# format excel des ll.clean -> arranger pr que ça fonctionne
-# if("ll.clean.xlsx" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
-#   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
-# } else { write.xlsx(ll.clean, file = "connectivite/data/clean/ll.clean.xlsx") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
+# Joindre les lignes de offset de l'objet "odyssey_offset_archives" dans le fichier "level.logger_offset_archive.csv"
+level.logger_offset_archive <- read_excel("connectivite/data/raw/level.logger_offset_archive.xlsx", col_types = c(rep("text", times = 2)))
+str(level.logger_offset_archive)
+level.logger_offset_archive <- full_join(odyssey_offset_archives, level.logger_offset_archive) %>% na.omit
+
+if("level.logger_offset_archive.xlsx" %in% list.files("connectivite/data/raw"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
+  stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
+} else { write.xlsx(level.logger_offset_archive, file = "connectivite/data/raw/level.logger_offset_archive.xlsx") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
+
 
 
 # A.2 examination des données ----
@@ -683,6 +643,24 @@ for (j in 1:length(ll.clean)) {
   # les hauteurs de nappe phréatique calibrées devraient toutes être négatives ou presque !
   # ou alors est-ce que les ODYSSEY donnent en + ?
 }
+
+
+
+
+
+
+
+
+
+
+
+
+# A.3 caduque
+
+
+
+
+
 
 # A.3 données de vérification/calibration avec bulleur ----
 # créé le 23 déc. pour vérifier données des Odyssey de St-Henri 2024
