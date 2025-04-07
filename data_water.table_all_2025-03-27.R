@@ -121,11 +121,23 @@ for (i in 1:length(ll.pre)) {
     ### création du dataframe level legger (ll) contenant données de nappe phréatique (NP) et ménage  ----
     ll.pre.2.data.1 <- read.csv(text = ll.pre.2.data, col.names = c("scan.id", "date.JJ.MM.AAAA", "time.HH.MM.SS",'raw.value.mm',"calibrated.value.mm")) # text = argument de read.csv qui lit la valeur contenue dans l'objet / DATE mauvais format
     # vérifications
-    head(ll.pre.2.data.1); str(ll.pre.2.data.1)
-    # si deux colonnes raw et calibrated sont exactement les mêmes, c'est qu'il n'y a pas eu de calibration; supprimer les valeurs doublons et/ou 
+    head(ll.pre.2.data.1, n=20); str(ll.pre.2.data.1)
+        # si deux colonnes raw et calibrated sont exactement les mêmes, c'est qu'il n'y a pas eu de calibration; supprimer les valeurs doublons et/ou 
     # les remplacer par les bonnes valeur calibrées (calcul à faire)
     ll.pre.2.data.1$calibrated.value.mm <- ifelse(ll.pre.2.data.1$raw.value.mm == ll.pre.2.data.1$calibrated.value.mm, yes = ll.pre.2.data.1$calibrated.value.mm[rep("NA", times = length(ll.pre.2.data.1$calibrated.value))], no = ll.pre.2.data.1$calibrated.value)
-    head(ll.pre.2.data.1) ; str(ll.pre.2.data.1)
+    head(ll.pre.2.data.1, n=20) ; str(ll.pre.2.data.1)
+    
+    
+    
+    
+    
+    # 7 AVRIL 2025 //  ICI ON N'A PAS 00:00:01 ON A encore 24:00:00
+    
+    
+    
+    
+    
+    
     
     ### date et heure : format ISO date AAAA-MM-JJTHH:MM:SS,ss-/+FF:ff, voir https://fr.wikipedia.org/wiki/ISO_8601 ----
     # heure : « Z » à la fin lorsqu’il s’agit de l’heure UTC. (« Z » pour méridien zéro, aussi connu sous le nom « Zulu » dans l’alphabet radio international).
@@ -153,17 +165,38 @@ for (i in 1:length(ll.pre)) {
     # garder date.AAAA-MM-JJ"
     ll.pre.2.data.2 <- ll.pre.2.data.1 %>% dplyr::mutate(date.JJ.MM.AAAA_time.HH.MM.SS_tz = paste0(date.JJ.MM.AAAA," ", time.HH.MM.SS, " ", tz)) %>% 
       dplyr::select(!c(date.JJ.MM.AAAA, time.HH.MM.SS)) # supprimer ces colonnes en format character, recréer bientôt en POSIX
+  
+    
+    colnames(ll.pre.2.data.2)
+    # 7 AVRIL 2025 //  ICI ON N'A  ENCORE 24h et LA LIGNE 34 de la ll.pre = 7
+    
+  
+    
     ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz <- gsub("00:00", "00:01", ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz) # sinon, les données 00:00:00 étaient effacées !
     ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz <- gsub("24:00:", "00:00:", ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz)
     ll.pre.2.data.2$date.time.tz.orig <- readr::parse_datetime(ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz, format = '%d/%m/%Y %H:%M:%S %Z', locale = readr::locale(tz = tz)) # pour convertir AM/PM en décimal (0-24h), élément %p voir documentation
     ll.pre.2.data.3 <- data.frame(separate_wider_position(ll.pre.2.data.2, # date et time en deux colonnes (idem à ODYSSEY)
                                                           widths = c("date.AAAA.MM.JJ" = 11, "time.HH.MM.SS" = 8),
                                                           cols = date.time.tz.orig, cols_remove = F)) 
+    # ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz <- gsub("24:00:", "00:00:", ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz)
     ll.pre.2.data.3$`date.AAAA-MM-JJ` = ymd(ll.pre.2.data.3$date.AAAA.MM.JJ, tz = tz)
     ll.pre.2.data.3$date.time.UTC.0pre <- with_tz(ll.pre.2.data.3$date.time.tz.orig, tz = "UTC") # pour convertir AM/PM en décimal (0-24h), élément %p voir documentation
     tz(ll.pre.2.data.3$date.time.UTC.0pre) # UTC
     ll.pre.2.data.3$date.time.UTC.0pre.1 <- format_iso_8601(ll.pre.2.data.3$date.time.UTC.0pre)
     ll.pre.2.data.3$date.time.UTC.0 <- gsub("[+]00:00", "Z",  ll.pre.2.data.3$date.time.UTC.0pre.1)
+    
+    
+    
+    
+    # insérez cette ligne
+    ll.pre.2.data.3$date.time.tz.orig <- gsub("00:00:01", "24:00:01", ll.pre.2.data.3$date.time.tz.orig)
+    
+    
+    
+    # 7 AVRIL 2025 //  ICI ON N'A  ENCORE LA LIGNE 34 de la ll.pre = 7
+    
+    
+    
     
     # tel que codé actuellement, il peut y avoir un décalage de +/- une heure à cause que TZ prend l'heure basée sur Sys.timezone, qui dépend de l'heure d'été ou d'hiver
     # ARRANGER UN JOUR (langage C++ pour plus de complications) 
@@ -171,11 +204,26 @@ for (i in 1:length(ll.pre)) {
     # Sys.timezone(location = F) essayé, n'aide pas
     
     # vérifications
-    colnames(ll.pre.2.data.3); head(ll.pre.2.data.3); str(ll.pre.2.data.3) # date et heure ne sont pas sous forme POSIX -> changer dans la section "### date et heure"
+    colnames(ll.pre.2.data.3); head(ll.pre.2.data.3, n=35); str(ll.pre.2.data.3) # date et heure ne sont pas sous forme POSIX -> changer dans la section "### date et heure"
     # nouveau nom préliminaire (et retirer colonnes inutiles)
     ll.pre.2.data.4 <- ll.pre.2.data.3 %>% dplyr::select(!c(date.AAAA.MM.JJ,  "date.time.UTC.0pre", "date.time.UTC.0pre.1")) %>% 
       dplyr::select("scan.id", "raw.value.mm", "calibrated.value.mm", "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.tz.orig", date.time.UTC.0) # date et time sans "UTC.0" sont dans le fuseau horaire d'origine (tz trouvé en croisant les coordonnées "coords")
     head(ll.pre.2.data.4); str(ll.pre.2.data.4)
+    
+    
+    
+    
+    
+    # 7 AVRIL 2025 //  ICI ON N'A  encore l'heure 00:00:01 
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
     #### début et fin des mesures par fichier.uid.i ----
     # inscrits dans "level_logger_calibration_all.csv"
@@ -228,6 +276,12 @@ for (i in 1:length(ll.pre)) {
                                       c("fichier.uid", "site.id", "well.uid", "trmnt.uid", 'lab.probe.id', 'probe.uid', 'probe.brand',
                                         "day.begining.aaaa.mm.dd.hh.mm", 'day.end.aaaa.mm.dd.hh.mm', "period.fichier.uid")])[l,] # cal.data.i.l = les infos dont j'ai besoin pour recouper selon la période l du fichier i
       # recoupage de ll.pre.data selon cal.data selon début et fin des mesures et retrait de colonnes
+      
+      
+      
+      # RENDUE LÀ : REMPLACER LES BONS 00:00:01 EN 24... POUR NE PAS PERDRE LA LIGNE 34
+      # ok avec cette ligne
+      head(ll.pre.2.data.4, n=35)
       ll.pre.2.data.4.l <- ll.pre.2.data.4 %>%
         dplyr::filter(date.time.tz.orig >= cal.data.i.l$day.begining.aaaa.mm.dd.hh.mm) %>% # >= date de mesure de NP plus grand ou égale à la date beginning dans cal.data.i.l
         dplyr::filter(date.time.tz.orig <= cal.data.i.l$day.end.aaaa.mm.dd.hh.mm) %>% # <= date de mesure de NP plus petite ou égale à la date end dans cal.data.i.l 
@@ -245,6 +299,15 @@ for (i in 1:length(ll.pre)) {
     # mm fichier.uid (loop extrait séquentiellement toutes les lignes de chaque # de SNH, qui peuvent être uniques ou multiples pour un SNH donné);
     # la loop teste si toutes les lignes de ce # de SNH ont le même fichier.uid (i), dans quel cas, si les périodes sont différentes, 
     # la boucle coupe le fichier pour chaque période différente (l), et ensuite réassemble le fichier avec seules les périodes à conserver
+    
+    
+    
+    
+    
+    # 7 AVRIL 2025 //  ICI ON N'A  PERDU LA LIGNE 34
+    
+    
+    
     
     
     ### calcul de calibration  ----
