@@ -29,7 +29,7 @@
 # lettres de l'alphabet : i, j, k, l -> boucles / a, b, x et y -> équations mathématiques
 # 15 janvier : lettres de boucle UTILISÉES : i, j, k, l, m et n (en désordre), où 
 # i,k et l dans A.1; j dans A.2; m et n dans A.3
-# cal.data et ll.bulleur, syn. connectivite/data/raw/level.logger.calibration.all.csv
+# cal.data et ll.bulleur, syn. connectivite/data/raw/level_logger_calibration_all.csv
 # pattern universel d'appellation des fichiers de SNH : probe.uid_site.uid_datedextraction_probe.brand.csv
 ##########################################################################-
 
@@ -178,7 +178,7 @@ for (i in 1:length(ll.pre)) {
     head(ll.pre.2.data.4); str(ll.pre.2.data.4)
     
     #### début et fin des mesures par fichier.uid.i ----
-    # inscrits dans "level.logger.calibration.all.csv"
+    # inscrits dans "level_logger_calibration_all.csv"
     # début (généralement) = installation + 24h de rabattement de la NP / ou non, si puits intallé d'avance, dans quel cas inscrire début officiel - 24h)
     # fin = heure de retrait
     # note : données de date en format xlsx ça lit TOUT CROCHE, transformé en csv fonctionne bien
@@ -210,7 +210,7 @@ for (i in 1:length(ll.pre)) {
     if(all(cal.data$out.R == round(cal.data$out.long.tuyau.sol.cm, digits = 1)))  { # si TOUS TRUE (fonction any()) = changer nom de out.R et supprimer la mesure entrée manuellement // si FALSE = avertissement
       cal.data$out.long.tuyau.sol.cm <- cal.data$out.R
       cal.data <- cal.data %>% dplyr::select(!out.R) # out.R DISPARAÎT ! NE PLUS LA CHERCHER !
-    } else { stop("Attention, le out entré dans cal.data (syn. level.logger.calibration.all.csv) n'est pas identique à la moyenne des points bas soustraite du point haut du puits.") }
+    } else { stop("Attention, le out entré dans cal.data (syn. level_logger_calibration_all.csv) n'est pas identique à la moyenne des points bas soustraite du point haut du puits.") }
     # format POSIX begining et end
     cal.data$day.begining.aaaa.mm.dd.hh.mm <- ymd_hm(cal.data$day.begining.aaaa.mm.dd.hh.mm, tz = tz)
     cal.data$day.end.aaaa.mm.dd.hh.mm <- ymd_hm(cal.data$day.end.aaaa.mm.dd.hh.mm, tz = tz)
@@ -436,23 +436,24 @@ for (i in 1:length(ll.pre)) {
     # si calibration intégrée avec le hobo, QUE FAIRE ? coder ici, voir procédure avec ODYSSEY
     
     #### début et fin des mesures par PROBE.WELL.UID ----
-    # inscrits dans "level.logger.calibration.all.csv"
+    # inscrits dans "level_logger_calibration_all.csv"
     # début (généralement) = installation + 24h de rabattement de la NP / ou non, si puits intallé d'avance, dans quel cas inscrire début officiel - 24h)
     # fin = heure de retrait
     # note : données de date en format xlsx ça lit TOUT CROCHE, transformé en csv fonctionne bien
     
     ##### import et nettoyage ----
-    cal.data <- read.csv("connectivite/data/raw/level.logger.calibration.all.csv", sep = ";", dec = ",")
+    cal.data <- read.csv("connectivite/data/raw/level_logger_calibration_all.csv", sep = ";", dec = ",")
     # out = (pt haut - moyenne pt bas)
     cal.data$out.R = round(cal.data$pt.haut.cm - ((cal.data$pt.bas1.cm+cal.data$pt.bas2.cm+cal.data$pt.bas3.cm)/3), digits = 1)
+    colnames(cal.data)
     cal.data <- cal.data %>% select("site.id", "well.uid", "trmnt.uid", "lab.probe.id", "probe.uid", "probe.brand", 
-                                    "cal.length.cm", "cal.length.mm", "cal.order", "cal.value", "comment", 
+                                    "cal.length.cm", "cal.order", "cal.value_x", "comment", 
                                     "day.begining.aaaa.mm.dd.hh.mm", "day.end.aaaa.mm.dd.hh.mm", "distance.m", "out.R", "out.long.tuyau.sol.cm", everything())
     # vérification de valeurs OUT
     if(all(cal.data$out.R == round(cal.data$out.long.tuyau.sol.cm, digits = 1)))  { # si TOUS TRUE (fonction any()) = changer nom de out.R et supprimer la mesure entrée manuellement // si FALSE = avertissement
       cal.data$out.long.tuyau.sol.cm <- cal.data$out.R
       cal.data <- cal.data %>% select(!out.R)
-    } else { stop("Attention, le out entré dans cal.data (syn. level.logger.calibration.all.csv) n'est pas identique à la moyenne des points bas soustraite du point haut du puits.") } 
+    } else { stop("Attention, le out entré dans cal.data (syn. level_logger_calibration_all.csv) n'est pas identique à la moyenne des points bas soustraite du point haut du puits.") } 
     # création d'une colonne unique
     cal.data$period.fichier.uid <- paste0(cal.data$day.begining.aaaa.mm.dd.hh.mm, "--", cal.data$day.end.aaaa.mm.dd.hh.mm, ".",cal.data$fichier.uid)
     # format POSIX begining et end
@@ -669,8 +670,8 @@ for (j in 1:length(ll.clean)) {
 SNH <- as.vector(c("_odyssey", "_hobo"), mode = "character") # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque" est traitée de façon différente
 ll.clean <- readRDS("connectivite/data/clean/ll.clean.RDS") # fichiers SNH clean
 
-### données de calibration (rappel : level.logger.calibration.all.csv) ) ----
-ll.bulleur <- read.csv("connectivite/data/raw/level.logger.calibration.all.csv", sep = ";", dec = ","); str(ll.bulleur)
+### données de calibration (rappel : level_logger_calibration_all.csv) ) ----
+ll.bulleur <- read.csv("connectivite/data/raw/level_logger_calibration_all.csv", sep = ";", dec = ","); str(ll.bulleur)
 # out = (pt haut - moyenne pt bas)
 ll.bulleur$out.R = round(ll.bulleur$pt.haut.cm - ((ll.bulleur$pt.bas1.cm+ll.bulleur$pt.bas2.cm+ll.bulleur$pt.bas3.cm)/3), digits = 1)
 ll.bulleur <- ll.bulleur %>% select("site.id", "well.uid", "trmnt.uid", "lab.probe.id", "probe.uid", "probe.brand",
@@ -680,7 +681,7 @@ ll.bulleur <- ll.bulleur %>% select("site.id", "well.uid", "trmnt.uid", "lab.pro
 if(all(ll.bulleur$out.R == round(ll.bulleur$out.long.tuyau.sol.cm, digits = 1)))  { # si TOUS TRUE (fonction any()) = changer nom de out.R et supprimer la mesure entrée manuellement // si FALSE = avertissement
   ll.bulleur$out.long.tuyau.sol.cm <- ll.bulleur$out.R
   ll.bulleur <- ll.bulleur %>% select(!out.R)
-} else { stop("Attention, le out entré dans cal.data (syn. level.logger.calibration.all.csv) n'est pas identique à la moyenne des points bas soustraite du point haut du puits.") } 
+} else { stop("Attention, le out entré dans cal.data (syn. level_logger_calibration_all.csv) n'est pas identique à la moyenne des points bas soustraite du point haut du puits.") } 
 
 # calcul de la profondeur de la nappe phréatiquedu (OUT - IN, où IN = mesure lue sur le bulleur)
 ll.bulleur$water.table.depth.cm <- round(ll.bulleur$bulleur.1.cm - ll.bulleur$out.long.tuyau.sol.cm, digits = 2)
@@ -728,7 +729,7 @@ for (m in 1:length(ll.clean)) {
     ll.bulleur.m <- ll.bulleur[ll.bulleur$probe.uid == sonde.m,] # filtrer ll.bulleur par no de sonde "m"
     for (n in 1:nrow(ll.bulleur.m)) {
       print(n)
-      ll.bulleur.m.n <- ll.bulleur.m[n,] # filtrer ll.bulleur (level.logger.calibration.all.csv) par le ligne "n" (vérification n au bulleur)
+      ll.bulleur.m.n <- ll.bulleur.m[n,] # filtrer ll.bulleur (level_logger_calibration_all.csv) par le ligne "n" (vérification n au bulleur)
       ll.clean.m.n <- ll.clean.m$data[ll.clean.m$data$date.time.UTC.0 == # fitlrer les données du fichier SNH par la période (unique) de la ligne n = vérification au bulleur
                                         ll.bulleur.m$bulleur.1.date.time.UTC.0,]
       water.table.verif.n[n, 1:4] <- data.frame("probe.uid" = sonde.m, # créer le dataframe de vérification pour les lignes "n" de la SNH "m"
