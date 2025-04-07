@@ -58,7 +58,7 @@ for (j in 1:length(ll.clean)) {
   # données à visualiser
   data <- ll.clean[[j]]$data
   if (nrow(data) > 0) {
-    hist(data$calibrated.value.mm/10, warn.unused = F, 
+    hist(data$calibrated.value.cm/10, warn.unused = F, 
          main = paste("Histogram des données de sonde no ", paste(sonde,"\n"))) # en cm
   } 
   # les hauteurs de nappe phréatique calibrées devraient toutes être négatives ou presque !
@@ -195,7 +195,7 @@ for (i in 1:length(ll.clean)) {
   ll.cal$date.time.tz.orig <- as.POSIXct(ll.cal$date.time.tz.orig, tryFormats = )
 
   # graphiques de nappe phréatique
-  graph.wt <- ll.cal %>% ggplot(mapping = aes(y = calibrated.value.mm/10, x = date.time.tz.orig)) + # doit être en as.POSICct, mais avec la date et l'heure. Repartir de zéro dans le script water.tanle_all??
+  graph.wt <- ll.cal %>% ggplot(mapping = aes(y = calibrated.value.cm, x = date.time.tz.orig)) + # doit être en as.POSICct, mais avec la date et l'heure. Repartir de zéro dans le script water.tanle_all??
     geom_line(group = 1) +
     scale_x_datetime(
       date_minor_breaks = "day", date_breaks = "2 weeks", date_labels = "%D:%H") +
