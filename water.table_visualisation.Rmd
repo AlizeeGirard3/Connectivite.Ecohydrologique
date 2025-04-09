@@ -5,10 +5,7 @@ title:  |
 author: "Alizée Girard"
 date: '`r format(Sys.time(), "%x")`'
 output:
-  pdf_document:
-        # pandoc_args: --listings # pour les line breaks
-        #   includes:
-        #   in_header: preamble.tex
+  pdf_document: 
     latex_engine: xelatex
 mainfont: "Helvetica"
 header-includes:
@@ -66,77 +63,6 @@ for (j in 1:length(ll.clean)) {
 }
 ```
 
-<!-- ## Vérification de la calibration des sondes en fonction de la lecture au bulleur -->
-
-<!-- ```{r, echo = FALSE, message = FALSE} -->
-<!-- # créé le 23 déc. pour vérifier données des Odyssey de St-Henri 2024 -->
-<!-- # TRANSFÉRÉ DANS RMarkdown le 7 janvier 2025 / retravaillé 17 janvier et retransféré (en cours) -->
-<!-- setwd("~/Documents/Doctorat/_R.&.Stats_PhD") -->
-<!-- # Libraries -->
-<!-- if (!require("knitr")) install.packages("knitr") # Integrating data from weathercan (ECCC/CCCS), Gouvernement du Canada -->
-<!-- if (!require("kableExtra")) install.packages("kableExtra") # Integrating data from weathercan (ECCC/CCCS), Gouvernement du Canada -->
-<!-- ## import et ménage ---- -->
-<!-- SNH <- as.vector(c("_odyssey", "_hobo"), mode = "character") # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque" est traitée de façon différente -->
-<!-- ll.bulleur <- read.csv("connectivite/data/clean/ll.bulleur.csv") -->
-<!-- ll.clean <- readRDS("connectivite/data/clean/ll.clean.RDS") -->
-
-<!-- ## boucle de vérification au bulleur pour chaque SNH (de ll.clean) ---- -->
-<!-- # fichiers de consigne de données -->
-<!-- water.table.verif <- data.frame() -->
-<!-- for (m in 1:length(ll.clean)) { -->
-<!--   ll.clean.m <- ll.clean[[m]]; ll.clean[[m]] -->
-<!--   # extraire # sonde des différentes marques de SNH -->
-<!--   if (grepl(SNH[1], ll.clean.m$metadata[11])) { # ODYSSEY -->
-<!--     # où trouver no de sonde dans ODYSSEY metadata -->
-<!--     metadata.line <- ll.clean.m$metadata[12] # probe.uid -->
-<!--     numbers <- gregexpr("[0-9]+", metadata.line) -->
-<!--     sonde.m <- regmatches(metadata.line, numbers) -->
-<!--     # où trouver la date d'extraction dans ODYSSEY metadata -->
-<!--     date.line <- ll.clean.m$metadata[13] # probe.uid -->
-<!--     date.numbers <- gregexpr("[0-9]+", date.line) -->
-<!--     date.m <- unlist(regmatches(date.line, date.numbers)) -->
-<!--   } else if (grepl(SNH[2], ll.clean.m$metadata[4])) { # HOBO -->
-<!--     # où trouver no de sonde dans HOBO metadata -->
-<!--     metadata.line <- ll.clean.m$metadata[5] # probe.uid -->
-<!--     numbers <- gregexpr("[0-9]+", metadata.line) -->
-<!--     sonde.m <- unlist(regmatches(metadata.line, numbers)) -->
-<!--     # où trouver la date d'extraction dans HOBO metadata -->
-<!--     date.line <- ll.clean.m$metadata[6] -->
-<!--     date.numbers <- gregexpr("[0-9]+", date.line) -->
-<!--     date.m <- unlist(regmatches(date.line, date.numbers)) -->
-<!--   } -->
-<!--   # création du dataframe pour chaque vérification au bulleur pour chaque SNH -->
-<!--   if (nrow(ll.clean[[m]]$data) != 0) { # si le fichier SNH n'est pas vide -->
-<!--     water.table.verif.n <- data.frame() -->
-<!--     ll.bulleur.m <- ll.bulleur[ll.bulleur$probe.uid == sonde.m,] # filtrer ll.bulleur par no de sonde "m" -->
-<!--     for (n in 1:nrow(ll.bulleur.m)) { -->
-<!--       ll.bulleur.m.n <- ll.bulleur.m[n,] # filtrer ll.bulleur (level.logger.calibration.all.csv) par le ligne "n" (vérification n au bulleur) -->
-<!--       ll.clean.m.n <- ll.clean.m$data[ll.clean.m$data$date.time.UTC.0 == # fitlrer les données du fichier SNH par la période (unique) de la ligne n = vérification au bulleur -->
-<!--                                         ll.bulleur.m$bulleur.1.date.time.UTC.0,] -->
-<!--       water.table.verif.n[n, 1:4] <- data.frame("probe.uid" = sonde.m, # créer le dataframe de vérification pour les lignes "n" de la SNH "m" -->
-<!--                                                 "file.extraction.date" = date.m, -->
-<!--                                                 "probe.measure.cm" = ll.clean.m.n$calibrated.value.mm/10, -->
-<!--                                                 "bulleur.mesure.cm" = ll.bulleur.m.n$bulleur.1.cm) -->
-<!--     }  -->
-<!--     water.table.verif[nrow(water.table.verif) + 1:nrow(water.table.verif.n), 1:4] <- water.table.verif.n # inscrire les données dans le dataframe final, à la dernière ligne -->
-<!--   } else if (nrow(ll.clean[[m]]$data) == 0)  { -->
-<!--     water.table.verif[nrow(water.table.verif) + 1, 1:4] <- data.frame("probe.uid" = sonde.m, # si ll.clean[[j]]$data est vide, mettre NA dans le dataframe -->
-<!--                                                                       "file.extraction.date" = date.m, -->
-<!--                                                                       "probe.measure.cm" = NA, -->
-<!--                                                                       "bulleur.mesure.cm" = NA) -->
-<!--     }  -->
-<!--   }  -->
-<!-- water.table.verif <- water.table.verif[!duplicated(water.table.verif),] -->
-<!-- rownames(water.table.verif) <- NULL -->
-
-<!-- # renommmer les colonnes -->
-<!-- water.table.verif %>%  -->
-<!-- kbl(booktabs = TRUE, linesep = "", caption = "Vérification de la calibration de sonde en fonction de la mesure du bulleur", -->
-<!-- col.names =  c("Identifiant unique (UID) de sonde", "Date d'extraction des données de la SNH", "Mesure de la sonde (heure de lecture au bulleur; cm)", "Bulleur (cm)"), -->
-<!-- align = "ccc") %>%  -->
-<!--   kable_styling(latex_options = "HOLD_position", full_width = T) # pour que le titre de section n'arrive pas après le tableau -->
-<!-- ``` -->
-
 ## Aperçu du code de calibration - Sonde Odyssey
 
 ```         
@@ -146,7 +72,7 @@ for (j in 1:length(ll.clean)) {
 
 ### Aperçu du code de calibration - Sonde HOBO
 
-``` 
+```         
 # Sondes HOBO
 [...]
 ```
@@ -170,8 +96,10 @@ if (!require("knitr")) install.packages("knitr") # Integrating data from weather
 ```{r, echo = FALSE}
 setwd("~/Documents/Doctorat/_R.&.Stats_PhD") # fonctions utiles et working directory
 ll.clean <- readRDS("connectivite/data/clean/ll.clean.RDS")
+SNH <- as.vector(c("_odyssey", "_hobo"), mode = "character") # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque" est traitée de façon différente
 for (i in 1:length(ll.clean)) {
   paste(i)
+  # i<-5
   # extraire no de sonde
   texte <- ll.clean[[i]]$metadata[4]
   numbers <- gregexpr("[0-9]+", texte)
@@ -195,17 +123,29 @@ for (i in 1:length(ll.clean)) {
   ll.cal$date.time.tz.orig <- as.POSIXct(ll.cal$date.time.tz.orig, tryFormats = )
 
   # graphiques de nappe phréatique
-  graph.wt <- ll.cal %>% ggplot(mapping = aes(y = calibrated.value.cm, x = date.time.tz.orig)) + # doit être en as.POSICct, mais avec la date et l'heure. Repartir de zéro dans le script water.tanle_all??
+    if (grepl(SNH[1], ll.clean[[i]]$metadata[11])) {
+      graph.wt <- ll.cal %>% ggplot(mapping = aes(y = calibrated.value.cm, x = date.time.tz.orig)) + # ici HOBO je dois faire *-1 pour avoir la hauteur relative (nég si en dessous de surface)
+        geom_line(group = 1) +
+        scale_x_datetime(
+          date_minor_breaks = "day", date_breaks = "2 weeks", date_labels = "%D:%H") +
+        ggtitle(paste0(site.name, ", sonde no ", probe.serial.no.i, " à l'emplacement\n", transect.id.i, "\n",
+                       "nombre de ligne du fichier : ", nrow(ll.cal))) +
+        labs(y = "Hauteur de nappe phréatique (cm)\nrelative à la surface", x = "Date") +
+        theme_bw() + theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 45, hjust = 1, vjust = 0.5))
+      print(graph.wt) # imprimer dans R
+      } else if (grepl(SNH[2], ll.clean[[i]]$metadata[4])) {
+  graph.wt <- ll.cal %>% ggplot(mapping = aes(y = calibrated.value.cm*-1, x = date.time.tz.orig)) + # ici HOBO je dois faire *-1 pour avoir la hauteur relative (nég si en dessous de surface)
     geom_line(group = 1) +
     scale_x_datetime(
       date_minor_breaks = "day", date_breaks = "2 weeks", date_labels = "%D:%H") +
     ggtitle(paste0(site.name, ", sonde no ", probe.serial.no.i, " à l'emplacement\n", transect.id.i, "\n",
                    "nombre de ligne du fichier : ", nrow(ll.cal))) +
-    labs(y = "Profondeur de nappe phréatique (cm)", x = "Date") +
+    labs(y = "Hauteur de nappe phréatique (cm)\nrelative à la surface", x = "Date") +
     theme_bw() + theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 45, hjust = 1, vjust = 0.5))
   print(graph.wt) # imprimer dans R
   
   # ATTENTION !! surpasser consciemment dans la boucle
   # ggsave(paste0("connectivite/output/figures/",site.name, "_", probe.serial.no.i, "_", transect.id.i,".pdf"), graph.wt, width = 12, height = 8)
-}
+    }
+  }
 ```
