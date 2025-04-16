@@ -200,7 +200,7 @@ for (i in 1:length(ll.pre)) {
     # long négative en mm = cal.length.cm*-10
     cal.data$long_negative_cal.length_mm_y <- cal.data$cal.length.cm*-10 # longueur de fil nécessaire : en mm et au négatif / les NA seront calculé prochainement
     
-    cal.data <- cal.data %>% dplyr::select("fichier.uid","measure_type", "measure_status", "site.id", "well.uid", "trmnt.uid", "lab.probe.id", "probe.uid", "probe.brand", 
+    cal.data <- cal.data %>% dplyr::select("fichier.uid","measure_type", "measure_status", "site.uid", "well.uid", "trmnt.uid", "lab.probe.id", "probe.uid", "probe.brand", 
                                     "cal.length.cm", "cal.order", "long_negative_cal.length_mm_y", "cal.value_x", "comment", 
                                     "day.begining.aaaa.mm.dd.hh.mm", "day.end.aaaa.mm.dd.hh.mm", "distance.m", "out.R", "out.long.tuyau.sol.cm", everything()) #, -"caduque.long.fil.cm")
     cal.data$period.fichier.uid <- paste0(cal.data$day.begining.aaaa.mm.dd.hh.mm, "--", cal.data$day.end.aaaa.mm.dd.hh.mm, ".",cal.data$fichier.uid)
@@ -226,7 +226,7 @@ for (i in 1:length(ll.pre)) {
     for (l in 1:length(unique(cal.data$period.fichier.uid[which(grepl(fichier.uid.i, cal.data$fichier.uid))]))) { # si mm fichier.uid.i, coller les périodes ensemble (ainsi, retirer et remettre ne demande pas plus de manipulations et surtout ps des manipulations incividuelles)
       print(l)
       cal.data.i.l <- unique(cal.data[which(grepl(fichier.uid.i, cal.data$fichier.uid)),
-                                      c("fichier.uid", "site.id", "well.uid", "trmnt.uid", 'lab.probe.id', 'probe.uid', 'probe.brand',
+                                      c("fichier.uid", "site.uid", "well.uid", "trmnt.uid", 'lab.probe.id', 'probe.uid', 'probe.brand',
                                         "day.begining.aaaa.mm.dd.hh.mm", 'day.end.aaaa.mm.dd.hh.mm', "period.fichier.uid")])[l,] # cal.data.i.l = les infos dont j'ai besoin pour recouper selon la période l du fichier i
       # recoupage de ll.pre.data selon cal.data selon début et fin des mesures et retrait de colonnes
       ll.pre.2.data.4.l <- ll.pre.2.data.4 %>%
@@ -468,7 +468,7 @@ for (i in 1:length(ll.pre)) {
     # out = (pt haut - moyenne pt bas)
     cal.data$out.R = round(cal.data$pt.haut.cm - ((cal.data$pt.bas1.cm+cal.data$pt.bas2.cm+cal.data$pt.bas3.cm)/3), digits = 1)
     colnames(cal.data)
-    cal.data <- cal.data %>% select("site.id", "well.uid", "trmnt.uid", "lab.probe.id", "probe.uid", "probe.brand", 
+    cal.data <- cal.data %>% select("site.uid", "well.uid", "trmnt.uid", "lab.probe.id", "probe.uid", "probe.brand", 
                                     "cal.length.cm", "cal.order", "cal.value_x", "comment", 
                                     "day.begining.aaaa.mm.dd.hh.mm", "day.end.aaaa.mm.dd.hh.mm", "distance.m", "out.R", "out.long.tuyau.sol.cm", everything())
     # vérification de valeurs OUT
@@ -489,7 +489,7 @@ for (i in 1:length(ll.pre)) {
       if (length(unique(cal.data$period.fichier.uid[which(grepl(fichier.uid.i, cal.data$fichier.uid))])) != 0) {
         ll.pre[[i]]; print(l)
         cal.data.i.l <- unique(cal.data[which(grepl(fichier.uid.i, cal.data$fichier.uid)),
-                                        c("fichier.uid", "site.id", "well.uid", "trmnt.uid", 'lab.probe.id', 'probe.uid', 'probe.brand',
+                                        c("fichier.uid", "site.uid", "well.uid", "trmnt.uid", 'lab.probe.id', 'probe.uid', 'probe.brand',
                                           "day.begining.aaaa.mm.dd.hh.mm", 'day.end.aaaa.mm.dd.hh.mm', "period.fichier.uid")])[l,] # cal.data.i.l = les infos dont j'ai besoin pour recouper selon la période l du fichier i
         period.fichier.uid.l <- cal.data.i.l$period.fichier.uid
         # recoupage de ll.pre.data selon cal.data selon début et fin des mesures et retrait de colonnes
@@ -703,7 +703,7 @@ ll.clean <- readRDS("connectivite/data/clean/ll.clean.RDS") # fichiers SNH clean
 ll.bulleur <- read.csv("connectivite/data/raw/level_logger_calibration_all.csv", sep = ";", dec = ","); str(ll.bulleur)
 # out = (pt haut - moyenne pt bas)
 ll.bulleur$out.R = round(ll.bulleur$pt.haut.cm - ((ll.bulleur$pt.bas1.cm+ll.bulleur$pt.bas2.cm+ll.bulleur$pt.bas3.cm)/3), digits = 1)
-ll.bulleur <- ll.bulleur %>% select("site.id", "well.uid", "trmnt.uid", "lab.probe.id", "probe.uid", "probe.brand",
+ll.bulleur <- ll.bulleur %>% select("site.uid", "well.uid", "trmnt.uid", "lab.probe.id", "probe.uid", "probe.brand",
                                     "cal.length.cm", "cal.length.mm", "cal.order", "cal.value", "comment",
                                     "day.begining.aaaa.mm.dd.hh.mm", "day.end.aaaa.mm.dd.hh.mm", "distance.m", "out.R", "out.long.tuyau.sol.cm", everything())
 # vérification de valeurs OUT
