@@ -38,8 +38,8 @@
 # ll.clean<-readRDS("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/clean/ll.clean.RDS") # issu de section A.1 du code ci-présent
 
 # .rs.restartR()
+source("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/general.scripts/scripts/fonctions.R")
 setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
-source("general.scripts/scripts/fonctions.R")
 
 # Librairies ----
 if (!require("conflicted")) install.packages("conflicted") # ℹ Use the conflicted package to force all conflicts to become errors    ---->>>>  devtools::install_github("r-lib/conflicted")
@@ -629,18 +629,20 @@ if("ll.clean.RDS" %in% list.files("connectivite/data/clean"))  { # si TRUE = STO
   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
 } else { saveRDS(ll.clean, file = "connectivite/data/clean/ll.clean.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
 
-# Joindre les lignes de offset de l'objet "odyssey_offset_archives" dans le fichier "level.logger_offset_archive.csv"
-level.logger_offset_archive <- read_excel("connectivite/data/raw/level.logger_offset_archive.xlsx")#, col_types = c(rep("text", times = 2)))
-str(level.logger_offset_archive)
-level.logger_offset_archive$fichier.uid <- as.character(level.logger_offset_archive$fichier.uid)
-level.logger_offset_archive$offset_cm_date <- as.character(level.logger_offset_archive$offset_cm_date)
-level.logger_offset_archive$a.slope_excel <- as.character(level.logger_offset_archive$a.slope_excel)
-level.logger_offset_archive$b.verticalIntercept <- as.character(level.logger_offset_archive$b.verticalIntercept)
-level.logger_offset_archive <- full_join(odyssey_offset_archives, level.logger_offset_archive)# %>% na.omit
+# supprimer ?
+# # Joindre les lignes de offset de l'objet "odyssey_offset_archives" dans le fichier "level.logger_offset_archive.csv"
+# level.logger_offset_archive <- read_excel("connectivite/data/raw/level.logger_offset_archive.xlsx")#, col_types = c(rep("text", times = 2)))
+# str(level.logger_offset_archive)
+# level.logger_offset_archive$fichier.uid <- as.character(level.logger_offset_archive$fichier.uid)
+# level.logger_offset_archive$offset_cm_date <- as.character(level.logger_offset_archive$offset_cm_date)
+# level.logger_offset_archive$a.slope_excel <- as.character(level.logger_offset_archive$a.slope_excel)
+# level.logger_offset_archive$b.verticalIntercept <- as.character(level.logger_offset_archive$b.verticalIntercept)
+# level.logger_offset_archive <- full_join(odyssey_offset_archives, level.logger_offset_archive)# %>% na.omit
+# 
+# if("level.logger_offset_archive.xlsx" %in% list.files("connectivite/data/raw"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
+#   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
+# } else { write.xlsx(level.logger_offset_archive, file = "connectivite/data/raw/level.logger_offset_archive.xlsx") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
 
-if("level.logger_offset_archive.xlsx" %in% list.files("connectivite/data/raw"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
-  stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
-} else { write.xlsx(level.logger_offset_archive, file = "connectivite/data/raw/level.logger_offset_archive.xlsx") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
 
 
 
