@@ -41,7 +41,7 @@ if (!require("dplyr")) install.packages("dplyr") # entre autres : left_join()
 if (!require("tidyr")) install.packages("tidyr") # entre autres : extract_numeric() / extract_numeric() is deprecated: please use readr::parse_number() instead
 
 # importer et préparer donnees dans R ----
-level_logger_calibration_all <- read.csv("connectivite/data/raw/level_logger_calibration_all.csv", sep = ";")
+level_logger_calibration_all <- as.data.frame(read_xlsx("connectivite/data/raw/level_logger_2025_corriger.xlsx")) #, sep = ";")
 level_logger_calibration_all_others <- level_logger_calibration_all %>% dplyr::filter(measure_type != "calibration" | is.na(measure_type))
 
 level_logger_calibration_all_140_1 <- level_logger_calibration_all %>% dplyr::filter(long.fil.cm == "140") %>% dplyr::filter(cal.order == "1")
@@ -59,6 +59,6 @@ level_logger_calibration_all <- rbind(level_logger_calibration_all_80_1, level_l
 level_logger_calibration_all$cal.length.cm <- as.integer(level_logger_calibration_all$cal.length.cm)
 level_logger_calibration_all <- arrange(level_logger_calibration_all, probe.uid)
 
-if("level_logger_calibration_all.csv" %in% list.files("connectivite/data/raw"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
+if("level_logger_2025_corriger.xlsx" %in% list.files("connectivite/data/raw"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
-} else { write.csv(level_logger_calibration_all, file = "connectivite/data/raw/level_logger_calibration_all.csv") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
+} else { write.xlsx(level_logger_calibration_all, file = "connectivite/data/raw/level_logger_2025_corrige.xlsx") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }

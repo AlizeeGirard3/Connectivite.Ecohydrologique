@@ -38,6 +38,7 @@ ll.clean <- readRDS("connectivite/data/clean/ll.clean.RDS")
 SNH <- as.vector(c("_odyssey", "_hobo"), mode = "character") # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque" est traitée de façon différente
 for (j in 1:length(ll.clean)) {
   print(j)
+  # j<-14
   ll.clean.j <- ll.clean[[j]]
   
   # ODYSSEY
@@ -149,3 +150,9 @@ for (i in 1:length(ll.clean)) {
     }
   }
 ```
+
+
+
+
+
+

@@ -39,6 +39,8 @@ if (!require("sf")) install.packages("sf"); if (!require("lutz")) install.packag
 # options(lubridate.verbose = TRUE) # pour expliciter ce que les fonctions font
 # librairies de weathercan
 if (!require("weathercan")) install.packages("weathercan") # Integrating data from weathercan (ECCC/CCCS), Gouvernement du Canada
+stations_dl()
+stations_meta()
 # if (!require("naniar")) install.packages("naniar") # Checking data completeness
 # if (!require("mapview")) install.packages("mapview") ## Spatial analyses
 # if (!require("parsedate")) install.packages("parsedate") # lire les excel
@@ -48,8 +50,7 @@ if (!require("weathercan")) install.packages("weathercan") # Integrating data fr
 
 # toutes données pertinentes  ----
 cal.data <- read.csv("connectivite/data/raw/level_logger_calibration_all.csv", sep = ";", dec = ",")
-probe.uid.k <- 22220787
-site.name <- "St-Henri" 
+site.name <- "Burnt Church" 
 
 # extraire la bonne lat, long ----
 # créer une couche géomatique (QGIS) auquel référer avec la fonction read_sf("")
@@ -66,3 +67,9 @@ stations <- stations_search(coords = c(zones$latitude[zones$site == site.name][1
 # entrer les coordonnées pour trouver la distance de la station
 # entrer le station_id (trouver l'ID dans l'objet R "stations") dans la colonne "cal.station_id" de level_logger_calibration_all.csv
 
+# stations_meta()
+?stations_search
+?stations()
+(stations_search_results <- stations_search(name = "MIRAMICHI RCS"))
+library(dplyr)
+(stations_filter_results <- dplyr::filter(stations(), station_id == 10808))
