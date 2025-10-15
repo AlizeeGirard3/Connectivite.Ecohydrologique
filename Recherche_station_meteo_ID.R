@@ -48,9 +48,16 @@ stations_meta()
 # options(error=pause)
 # options(error=NULL) # annuler
 
-# toutes données pertinentes  ----
+# A. Importer toutes données pertinentes  ----
 cal.data <- read.csv("connectivite/data/raw/level_logger_calibration_all.csv", sep = ";", dec = ",")
-site.name <- "Burnt Church" 
+# site.name <- "Burnt Church" 
+site.name <- "Président-Ouest" 
+
+
+# BOUCLE AVEC TOUS MES SITES**
+
+
+
 
 # extraire la bonne lat, long ----
 # créer une couche géomatique (QGIS) auquel référer avec la fonction read_sf("")

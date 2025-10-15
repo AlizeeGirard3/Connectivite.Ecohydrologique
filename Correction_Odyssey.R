@@ -40,7 +40,7 @@ if (!require("stringr")) install.packages("stringr") # gosser avec des suites de
 if (!require("dplyr")) install.packages("dplyr") # entre autres : left_join()
 if (!require("tidyr")) install.packages("tidyr") # entre autres : extract_numeric() / extract_numeric() is deprecated: please use readr::parse_number() instead
 
-# importer et préparer donnees dans R ----
+# Importer et préparer donnees dans R ----
 level_logger_calibration_all <- as.data.frame(read_xlsx("connectivite/data/raw/level_logger_2025_corriger.xlsx")) #, sep = ";")
 level_logger_calibration_all_others <- level_logger_calibration_all %>% dplyr::filter(measure_type != "calibration" | is.na(measure_type))
 
