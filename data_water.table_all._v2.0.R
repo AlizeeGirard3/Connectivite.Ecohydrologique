@@ -7,7 +7,7 @@
 # Fait par :      Alizée Girard
 # Affiliation :   ULaval
 # Date création initiale : 2024-12-09
-# Date mise à jour : 2025-03-27
+# Date mise à jour : 2025-10-28
 # Pourquoi : pour l'ensemble du traitement des données de nappe phréatique 
 # Structure :
 # —— connectivite
@@ -21,6 +21,8 @@
 #         |—— scripts
 # NOTES : 
 # version avec la calibration corrigée
+# V2.0 bug fixes : sortir toutes répétitions, et mettre dans fichier extérieur : FONCTIONS.PHD.r
+
 
 # LEXIQUE :
 # SNH : sonde de niveau hydrostatique / synonymes : LL : level logger; sonde, probe
@@ -35,10 +37,11 @@
 ##########################################################################-
 
 # fichiers "R data serialized" (RDS) à charger directement
-# ll.clean<-readRDS("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/clean/ll.clean.RDS") # issu de section A.1 du code ci-présent
+# tidy.WTD.data <-readRDS("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/clean/ll.clean.RDS") # issu du code ci-présent / non à jour **
 
 # .rs.restartR()
 source("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/general.scripts/scripts/fonctions.R")
+# source("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/connectivite/scripts/fonctions_phd.R")
 setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
 
 # Librairies ----
@@ -51,77 +54,67 @@ if (!require("tidyverse")) install.packages("tidyverse") # gosser avec des suite
 # if (!require("tidyr")) install.packages("tidyr") # entre autres : extract_numeric() / extract_numeric() is deprecated: please use readr::parse_number() instead
 # contient purr aussi
 if (!require("sf")) install.packages("sf"); if (!require("lutz")) install.packages("lutz") # GIS in R
-if (!require("lubridate")) install.packages("lubridate")
-options(lubridate.verbose = TRUE) # pour expliciter ce que les fonctions font
-# librairies de weathercan
+# if (!require("lubridate")) install.packages("lubridate")
+# options(lubridate.verbose = TRUE) # pour expliciter ce que les fonctions font
+# if (!require("parsedate")) install.packages("parsedate") # lire les excel
+## Librairies de données météo open source : weathercan, meteoStat, etc ----
 if (!require("weathercan")) install.packages("weathercan") # Integrating data from weathercan (ECCC/CCCS), Gouvernement du Canada
 stations_dl()
 stations_meta()
 # if (!require("naniar")) install.packages("naniar") # Checking data completeness
 # if (!require("mapview")) install.packages("mapview") ## Spatial analyses
-if (!require("parsedate")) install.packages("parsedate") # lire les excel
 # option d'arrêter le code si message d'erreur (source fonctions.R)
 # options(error=pause)
 # options(error=NULL) # annuler
+
 
 # A  Données issues des sonde de niveau hydrostatique ----
 SNH <- as.vector(c("_odyssey", "_hobo"), mode = "character") # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque" est traitée de façon différente
 
 # A.1 nettoyage et enregistrement en RDS ----
-# fonction : modifications automatisées pour chaque fichier issus d'une période de mesures des level loggers
+# objectif : modifications automatisées pour chaque fichier issus d'une seule période-emplacement de mesures des level loggers
 
 # fichiers de consigne de données
-ll.pre <- list.files("connectivite/data/raw", pattern = "_odyssey|_hobo") # mettre dans "pattern" tous les ID de SNH listés dans l'objet SNH
-ll.clean <- list()
+raw.ll.files <- list.files(path = "connectivite/data/raw", pattern = "_odyssey|_hobo", full.names = T) # equivalent à ll.clean (ancien) # mettre dans "pattern" tous les ID de SNH listés dans l'objet SNH
+tidy.WTD.data <- list() # équivalent à ll.clean (ancien)
 fichier.uid.df <- data.frame(fichier.uid = NA, file.name = NA, probe.uid = NA, "extraction.donnees.aaaammjj" = NA, "tz_orig" = NA) # pour stocker les fichier.uid (aussi première colonne de cal.data) et autres données intérimaires
-odyssey_offset_archives <- data.frame(fichier.uid = NA, offset_cm_date = NA, a.slope_excel = NA,	b.verticalIntercept = NA) #, `prof_nappe_bulleur_cm_plus.out` = NA, pre_prof_nappe_odyssey_mm_to_cm = NA,	`prof_nappe_odyssey_cm_plus.out` = NA)
-for (i in 1:length(ll.pre)) {
-  # i<-26 9 10 11 12 13 14 15 16# 41362(27 mars 2025)
+# odyssey_offset_archives <- data.frame(fichier.uid = NA, offset_cm_date = NA, a.slope_excel = NA,	b.verticalIntercept = NA) #, `prof_nappe_bulleur_cm_plus.out` = NA, pre_prof_nappe_odyssey_mm_to_cm = NA,	`prof_nappe_odyssey_cm_plus.out` = NA) # notes des offsets d'années précédantes
+for (i in 1:length(raw.ll.files)) {
+  # i<-14 32 9 10 11 12 13 14 15 16# 41362(27 mars 2025)
   print(i)
-  ll.pre[i] # début de la loop pour les ODYSSEY (if() prochaine ligne)
-  if (grepl(SNH[1], ll.pre[i])) {  # début de la loop pour les ODYSSEY
-    # import et ménage
-    ll.pre.0 <- readLines(paste0("connectivite/data/raw/",ll.pre[i])); str(ll.pre.0) # lire en format texte
-    # Warning message:
-    #   In readLines(paste0("connectivite/data/raw/", ll.pre[i])) :
-    #   incomplete final line found on 'connectivite/data/raw/[...].csv'
-    # c'est chill, je n'ai pas réussi à arranger ça, mais vérifié √ pas de problème
-    ll.pre.1 <- gsub(" ,", ",", ll.pre.0); str(ll.pre.1) # replace " ," by "," 
-    ll.pre.2 <- gsub(" ", "", ll.pre.1); str(ll.pre.2) # enlever tous les espaces dans le subset de données
+  raw.ll.files[i] # début de la loop pour les ODYSSEY (if() prochaine ligne)
+  if (grepl(SNH[1], raw.ll.files[i])) {  # début de la loop pour les ODYSSEY
+    # read_odyssey(raw.ll.files) # fonction sous jacente non-construite -> elle englobera les fonctions suivantes à la fin
+    raw.ll.files.i <- data.metadata.odyssey(raw.ll.files[i]) # séparer données et métadonnées √ OK 20102025
+    metadata.verif(raw.ll.files.i) # objet raw.ll.files.i créé dans fonction précédante √ OK 20102025
     
-    ### création des subsets data & metadata ----
-    # notes : les noms réfèrent à l'étape et non à une matrice en particulier, les objets seront remplacés au fil de la boucle. 
-    # l'info importante est consignée dans la liste ll.clean[i], à la fin
-    ll.pre.2.metadata <-  ll.pre.2[c(1:9)] # inclus les anciens noms de colonnes, qui sont dans un format et un ordre bizzare
-    ll.pre.2.data <- ll.pre.2[-c(1:9)]
-    str(ll.pre.2.data) # chr
-    
-    ### vérification du fichier level logger brut : logger.serial.no == nom du fichier, sinon arrêter TOUT ! ----
-    {
-      # trouver le probe.uid.i (== probe.uid, logger serial no) dans les metadata
-      texte <- ll.pre.2.metadata[4] # logger serial no, en base R
-      numbers <- gregexpr("[0-9]+", texte)
-      result <- regmatches(texte, numbers)
-      probe.uid.i <- as.numeric(unlist(result))
-      # no du level logger dans le nom du fichier brut (.csv), correspond à l'item "i" de la présente boucle
-      texte <- ll.pre[i]
-      numbers <- gregexpr("[0-9]+", texte)
-      result <- regmatches(texte, numbers)
-      fichier <- as.numeric(unlist(result))
-      # test logger.serial.no == nom du fichier
-      if(!(probe.uid.i %in% fichier)) { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc "else" statement)
-        stop(paste0("Attention, le nom du fichier ne correspond pas au numéro de série du level logger. Fichier problématique : i = ", paste(i), "; ", ll.pre[i]))
-      }
-      # si problème : aller changer manuellement en utilisant le no de série (unique) inscrit dans le fichier et PAS son nom 
-      # ** 1. créer copie -> archive; 2. s'assurer de changer partout ** : QGIS, fichier, onglet, data_site.id
-    }
-    # création du fichier.uid.i, nom unique du FICHIER qui ne pourra JAMAIS être dupliqué (utila dans seciton début et fin des mesures par périodes, pour un mm FICHIER)
+    ### extraction d'identifiants à inscrire en métadonnées et dans fichier.uid.df ----
+    texte <- raw.ll.files.i[[2]][4] # logger serial no, en base R
+    numbers <- gregexpr("[0-9]+", texte)
+    result <- regmatches(texte, numbers)
+    probe.uid.i <- as.numeric(unlist(result))
+    # no du level logger dans le nom du fichier brut (.csv), correspond à l'item "i" de la présente boucle
+    texte <- raw.ll.files[i]
+    numbers <- gregexpr("[0-9]+", texte)
+    result <- regmatches(texte, numbers)
+    fichier <- as.numeric(unlist(result))
+    # création du fichier.uid.i, nom unique du FICHIER qui ne pourra JAMAIS être dupliqué (utile dans section début et fin des mesures par périodes, pour un mm FICHIER)
     fichier.uid.i <- paste0(unlist(result)[1], "_", unlist(result)[2]) # ceci sera écrasé à la prochaine itération
-    fichier.uid.df[i,1:4] <- c(paste0(unlist(result)[1], "_", unlist(result)[2]), ll.pre[i], probe.uid.i, as.numeric(unlist(result)[2])) # ceci sera gardé en mémoire (doit être identique à la colonne fichier.uid dans cal.data)
+    fichier.uid.df[i,1:4] <- c(paste0(unlist(result)[1], "_", unlist(result)[2]), raw.ll.files[i], probe.uid.i, as.numeric(unlist(result)[2])) # ceci sera gardé en mémoire (doit être identique à la colonne fichier.uid dans cal.data)
+    # ajouts aux métadonnées des fichiers
+    raw.ll.files.i[[2]][10:13] <- c(paste0("fichier.uid : ", unlist(result)[1], "_", unlist(result)[2]), paste0('file.name : ', "`", raw.ll.files[i], "`"), 
+                       paste0("probe.uid : ", probe.uid.i), paste0("date d'extraction des données : ", as.numeric(unlist(result)[2])))
+
+    
+    # ____Rendue là_____
+    
+    # création du fichier.uid.i, nom unique du FICHIER qui ne pourra JAMAIS être dupliqué (utile dans section début et fin des mesures par périodes, pour un mm FICHIER)
+    fichier.uid.i <- paste0(unlist(result)[1], "_", unlist(result)[2]) # ceci sera écrasé à la prochaine itération
+    fichier.uid.df[i,1:4] <- c(paste0(unlist(result)[1], "_", unlist(result)[2]), raw.ll.files[i], probe.uid.i, as.numeric(unlist(result)[2])) # ceci sera gardé en mémoire (doit être identique à la colonne fichier.uid dans cal.data)
     # ajouts aux métadonnées des fichiers
     ll.pre.2.metadata[10:13] <- c(paste0("fichier.uid : ", unlist(result)[1], "_", unlist(result)[2]), paste0('file.name : ', "`", ll.pre[i], "`"), 
                                   paste0("probe.uid : ", probe.uid.i), paste0("date d'extraction des données : ", as.numeric(unlist(result)[2])))
-    class(ll.pre.2.metadata)
+    
     ### création du dataframe level legger (ll) contenant données de nappe phréatique (NP) et ménage  ----
     ll.pre.2.data.1 <- read.csv(text = ll.pre.2.data, col.names = c("scan.id", "date.JJ.MM.AAAA", "time.HH.MM.SS",'raw.value.mm',"calibrated.value.cm")) # text = argument de read.csv qui lit la valeur contenue dans l'objet / DATE mauvais format
     
@@ -141,7 +134,7 @@ for (i in 1:length(ll.pre)) {
     # ouvrir données du shapefile pour accéder les zones
     zones <- read_sf("~Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectitite_PhD_Mergin_26nov24/Ecotone.restauration.zone.pt.shp")
     zones <- as.data.frame(zones)
-    head(zones); str(zones)
+    head(zones); tail(zones)
     
     # extraire la bonne lat, long selon le nom du site
     # coords <- c(zones$latitude[zones$site==site.name], zones$longitude[zones$site==site.name])
@@ -801,4 +794,3 @@ rownames(water.table.verif) <- NULL
 # enlever colonnes inutiles
 # save le csv dans clean (mais apparaît aussi dans le RMarkdown)
 # vérifier les IN et OUT des ODYSSEY
-

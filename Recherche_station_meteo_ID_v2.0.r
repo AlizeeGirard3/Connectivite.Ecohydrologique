@@ -50,15 +50,15 @@ stations_meta()
 # Package importation données de Meteostat (source)
 # if (!require("remotes")) install.packages("remotes") 
 # remotes::install_github("wegar-2/okeanos.meteostat")
-library("okeanos.meteostat")
-# fonctions (6) : 
-?bIsScalarOfClass()
-bIsScalarOfType()
-cGetMeteostatStatusCodeMessage()
-dtGetDailyStationDataOverUpToOneYear() #:	Fetch daily Meteostat data for a station
-dtGetMeteostatWeatherStationsDict()  #:	Download the full list set of stations
-dtStationsDict() #: Dictionary of Meteostat API weather stations
-# NE FONCTIONNE PAS !!
+# library("okeanos.meteostat")
+# # fonctions (6) : 
+# ?bIsScalarOfClass()
+# bIsScalarOfType()
+# cGetMeteostatStatusCodeMessage()
+# dtGetDailyStationDataOverUpToOneYear() #:	Fetch daily Meteostat data for a station
+# dtGetMeteostatWeatherStationsDict()  #:	Download the full list set of stations
+# dtStationsDict() #: Dictionary of Meteostat API weather stations
+# # NE FONCTIONNE PAS !!
 
 # A. Importer/modifier toutes données pertinentes  ----
 cal.data <- read.csv("connectivite/data/raw/level_logger_calibration_all.csv", sep = ";", dec = ",") 
@@ -87,21 +87,27 @@ station_id.phd
 # Weather Can
 glimpse(stations()) %>% 
   as_tibble() %>% 
-  # dplyr::filter(prov == "NB") %>%
+  dplyr::filter(prov == c("NB", "QC")) %>%
   # dplyr::filter(end == 2025) %>%
-  dplyr::filter(station_name == "RIVIERE-DU-LOUP") %>%
+  dplyr::filter(!station_name == c("MONTREAL PERSILLIER", "OSKELANEO 2")) %>% # coords = NA
   dplyr::filter(interval == "hour") %>%
-  st_as_sf(coords = c("lon", "lat"), crs = 4326) %>%
+  sf::st_as_sf(coords = c("lon", "lat"), crs = 4326) %>%
   st_write("~/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectitite_PhD_Mergin_26nov24/ECCC_stations_dispo.shp",
            delete_layer = T) # attention écrase fichier
 # file.remove(c("~/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectitite_PhD_Mergin_26nov24/ECCC_stations_dispo.shp","~/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectitite_PhD_Mergin_26nov24/ECCC_stations_dispo.dbf",
 #               "~/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectitite_PhD_Mergin_26nov24/ECCC_stations_dispo.prj","~/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectitite_PhD_Mergin_26nov24/ECCC_stations_dispo.shx"))
+# Rivière-du-Loup NON, INDISPONIBLE (seulement en 1980...)
+# MIRAMICHI NON, j'en 2023
+# TRACADIE PE, start , en = NULL
+# BEAUPORT PE, start , en = NULL
+# Tests BEAUPORT et TRACADIE
 
-data.availability.test <- stations() %>% 
-  as_tibble() %>% 
-  # dplyr::filter(prov == "NB") %>%
+data.availability.test <- stations() %>%
+  as_tibble() %>%
+  dplyr::filter(prov == "NB") %>%
   # dplyr::filter(end == 2025) %>%
-  dplyr::filter(station_name == "RIVIERE-DU-LOUP")
+  dplyr::filter(station_name == "TRACADIE") # %>% 
+  # dplyr::filter(end == 1988) #-> il ne comprend pas que end = NA N'EST PAS 1988 !!
 
 
 # C. Téléchargement des données disponibles en ligne  ----

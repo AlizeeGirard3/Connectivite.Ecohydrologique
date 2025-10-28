@@ -30,7 +30,7 @@ if (!require("grDevices")) install.packages("grDevices") # pdf()
 
 # graph.wt <- list()
 for (i in 1:length(ll.clean)) {
-  i<-7
+  # i<-7
   paste(i)
   
   # extraire no de sonde
