@@ -10,6 +10,7 @@
 # Date mise à jour : 
 # Pourquoi : Les Odyssey ont initialement été calibrées en inversant les longueurs de fil 20 et 80/140
 #            Ce code vise à inverser les valeurs.
+# ATTENTION !! NE PLUS UTILISER CE CODE
 # Structure :
 # —— connectivite
 #         |—— archive
@@ -60,5 +61,5 @@ level_logger_calibration_all$cal.length.cm <- as.integer(level_logger_calibratio
 level_logger_calibration_all <- arrange(level_logger_calibration_all, probe.uid)
 
 if("level_logger_2025_corriger.xlsx" %in% list.files("connectivite/data/raw"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
-  stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
+  stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancien sera effacé et remplacé.")
 } else { write.xlsx(level_logger_calibration_all, file = "connectivite/data/raw/level_logger_2025_corrige.xlsx") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
