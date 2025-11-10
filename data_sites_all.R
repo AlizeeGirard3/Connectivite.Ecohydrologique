@@ -32,12 +32,12 @@ setwd("/Users/Aliz/Library/CloudStorage/OneDrive-UniversitéLaval/_FIELD.LAB WO
 if (!require("tidyverse")) install.packages("tidyverse") # gosser avec des suites de caractères, str_replace, [...]
 # if (!require("conflicted")) install.packages("conflicted") # ℹ Use the conflicted package to force all conflicts to become errors    ---->>>>  devtools::install_github("r-lib/conflicted")
 if (!require("readxl")) install.packages("readxl") # lire les excel
-# if (!require("openxlsx")) install.packages("openxlsx") # lire les excel
+if (!require("openxlsx")) install.packages("openxlsx") # lire/écrire les excel
 # if (!require("stringr")) install.packages("stringr") # gosser avec des suites de caractères, str_replace, [...]
 
 # Nettoyage et enregistrement en RDS ----
 raw.env.data <- list.files(pattern = "data_") # mettre dans "pattern" tous les ID de SNH listés dans l'objet SNH
-env.data <- list()
+env.data.sitewise <- list()
 for (i in 1:(length(raw.env.data))) {
   print(i)
   # i<-2
@@ -46,68 +46,32 @@ for (i in 1:(length(raw.env.data))) {
   sheets <- subset(sheets.pre,!grepl(pattern = "À FAIRE|sp_code|validation|READ ME|cad.", sheets.pre)) # keeps any other sheet
   
   raw.env.data.i <- read_excel_sheets(raw.env.data[i])
-  env.data[[i]] <- raw.env.data.i # liste (de site) contenant une liste (d'onglets pertinents)
+  for (z in names(raw.env.data.i)) {
+    raw.env.data.i[[z]] <- raw.env.data.i[[z]] %>% 
+      mutate(across(everything(), as.character))    
+    
+    # colnames(raw.env.data.i$microtopo) <- as.character(colnames(raw.env.data.i$microtopo))
+  }
+  env.data.sitewise[[i]] <- raw.env.data.i # liste (de site) contenant une liste (d'onglets pertinents)
 }
-# 
-# combined_output <- reduce(env.data, cat_lists)
-# 
-# for (i in 1:length(combined_output)) {
-# }
-# 
-# # env.data  liste des sites qui contient liste des feuilles données au nom identique
-# 
-# COMMENT LUI DIRE QUE JE VEUX 
 
-
-# # COMMENT CONCATENNER ?
-# list1 <- list(integers=c(1:7), letters=letters[1:5],
-#               words=c("two", "strings"))
-# list2 <- list(letters=letters[1:10], booleans=c(TRUE, TRUE, FALSE, TRUE),
-#               words=c("another", "two"), floats=c(1.2, 2.4, 3.8, 5.6))
-# 
-# input_list <- list(list1, list2, list1, list2)
-# 
-# combined_output <- reduce(input_list, cat_lists)
-
-
-
-# setNames(env.data, sheets)
-
-# list2env(raw.env.data.i, envir=.GlobalEnv)
-# sheets %in% names(as.list(.GlobalEnv))
-
-
-# raw.env.data.i.l <- list()
-# for (l in 1:length(raw.env.data.i)) { # si mm fichier.uid.i, coller les périodes ensemble (ainsi, retirer et remettre ne demande pas plus de manipulations et surtout ps des manipulations individuelles)
-# list2env(raw.env.data.i, envir=.GlobalEnv)
-# # OU
-# sheets.i <- list() # liste des feuilles du fichier de consigne de données d'un site "data_SITE.UID"
-# for (j in 1:length(raw.env.data.i)) {
-#   sheets.i[[j]] <- assign(paste0("raw.env.data.i", j), as.data.frame(raw.env.data.i[[j]]))
-# }
-# 
-# 
-
-# RENDUE LÀ
-# nom des feuilles :
-
-# pour chaque feuille, crée un dataframe 
-# stocker les objets correspondants dans une liste qui peut être référée à la prochaine itération
-# MAP ?
-
-
-# purrr::map_dfr(raw.env.data.i, 
-#                function(x){
-#                  read_hobo(x) %>% 
-#                    mutate(file = x) %>% 
-#                    mutate(hour = hour(date))
-#                }) -> data
-# 
-
-# qui comporte une concaténation des données de chaque site
+env.data.merged <- list()
+for (n in names(env.data.sitewise[[1]])) { # n c'est chaque feuille dans env.data.sitewise // [[1]] pas grave lequel des site, car ils comportent les mm données
+  env.data.n <- bind_rows(env.data.sitewise[[1]][[n]], 
+                          env.data.sitewise[[2]][[n]],
+                          env.data.sitewise[[3]][[n]],
+                          env.data.sitewise[[4]][[n]])
+  env.data.merged[[n]] <- env.data.n # liste (de feuillets) contenant les données de chaque site concatennés ensemble
   
+  j <- which(n == names(env.data.sitewise[[1]])) # index pour le path et nom de fichier .xslx
+  # if(paste0(names(env.data.sitewise[[1]])[j], ".xlsx") %in% list.files("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
+  #   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
+  # } else { write.xlsx(env.data.merged[[n]], file = paste0("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/clean/", names(env.data.sitewise[[1]])[j], ".xlsx")) } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
+  # 
+}
 
-  
-  
+
+
+
   
   

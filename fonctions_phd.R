@@ -37,17 +37,23 @@ read_excel_allsheets <- function(filename, tibble = FALSE) {  # for tidyverse ti
   x
 }
 
+# filename <- raw.env.data[i]
 read_excel_sheets <- function(filename, tibble = FALSE) {  # for tidyverse tibbles (the default with read_excel): tibble = TRUE
-  sheets <- readxl::excel_sheets(filename) %>% 
-    subset(.,!grepl(pattern = "À FAIRE|sp_code|validation|READ ME|cad.", sheets)) # keeps any other sheet
+  sheets.pre <- readxl::excel_sheets(filename)
+  sheets <- subset(sheets.pre,!grepl(pattern = "À FAIRE|sp_code|validation|READ ME|cad.", sheets.pre)) # keeps any other sheet
   
   x <- lapply(sheets, function(X) readxl::read_excel(filename, sheet = X))
   # lapply = applique la fonction suivante décrite à tous les éléments contenus dans l'objet "sheets" et crée une liste avec le résultat
-  if(!tibble) x <- lapply(x, as.data.frame)# le résultat de la fonction appliquée n'est pas une tibble, fait en un dataframe
+  lapply(x, as.data.frame) # fait en un dataframe
   names(x) <- sheets
   x
 }
 
+cat_lists <- function(list1, list2) {   # concatener le contenu de listes aux noms identiques
+  keys <- unique(c(names(list1), names(list2)))
+  map2(list1[keys], list2[keys], c) %>% 
+    set_names(keys)  
+}
 
 
 # ============================================================================= /
@@ -107,6 +113,11 @@ SNH <- as.vector(c("_odyssey", "_hobo"), mode = "character") # liste des types d
 # }
 # head(data.i)
 
+cat_lists <- function(list1, list2) {   # concatener le contenu de listes aux noms identiques
+  keys <- unique(c(names(list1), names(list2)))
+  map2(list1[keys], list2[keys], c) %>% 
+    set_names(keys)  
+}
 
 
 
@@ -231,23 +242,35 @@ read_odyssey <- function(path){
 
 ## data.metadata.odyssey ----
 # séparer données et métadonnées
-data.metadata.odyssey <- function(path) {
-  raw.ll.files.0 <- readLines(path) # lire en format texte
-  # Warning message:
-  #   In readLines(paste0("connectivite/data/raw/", ll.pre[i])) :
-  #   incomplete final line found on 'connectivite/data/raw/[...].csv'
-  # c'est chill, je n'ai pas réussi à arranger ça, mais vérifié √ pas de problème
-  # enlever espaces inutiles
-  raw.ll.files.1 <- gsub(" ,", ",", raw.ll.files.0)
-  raw.ll.files.2 <- gsub(" ", "", raw.ll.files.1) # enlever tous les espaces dans le subset de données
+
+path <- "connectivite/data/raw/22224413_INK_20250721_hobo.csv"
+
+data.metadata <- function(path) { # type = odyssey vs  EST DANS MON PATH pas besoin de l'argument je vais lui dire
   
-  ### création des subsets data & metadata ----
-  # notes : les noms réfèrent à l'étape et non à une matrice en particulier, les objets seront remplacés au fil de la boucle. 
-  # l'info importante est consignée dans la liste ll.clean[i], à la fin
-  raw.ll.files.2.metadata <-  raw.ll.files.2[c(1:9)] # inclus les anciens noms de colonnes, qui sont dans un format et un ordre bizzare
-  raw.ll.files.2.data <- raw.ll.files.2[-c(1:9)]
-  raw.ll.files.i <- list(raw.ll.files.2.data, raw.ll.files.2.metadata)
-  return(raw.ll.files.i)
+  if (grepl(SNH[1], raw.ll.files[i])) { # début de la loop pour les ODYSSEY
+    raw.ll.files.0 <- readLines(path) # lire en format texte
+    # Warning message:
+    #   In readLines(paste0("connectivite/data/raw/", ll.pre[i])) :
+    #   incomplete final line found on 'connectivite/data/raw/[...].csv'
+    # c'est chill, je n'ai pas réussi à arranger ça, mais vérifié √ pas de problème
+    # enlever espaces inutiles
+    raw.ll.files.1 <- gsub(" ,", ",", raw.ll.files.0)
+    raw.ll.files.2 <- gsub(" ", "", raw.ll.files.1) # enlever tous les espaces dans le subset de données
+    
+    ### création des subsets data & metadata ----
+    # notes : les noms réfèrent à l'étape et non à une matrice en particulier, les objets seront remplacés au fil de la boucle. 
+    # l'info importante est consignée dans la liste ll.clean[i], à la fin
+    raw.ll.files.2.metadata <-  raw.ll.files.2[c(1:9)] # inclus les anciens noms de colonnes, qui sont dans un format et un ordre bizzare
+    raw.ll.files.2.data <- raw.ll.files.2[-c(1:9)]
+    raw.ll.files.i <- list(raw.ll.files.2.data, raw.ll.files.2.metadata)
+    return(raw.ll.files.i)
+  }
+  
+  if (grepl(SNH[2], raw.ll.files[i])) { # début de la loop pour les ODYSSEY
+    
+  }
+    
+ 
 }
 
 ## metadata.verif.hobo ----
