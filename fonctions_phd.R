@@ -17,7 +17,7 @@
 #  Libraries ----
 # ============================================================================= /
 if (!require("tidyverse")) install.packages("tidyverse") # “meta”-package
-
+if (!require("data.table")) install.packages("data.table") # ℹ Use the conflicted package to force all conflicts to become errors    ---->>>>  devtools::install_github("r-lib/conflicted")
 
 
 # ============================================================================= /
@@ -55,6 +55,25 @@ cat_lists <- function(list1, list2) {   # concatener le contenu de listes aux no
     set_names(keys)  
 }
 
+# ============================================================================= /
+#  Data download and overwrite ----
+# ============================================================================= /
+# 1ier décembre 2025 fonctionne
+station_id.phd <- read.csv("connectivite/data/raw/station_id.phd.csv") # issu du script "Recherche_station_meteo_ID_v2.0.r"
+year <- (2024:2025) # ajouter 2026 en 2026 et dans bind_rows aussi
+list.data.format <- c("hourly", "daily", "monthly", "normals") # ajouter boucle pour données d'autres type au besoin
+meteoStat.site.year <- list()
+for(n in 1:nrow(station_id.phd)) {
+  for (i in 1:length(year)) {
+    # n<-1
+    URL <- paste0("https://data.meteostat.net/", list.data.format[1], "/", year[i],"/", station_id.phd$station_id_MeteoStat[n],".csv.gz")
+    temp <- tempfile()
+    download.file(url = URL, temp)
+    meteoStat.site.year[[i]] <- fread(temp)
+  }
+  aggr.meteoStat.site <- bind_rows(meteoStat.site.year[[1]], meteoStat.site.year[[2]]) # ajouter 3e année et + (2026, +) ou coder différemment
+  write.csv(aggr.meteoStat.site,  paste0("connectivite/data/raw/meteoStat.data.", station_id.phd$phd.site.name[n], ".csv"))
+}
 
 # ============================================================================= /
 #  EN CHANTIER ----

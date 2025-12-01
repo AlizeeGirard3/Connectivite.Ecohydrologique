@@ -27,7 +27,7 @@ if (!require("ggplot2")) install.packages("ggplot2")
 
 # importer et préparer donnees dans R ----
 setwd("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD")
-source("general.scripts/fonctions.R")
+source("general.scripts/scripts/fonctions_generales.R")
 
 # idée : faire reproductible pour tous les sites : 
 # JE VEUC MONTER UN GRAPHIQUE D'ÉLÉVATION X = DIST SUR LE TRANSECT, Y = ZIP LEVEL ÉLÉVATION, ET
@@ -41,7 +41,7 @@ source("general.scripts/fonctions.R")
 
 microtopo <- readxl::read_xlsx("connectivite/data/raw/data_STH.xlsx",
                   sheet = "microtopo") #%>% group_by("ID.unique")
-metadata.all <- readRDS("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/raw/metadata.all.RDS")
+# metadata.all <- readRDS("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/raw/metadata.all.RDS")
 
 for (i in 1:length(unique(na.omit(microtopo$trmnt.uid)))) {
   print(i)

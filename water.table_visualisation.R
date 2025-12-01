@@ -12,11 +12,11 @@
 ###########################################################################-
 
 setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
-source("general.scripts/scripts/fonctions.R") # appel du fichier de métadonnées de projet
+source("general.scripts/scripts/fonctions_generales.R") # appel du fichier de métadonnées de projet
 
 # Import de données ----
-ll.clean <- readRDS("connectivite/data/clean/ll.clean.RDS")
-# obtenu via le script "/scripts/data_water.table.all.R"
+tidy.WTD.data <- readRDS("connectivite/data/clean/tidy.WTD.data.RDS")
+# obtenu via le script "/scripts/data_water.table.all(v.X).R"
 # importer le graphique que topographie
 
 
@@ -29,12 +29,12 @@ if (!require("stringr")) install.packages("stringr") # str_to_title
 if (!require("grDevices")) install.packages("grDevices") # pdf()
 
 # graph.wt <- list()
-for (i in 1:length(ll.clean)) {
+for (i in 1:length(tidy.WTD.data)) { # tidy.WTD.data nouveau nom de ll.clean (automne 2025)
   # i<-7
   paste(i)
   
   # extraire no de sonde
-  texte <- ll.clean[[i]]$metadata[4]
+  texte <- tidy.WTD.data[[i]]$metadata[4]
   numbers <- gregexpr("[0-9]+", texte)
   result <- regmatches(texte, numbers)
   (probe.serial.no.i <- as.numeric(unlist(result)[1]))
@@ -46,12 +46,12 @@ for (i in 1:length(ll.clean)) {
   transect.id.i <- unique(transect.id.i.pre[!is.na(transect.id.i.pre)])
   
   # extraire nom de site
-  site.name.pre <- sub("SiteName","",ll.clean[[i]]$metadata[1])
+  site.name.pre <- sub("SiteName","",tidy.WTD.data[[i]]$metadata[1])
   site.name.pre.1 <- gsub(",", "", site.name.pre) # ici ce serait ST-HENRI, ça me gosse
   site.name <- str_to_title(site.name.pre.1)
   
   # créer objet contenant les données
-  ll.cal <- ll.clean[[i]]$data # ll.cal ce sont les données calibrées finales, reprise du nom dans le script d'origine "data_water.table.all.R"
+  ll.cal <- tidy.WTD.data[[i]]$data # ll.cal ce sont les données calibrées finales, reprise du nom dans le script d'origine "data_water.table.all.R"
   class(ll.cal); head(ll.cal); str(ll.cal); colnames(ll.cal)
   ll.cal$date.time.tz.orig <- as.POSIXct(ll.cal$date.time.tz.orig) #, tryFormats = )
   # ici joint avec les info de distance (?)
@@ -81,8 +81,8 @@ for (i in 1:length(ll.clean)) {
   #   theme_bw() + theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 45, hjust = 1, vjust = 0.5))
   # print(graph.wt) # imprimer dans R
   
-  # ajouter le profile topographique avec l'indication de la position relative du puits
-  source("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/connectivite/scripts/elevation.profiles.R")
+  # ajouter le profile topographique avec l'indication de la position relative du puits (ne fonctionne plus)
+  # source("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/connectivite/scripts/elevation.profiles.R")
   # attention, à date je n'ai que un site, mais si je veux que ça fitte le bon site, je vais devoir
   # spécifier quel site pour quel graph... réfléchir plus tard
   

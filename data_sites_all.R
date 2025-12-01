@@ -26,7 +26,8 @@
 # .rs.restartR()
 source("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/scripts/fonctions_phd.R") # read_excel_all_sheets et autres
 # setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
-setwd("/Users/Aliz/Library/CloudStorage/OneDrive-UniversitéLaval/_FIELD.LAB WORK 2025/Laboratoire/LOI")
+# setwd("/Users/Aliz/Library/CloudStorage/OneDrive-UniversitéLaval/_FIELD.LAB WORK 2025/Laboratoire/LOI")
+setwd("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite")
 
 # Librairies ----
 if (!require("tidyverse")) install.packages("tidyverse") # gosser avec des suites de caractères, str_replace, [...]
@@ -57,6 +58,7 @@ for (i in 1:(length(raw.env.data))) {
 
 env.data.merged <- list()
 for (n in names(env.data.sitewise[[1]])) { # n c'est chaque feuille dans env.data.sitewise // [[1]] pas grave lequel des site, car ils comportent les mm données
+                                           # 1 à 4 ce sont mes 4 sites 
   env.data.n <- bind_rows(env.data.sitewise[[1]][[n]], 
                           env.data.sitewise[[2]][[n]],
                           env.data.sitewise[[3]][[n]],

@@ -38,7 +38,7 @@
 # ll.clean<-readRDS("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/clean/ll.clean.RDS") # issu de section A.1 du code ci-présent
 
 # .rs.restartR()
-source("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/general.scripts/scripts/fonctions.R")
+source("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/general.scripts/scripts/fonctions_generales.R")
 setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
 
 # Librairies ----
@@ -53,16 +53,17 @@ if (!require("tidyverse")) install.packages("tidyverse") # gosser avec des suite
 if (!require("sf")) install.packages("sf"); if (!require("lutz")) install.packages("lutz") # GIS in R
 if (!require("lubridate")) install.packages("lubridate")
 options(lubridate.verbose = TRUE) # pour expliciter ce que les fonctions font
-# librairies de weathercan
-if (!require("weathercan")) install.packages("weathercan") # Integrating data from weathercan (ECCC/CCCS), Gouvernement du Canada
-stations_dl()
-stations_meta()
 # if (!require("naniar")) install.packages("naniar") # Checking data completeness
 # if (!require("mapview")) install.packages("mapview") ## Spatial analyses
 if (!require("parsedate")) install.packages("parsedate") # lire les excel
 # option d'arrêter le code si message d'erreur (source fonctions.R)
 # options(error=pause)
 # options(error=NULL) # annuler
+# archives supprimer quand ça fonctionne : 
+  # librairies de weathercan
+  # if (!require("weathercan")) install.packages("weathercan") # Integrating data from weathercan (ECCC/CCCS), Gouvernement du Canada
+  # stations_dl()
+  # stations_meta()
 
 # A  Données issues des sonde de niveau hydrostatique ----
 SNH <- as.vector(c("_odyssey", "_hobo"), mode = "character") # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque" est traitée de façon différente
@@ -72,11 +73,11 @@ SNH <- as.vector(c("_odyssey", "_hobo"), mode = "character") # liste des types d
 
 # fichiers de consigne de données
 ll.pre <- list.files("connectivite/data/raw", pattern = "_odyssey|_hobo") # mettre dans "pattern" tous les ID de SNH listés dans l'objet SNH
-ll.clean <- list()
+tidy.WTD.data <- list() # équivalent à ll.clean (ancien)
 fichier.uid.df <- data.frame(fichier.uid = NA, file.name = NA, probe.uid = NA, "extraction.donnees.aaaammjj" = NA, "tz_orig" = NA) # pour stocker les fichier.uid (aussi première colonne de cal.data) et autres données intérimaires
 odyssey_offset_archives <- data.frame(fichier.uid = NA, offset_cm_date = NA, a.slope_excel = NA,	b.verticalIntercept = NA) #, `prof_nappe_bulleur_cm_plus.out` = NA, pre_prof_nappe_odyssey_mm_to_cm = NA,	`prof_nappe_odyssey_cm_plus.out` = NA)
 for (i in 1:length(ll.pre)) {
-  # i<-26 9 10 11 12 13 14 15 16# 41362(27 mars 2025)
+  # i<-13 9 10 11 12 13 14 15 16# 41362(27 mars 2025)
   print(i)
   ll.pre[i] # début de la loop pour les ODYSSEY (if() prochaine ligne)
   if (grepl(SNH[1], ll.pre[i])) {  # début de la loop pour les ODYSSEY
@@ -257,6 +258,11 @@ for (i in 1:length(ll.pre)) {
     
     # extraire les données de calibration pour le fichier.uid (3 lignes min.)
     cal.probe.i <- cal.data %>% dplyr::filter(cal.data$fichier.uid == fichier.uid.i) %>% dplyr::mutate_at("cal.order", ~replace(., is.na(.), 0)) # remplacer les NA dans cal.order par 0, sinon inclus dans les résultats
+    # test: si raw.value == vecteur de "NA", on peut procédéer à la calibration, sinon ça veut dire qu'on a la cal du programme de la sonde, garder ces données (créer autre colonne)
+    if(nrow(cal.probe.i) > 3){
+      paste0("Attention, ça ne fonctionne pas parce qu'il y a 6 lignes. Lui dire de n'en sélectionner que 3...")
+      next
+    }
     
     # test: si raw.value == vecteur de "NA", on peut procédéer à la calibration, sinon ça veut dire qu'on a la cal du programme de la sonde, garder ces données (créer autre colonne)
     if(FALSE %in% (!ll.cal.pre.i$calibrated.value.cm %in% rep("NA", times = length(ll.cal.pre.i$calibrated.value.cm)))) { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
@@ -333,7 +339,7 @@ for (i in 1:length(ll.pre)) {
     
     ### création de la liste dans la liste [[i]]  ----
     # noted : <- le fichier du level logger correspondant à la position i; [1] : data (dataframe), [2] : metadata (character string)
-    ll.clean[[i]] <- list("data" = ll.cal, "metadata" = ll.pre.2.metadata) 
+    tidy.WTD.data[[i]] <- list("data" = ll.cal, "metadata" = ll.pre.2.metadata) 
     
     ### création de fichiers excels propres  ----
     # À FAIRE : excel [[i]] avec un onglet metadata et onglet data
@@ -399,8 +405,8 @@ for (i in 1:length(ll.pre)) {
     #### date et heure : format ISO date AAAA-MM-JJTHH:MM:SS,ss-/+FF:ff, voir https://fr.wikipedia.org/wiki/ISO_8601 ----
     # heure : « Z » à la fin lorsqu’il s’agit de l’heure UTC. (« Z » pour méridien zéro, aussi connu sous le nom « Zulu » dans l’alphabet radio international).
     # extraction : nom du site pour trouver les coordonnées qui serviront à connaître le fuseau horaire
-    site.name.pre <- sub("Titre de tracé : ","",ll.pre.0.metadata[1])
-    site.name <- stringr::str_to_title(gsub(",", "", site.name.pre))
+    site.0 <- gsub("\\\"", '', ll.pre.0.metadata)[1] # extraire nom de site fichier origine
+    site <- sub("Titre de tracé : ","",site.0)
     
     # ouvrir données du shapefile pour accéder les zones
     zones <- read_sf("~Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectitite_PhD_Mergin_26nov24/Ecotone.restauration.zone.pt.shp")
@@ -408,7 +414,7 @@ for (i in 1:length(ll.pre)) {
     head(zones); str(zones)
     
     # extraire la bonne lat, long selon le nom du site
-    coords <- c(zones$latitude[zones$site==site.name][1], zones$longitude[zones$site==site.name][1])
+    coords <- c(zones$latitude[zones$site==site][1], zones$longitude[zones$site==site][1])
     
     # trouver le UTC selon la lat long
     (tz <- tz_lookup_coords(coords[1], coords[2], method = "fast", warn = FALSE))
@@ -463,6 +469,9 @@ for (i in 1:length(ll.pre)) {
       cal.data <- cal.data %>% select(!out.R)
     } else { stop("Attention, le out entré dans cal.data (syn. level_logger_calibration_all.csv) n'est pas identique à la moyenne des points bas soustraite du point haut du puits.") } 
     # création d'une colonne unique
+    
+    
+    # exclure les lignes qui n'ont pas de day beggining / rejeter ces lignes et filtrer avec la fonction ( à écrire )
     cal.data$period.fichier.uid <- paste0(cal.data$day.begining.aaaa.mm.dd.hh.mm, "--", cal.data$day.end.aaaa.mm.dd.hh.mm, ".",cal.data$fichier.uid)
     # format POSIX begining et end
     cal.data$day.begining.aaaa.mm.dd.hh.mm <- ymd_hm(cal.data$day.begining.aaaa.mm.dd.hh.mm, tz = tz)
@@ -509,17 +518,48 @@ for (i in 1:length(ll.pre)) {
     # * avec HOBO, calibration est faite selon une station météorologique *
     # Référence : Jutras et Bourgault, 2024, Version 2.0, section 7 (/Users/Aliz/Documents/Doctorat/_Connectivité/Protocoles (dossiers copiés du serveur A'24)/Leveloggers & Hauteur nappe phréatique/_HOBO_Protocole de mesure de nappe_2024-11-01_NE PAS DIFFUSER.docx)
     
-    #### extraction des données de ECCC/CCCS et ménage ----
-    # transformer eccc.data avec le mm format de colonne que ll.cal.pre.i 0$date.time.tz.orig
-    station_ids <- unique(cal.data$cal.station_id[cal.data$probe.uid == probe.uid.k]) # pas grave ici si plusieurs probe.uid
-    # weather_dl(6915, start = min(ll.cal.pre.i$date.time.tz.orig), end = max(ll.cal.pre.i$date.time.tz.orig))
-    eccc.data.pre.0 <- weather_dl(station_ids, start = min(ll.cal.pre.i$date.time.tz.orig), end = max(ll.cal.pre.i$date.time.tz.orig), time_disp = "none") # , interval = "hour" 
-    # **dates absentes du ll.cal.pre.i si, p. ex sonde retirée momentanément, seront enlevées dans le left_join**
-    # As of weathercan v0.3.0 time display is either local time or UTC
-    # See Details under ?weather_dl for more information.
-    # This message is shown once per session
+    #### extraction des données de METEOSTAT //[auparavant : ECCC/CCCS] et ménage ----
+    meteoStat.data.pre.0 <- read.csv(paste0("connectivite/data/raw/", list.files(path = "connectivite/data/raw", pattern = site)))
+    meteoStat.data.pre.1 <- meteoStat.data.pre.0 %>% mutate(date.time = paste(year, month, day, hour)) %>% mutate(pressure.kPa = pres * 0.1) # pression donnée en hPa (hectopascal). 1 hPa = 0,1 kPa. Example: convert 15 hPa to kPa: 15 hPa = 15 × 0.1 kPa = 1.5 kPa
+    meteoStat.data.pre.1$date.time <- ymd_h(meteoStat.data.pre.1$date.time, tz = tz) + 1
+    meteoStat.data.pre.1 <- meteoStat.data.pre.1 %>%  select(date.time, everything(), -c("year", month, day, hour, X, pres, "wdir","wdir_source","wspd","wspd_source","cldc","cldc_source","coco","coco_source")) # ajuster la date et l'heure et ajout d'une seconde, sinon, les données 00:00:00 étaient effacées !
+    
+    # changement de nom pour identifier quelles colonnes du futur cal.meteoStat.data proviennent de meteoStat
+    colnames(meteoStat.data.pre.1) <- paste0(colnames(meteoStat.data.pre.1), ".ms") # ajout de ".ms" pour identifier les colonnes issues de MeteoStat
+    
+    # convertir au bon format de date et manip de colonnes (idem aux infos temporelles de fichier de sonde) / date.time.UTC selon norme iso
+    meteoStat.data.pre.2 <- meteoStat.data.pre.1 %>%
+      mutate(date.time.UTC.0.pre = with_tz(ymd_hms(meteoStat.data.pre.1$date.time.ms, tz = tz), tzone = "GMT")) # les heures sont ainsi ramenées à UTC +0 / ceci écrase la colonne du mm nom
+    head(meteoStat.data.pre.2$date.time.UTC.0.pre) # ok ici
+    
+    meteoStat.data.pre.3 <- meteoStat.data.pre.2 %>%  # enlever l'espace entre date et heure (ISO 8601)
+      mutate(date.time.UTC.0.pre.1 = str_replace(meteoStat.data.pre.2$date.time.UTC.0.pre, " ", "T")) %>% 
+      select(date.time.ms, date.time.UTC.0.pre, date.time.UTC.0.pre.1, everything())
+    head(meteoStat.data.pre.3$date.time.UTC.0.pre.1) # ok ici
+    
+    meteoStat.data.pre.3$date.time.UTC.0 <- str_replace_all(meteoStat.data.pre.3$date.time.UTC.0.pre.1, "00:01","00:01Z") # ajouter le Z à la fin (ISO 8601)
+    meteoStat.data <- meteoStat.data.pre.3 %>% select(date.time.ms, date.time.UTC.0, everything()) %>% select(!c(date.time.UTC.0.pre, date.time.UTC.0.pre.1))
+    head(meteoStat.data); str(meteoStat.data); class(meteoStat.data)
+    
+    # # vérif pour le join, il faut que la sytaxe soit exactement la mm entre les deux df
+    # c(class(meteoStat.data[4523,]$date.time.UTC.0), class(ll.cal.pre.i[1,]$date.time.UTC.0))
+    # c(as.character(meteoStat.data[4523,]$date.time.UTC.0), as.character(ll.cal.pre.i[1,]$date.time.UTC.0))
+    # c(meteoStat.data[4523,]$date.time.UTC.0, ll.cal.pre.i[1,]$date.time.UTC.0)
+    # meteoStat.data[4523,]$date.time.UTC.0 == ll.cal.pre.i[1,]$date.time.UTC.0 # -> doit renvoyer T
+    
+    #### assembler données du HOBO et données de ECCC/CCCS selon la date et l'heure ----
+    # Jutras&Bourgault V2.0, 2024; étape a) Associer par dates et par heures les données mesurées par les sondes de niveau hydrostatique et la pression atmosphérique
+    cal.meteoStat.data <- left_join(ll.cal.pre.i, meteoStat.data, by = join_by(date.time.UTC.0)) %>% 
+      select("scan.id", "date.time.UTC.0","raw.value.kPa_pres.abs", "temperature_dC", "calibrated.value.cm",
+             `date.AAAA-MM-JJ`, "time.HH.MM.SS", `date.time.tz.orig`, "date.time.ms", pressure.kPa.ms, everything(), -x.archive.well.uid) # enlever les nombreuses colonnes qui n'ont pas rapport dans ces démarches
+    colnames(cal.meteoStat.data)
 
     
+    # À faire : VÉRIFIER SI TOUT EST OK NIVEAU TIME ZONES... 
+    ##### inscrire le time zone (tz) dans la colonne time (équivalent à "date.time.tz.orig.pre") ----
+    # json_data <- fromJSON(file ="connectivite/data/raw/full.json") # time zone inscrite dans ce fichier
+    # trouver ma station
+     # ??? et le bon UTC...
     
     
     # à faire
@@ -530,69 +570,12 @@ for (i in 1:length(ll.pre)) {
 
     
     
-    
-    
-    # sélection des colonnes pertinentes à la présente manoeuvre
-    eccc.data.pre <- eccc.data.pre.0[, !names(eccc.data.pre.0) %in% 
-                                       c("WMO_id","TC_id", "wind_chill", "year", "month", "day", "hour", "weather", "hmdx", 
-                                         "hmdx_flag", "precip_amt", "precip_amt_flag", "pressure_flag", "rel_hum", "rel_hum_flag", 
-                                         "temp", "temp_dew", "temp_dew_flag", "temp_flag", "visib", "visib_flag", "wind_chill_flag", 
-                                         "wind_dir", "wind_dir_flag", "wind_spd", "wind_spd_flag")] 
-    # changement de nom pour identifier quelles colonnes du futur cal.eccc.data proviennent de eccc/cccs
-    colnames(eccc.data.pre) <- paste0(colnames(eccc.data.pre), ".wc") # ajout de ".wc" pour identifier les colonnes issues de WeatherCan
-    
-    ##### inscrire le time zone (tz) dans la colonne time (équivalent à "date.time.tz.orig.pre") ----
-    # trouver la station météorologique canadienne à moins de 25km de distance (inscrire manuellement dans "data/raw/ll.calibration.all.csv")
-    station_tz.pre <- stations_search(coords = c(zones$latitude[zones$site == site.name][1],
-                                                 zones$longitude[zones$site == site.name][1]), dist = 45)
-    station_tz.pre.1 <- stations_search(unique(station_tz.pre$station_name[station_tz.pre$station_id == station_ids]))
-    station_tz <- unique(station_tz.pre.1$tz) # OlsonNames() compatible
-    
-    # à l'aide de la tz, ajouter une seconde (idem aux infos temporelles dans ll.cal.pre.i)
-    eccc.data.pre$date.time.tz.orig.wc <- force_tz(eccc.data.pre$time.wc, tz = station_tz) + 1 # ajout d'une seconde, sinon, les données 00:00:00 étaient effacées !
-    # eccc.data.pre$date.time.tz.orig <- force_tz(eccc.data.pre$time, tz = "America/Moncton") + 1
-    
-    eccc.data.pre <- eccc.data.pre %>% select(date.time.tz.orig.wc, time.wc, everything())
-    
-    # convertir au bon format de date et manip de colonnes (idem aux infos temporelles dans ll.cal.pre.i) / date.time.UTC selon norme iso
-    eccc.data.pre.1 <- eccc.data.pre %>%
-      mutate(date.time.UTC.0.pre = with_tz(ymd_hms(eccc.data.pre$date.time.tz.orig.wc, tz = tz), tzone = "GMT")) # les heures sont ainsi ramenées à UTC +0 / ceci écrase la colonne du mm nom
-    head(eccc.data.pre.1$date.time.UTC.0.pre) # ok ici
-    
-    eccc.data.pre.2 <- eccc.data.pre.1 %>%  # enlever l'espace entre date et heure (ISO 8601)
-      mutate(date.time.UTC.0.pre.1 = str_replace(eccc.data.pre.1$date.time.UTC.0.pre, " ", "T")) %>% 
-      select(date.time.tz.orig.wc, time.wc, date.time.UTC.0.pre, date.time.UTC.0.pre.1, everything())
-    head(eccc.data.pre.2$date.time.UTC.0.pre.1) # ok ici
-    # head(eccc.data.pre$time.wc)
-    # head(eccc.data.pre$date.time.tz.orig.wc) # alors que ici, 
-    
-    eccc.data.pre.2$date.time.UTC.0 <- str_replace_all(eccc.data.pre.2$date.time.UTC.0.pre.1, "00:01","00:01Z") # ajouter le Z à la fin (ISO 8601)
-    eccc.data <- eccc.data.pre.2 %>% select(`date.AAAA-MM-JJ` = "date.wc", time.wc, date.time.tz.orig.wc, date.time.UTC.0, everything()) %>% select(!c(date.time.UTC.0.pre, date.time.UTC.0.pre.1))
-    eccc.data <- as.data.frame(eccc.data)
-    head(eccc.data); str(eccc.data); class(eccc.data)
-    
-    # # # vérif pour le join, il faut que la sytaxe soit exactement la mm entre les deux df
-    # c(class(eccc.data[60,]$date.time.UTC.0), class(ll.cal.pre.i[50,]$date.time.UTC.0))
-    # c(as.character(eccc.data[60,]$date.time.UTC.0), as.character(ll.cal.pre.i[50,]$date.time.UTC.0))
-    # c(eccc.data[60,]$date.time.UTC.0, ll.cal.pre.i[50,]$date.time.UTC.0)
-    # eccc.data[60,]$date.time.UTC.0 == ll.cal.pre.i[50,]$date.time.UTC.0 # -> doit renvoyer T
-    
-    #### assembler données du HOBO et données de ECCC/CCCS selon la date et l'heure ----
-    # Jutras&Bourgault V2.0, 2024; étape a) Associer par dates et par heures les données mesurées par les sondes de niveau hydrostatique et la pression atmosphérique
-    cal.eccc.data <- left_join(ll.cal.pre.i, eccc.data, by = join_by(date.time.UTC.0)) %>% 
-      select("scan.id", "date.time.UTC.0","raw.value.kPa_pres.abs", "temperature_dC", "calibrated.value.cm",
-             `date.AAAA-MM-JJ` = "date.AAAA-MM-JJ.x", "time.HH.MM.SS", `date.time.tz.orig`,
-             "date.time.tz.orig.wc", "station_name.wc", pressure.kPa.wc = "pressure.wc", everything()) %>% 
-      select(!c(`date.AAAA-MM-JJ.y`, "time.wc")) # enlever les nombreuses colonnes qui n'ont pas rapport dans ces démarches
-    colnames(cal.eccc.data)
-    cal.eccc.data$pressure.kPa.wc
-    
     # Jutras&Bourgault V2.0, 2024; étape b)	Calculer la hauteur d’eau au-dessus de la sonde par la soustraction de la pression atmosphérique, convertie en cm d’eau, à la pression mesurée par la sonde
     # Jutras&Bourgault V2.0, 2024; étape b.i)	La conversion de kPa en cm d’eau est : 1 kPa = 10,1972 cm d’eau 
-    cal.eccc.data$pression.eau.kPa <- cal.eccc.data$raw.value.kPa_pres.abs - cal.eccc.data$pressure.kPa.wc
-    cal.eccc.data$hauteur.eau.cm.pre <- cal.eccc.data$pression.eau.kPa * 10.197162129779 # règle de trois
-    cal.eccc.data$hauteur.eau.cm <- cal.eccc.data$hauteur.eau.cm.pre # dépend de la façon dont les mesures de longueurs en cm sont prises
-    cal.eccc.data <- cal.eccc.data %>% select("scan.id", "date.time.UTC.0","raw.value.kPa_pres.abs", pression.eau.kPa, hauteur.eau.cm, everything()) 
+    cal.meteoStat.data$pression.eau.kPa <- cal.meteoStat.data$raw.value.kPa_pres.abs - cal.meteoStat.data$pressure.kPa.ms
+    cal.meteoStat.data$hauteur.eau.cm.pre <- cal.meteoStat.data$pression.eau.kPa * 10.197162129779 # règle de trois
+    cal.meteoStat.data$hauteur.eau.cm <- cal.meteoStat.data$hauteur.eau.cm.pre # dépend de la façon dont les mesures de longueurs en cm sont prises
+    cal.meteoStat.data <- cal.meteoStat.data %>% select("scan.id", "date.time.UTC.0","raw.value.kPa_pres.abs", pression.eau.kPa, hauteur.eau.cm, everything()) 
     
     # Jutras&Bourgault V2.0, 2024; étape c)	Convertir la hauteur d’eau au-dessus de la sonde en profondeur de la nappe phréatique par rapport à la surface du sol
                                          # c.bis) création d'un vecteur de longueur CDS à ajouter à la longueur du fil (protocole pour éviter l'erreur humaine)
@@ -601,30 +584,27 @@ for (i in 1:length(ll.pre)) {
     
     # c.bis
     # D'abord, constante de distance à la sonde en fonction de l'appareil de mesure, à ajouter à la longueur de fil
-    # Cette valeur équivauit à la "" dans Jutras&Bourgault V2.0, 2024
     CDS <- data.frame(type = c("U20", "U20L", "odyssey"), # Hobo seulement : mesure longueur du fil tel que dans protocole; à la limite de la boîte de sonde. Les constantes de longueur de boîte de sonde à la sonde à l'interface intérieur de la sonde sont ajoutées à cette étape-ci.
                       constante = c("12.93", "13.3", "0")) %>% 
       mutate_at('constante', as.numeric) # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque/modèle" (type) est traitée de façon différente 
     str(CDS)
     
     # vérifications des types de chaque variable
-    str(cal.eccc.data$long.fil.cm) # numeric
-    str(cal.eccc.data$out.long.tuyau.sol.cm) # numeric
-    str(cal.eccc.data$hauteur.eau.cm) # numeric
+    str(cal.meteoStat.data$long.fil.cm); str(cal.meteoStat.data$out.long.tuyau.sol.cm); str(cal.meteoStat.data$hauteur.eau.cm)  # numeric
     # calcul de la profondeur
-    cal.eccc.data$calibrated.value.cm <-  cal.eccc.data$long.fil.cm - cal.eccc.data$out.long.tuyau.sol.cm - cal.eccc.data$hauteur.eau.cm # avec le moins, ça donne 20 de profondeur
+    cal.meteoStat.data$calibrated.value.cm <-  cal.meteoStat.data$long.fil.cm - cal.meteoStat.data$out.long.tuyau.sol.cm - cal.meteoStat.data$hauteur.eau.cm # avec le moins, ça donne 20 de profondeur
     # cal.eccc.data$calibrated.value.cm <- cal.eccc.data$long.fil.cm - cal.eccc.data$out.long.tuyau.sol.cm + cal.eccc.data$hauteur.eau.cm
-    head(cal.eccc.data)$calibrated.value.cm
+    head(cal.meteoStat.data)$calibrated.value.cm
     
     # format final -> nom final
-    ll.cal.k <- cal.eccc.data %>%  # ceci est donc le format final, à intégrer dans la liste ll.clean
+    ll.cal.k <- cal.meteoStat.data %>%  # ceci est donc le format final, à intégrer dans la liste ll.clean
       select(scan.id, raw.value.kPa_pres.abs, calibrated.value.cm, `date.AAAA-MM-JJ`, time.HH.MM.SS, date.time.tz.orig, # retirer des colonnes intermédiaires et mm format que ll.clean[[i]]$data
              date.time.UTC.0)
 
         ### création de la liste dans la liste [[i]]  ----
     # noted : <- le fichier du level logger correspondant à la position i; [1] : data (dataframe), [2] : metadata (character string)
     
-    ll.clean[[i]] <- list("data" = ll.cal.k, "metadata" = ll.pre.0.metadata) 
+    tidy.WTD.data[[i]] <- list("data" = ll.cal.k, "metadata" = ll.pre.0.metadata) 
   } # fin de la loop pour les HOBO
   # else {
   #  stop("ERREUR : CODER ICI") # si nécessaire, ajouter 3e type de traitement de SNH
@@ -639,9 +619,9 @@ if("metadata_SNH_fichiers.csv" %in% list.files("connectivite/data/clean"))  { # 
 } else { write.csv(fichier.uid.df, file = "connectivite/data/clean/metadata_SNH_fichiers.csv") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
 
 # format R des ll.clean
-if("ll.clean.RDS" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
+if("tidy.WTD.data.RDS" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
-} else { saveRDS(ll.clean, file = "connectivite/data/clean/ll.clean.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
+} else { saveRDS(tidy.WTD.data, file = "connectivite/data/clean/tidy.WTD.data.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
 
 # supprimer ?
 # # Joindre les lignes de offset de l'objet "odyssey_offset_archives" dans le fichier "level.logger_offset_archive.csv"
@@ -661,27 +641,27 @@ if("ll.clean.RDS" %in% list.files("connectivite/data/clean"))  { # si TRUE = STO
 
 
 # A.2 examination des données ----
-ll.clean <- readRDS("connectivite/data/clean/ll.clean.RDS")
+tidy.WTD.data <- readRDS("connectivite/data/clean/tidy.WTD.data.RDS")
 SNH <- as.vector(c("_odyssey", "_hobo"), mode = "character") # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque" est traitée de façon différente
-for (j in 1:length(ll.clean)) {
+for (j in 1:length(tidy.WTD.data)) {
   # j<-1
   print(j)
-  ll.clean.j <- ll.clean[[j]]
+  ll.clean.j <- tidy.WTD.data[[j]]
   
   # ODYSSEY
-  if (grepl(SNH[1], ll.clean.j$metadata[11])) {
+  if (grepl(SNH[1], tidy.WTD.data.j$metadata[11])) {
     # où trouver no de sonde dans ODYSSEY
-    metadata.line <- ll.clean.j$metadata[12] # probe.uid
+    metadata.line <- tidy.WTD.data.j$metadata[12] # probe.uid
     numbers <- gregexpr("[0-9]+", metadata.line)
     sonde <- regmatches(metadata.line, numbers)
-  } else if (grepl(SNH[2], ll.clean.j$metadata[4])) {
+  } else if (grepl(SNH[2], tidy.WTD.data.j$metadata[4])) {
     # où trouver no de sonde dans HOBO
-    metadata.line <- ll.clean.j$metadata[5] # probe.uid
+    metadata.line <- tidy.WTD.data.j$metadata[5] # probe.uid
     numbers <- gregexpr("[0-9]+", metadata.line)
     sonde <- regmatches(metadata.line, numbers)
   }
   # données à visualiser
-  data <- ll.clean[[j]]$data
+  data <- tidy.WTD.data[[j]]$data
   if (nrow(data) > 0) {
     hist(data$calibrated.value.mm/10, warn.unused = F, 
          main = paste("Histogram des données de sonde no ", paste(sonde,"\n"))) # en cm
@@ -706,13 +686,13 @@ for (j in 1:length(ll.clean)) {
 
 
 
-# CADUQUE OU CHANGER .MM EN .CM ET AUTRES MODIFICATIONS
+# CADUQUE OU CHANGER .MM EN .CM ET AUTRES MODIFICATIONS NON JOUR NOMS CHANGÉS
 # A.3 données de vérification/calibration avec bulleur ----
 # créé le 23 déc. pour vérifier données des Odyssey de St-Henri 2024
 ## import et ménage ----
 ### sondes de niveau hydrostatique (rappel : SNH) ----
 SNH <- as.vector(c("_odyssey", "_hobo"), mode = "character") # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque" est traitée de façon différente
-ll.clean <- readRDS("connectivite/data/clean/ll.clean.RDS") # fichiers SNH clean
+tidy.WTD.data <- readRDS("connectivite/data/clean/tidy.WTD.data.RDS") # fichiers SNH clean
 
 ### données de calibration (rappel : level_logger_calibration_all.csv) ) ----
 ll.bulleur <- read.csv("connectivite/data/raw/level_logger_calibration_all.csv", sep = ";", dec = ","); str(ll.bulleur)

@@ -27,16 +27,17 @@ Sometimes you may want to use another directory as the working directory. The us
 
 \newpage
 
-```{r, echo = FALSE, message = FALSE}
+```{r eval=FALSE, message=FALSE, include=FALSE}
 setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
 # Libraries
 if (!require("knitr")) install.packages("knitr") # Integrating data from weathercan (ECCC/CCCS), Gouvernement du Canada
 if (!require("kableExtra")) install.packages("kableExtra") # Integrating data from weathercan (ECCC/CCCS), Gouvernement du Canada
 
 # import
-ll.clean <- readRDS("connectivite/data/clean/ll.clean.RDS")
+ll.clean <- readRDS("connectivite/data/clean/tidy.WTD.data.RDS")
 SNH <- as.vector(c("_odyssey", "_hobo"), mode = "character") # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque" est traitée de façon différente
 for (j in 1:length(ll.clean)) {
+  if(ll.clean[[j]])
   print(j)
   # j<-14
   ll.clean.j <- ll.clean[[j]]
@@ -57,7 +58,7 @@ for (j in 1:length(ll.clean)) {
   data <- ll.clean[[j]]$data
   if (nrow(data) > 0) {
     hist(data$calibrated.value.cm/10, warn.unused = F, 
-         main = paste("Histogram des données de sonde no ", paste(sonde,"\n"))) # en cm
+         main = paste("Histograme des données de sonde no ", paste(sonde,"\n"))) # en cm
   } 
   # les hauteurs de nappe phréatique calibrées devraient toutes être négatives ou presque !
   # ou alors est-ce que les ODYSSEY donnent en + ?
@@ -96,9 +97,10 @@ if (!require("knitr")) install.packages("knitr") # Integrating data from weather
 
 ```{r, echo = FALSE}
 setwd("~/Documents/Doctorat/_R.&.Stats_PhD") # fonctions utiles et working directory
-ll.clean <- readRDS("connectivite/data/clean/ll.clean.RDS")
+ll.clean <- readRDS("connectivite/data/clean/tidy.WTD.data.RDS")
 SNH <- as.vector(c("_odyssey", "_hobo"), mode = "character") # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque" est traitée de façon différente
 for (i in 1:length(ll.clean)) {
+    if (!is.null(ll.clean[[i]])) {
   paste(i)
   # i<-5
   # extraire no de sonde
@@ -148,7 +150,8 @@ for (i in 1:length(ll.clean)) {
   # ATTENTION !! surpasser consciemment dans la boucle
   # ggsave(paste0("connectivite/output/figures/",site.name, "_", probe.serial.no.i, "_", transect.id.i,".pdf"), graph.wt, width = 12, height = 8)
     }
-  }
+    }
+} 
 ```
 
 

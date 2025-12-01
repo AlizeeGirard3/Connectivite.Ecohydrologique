@@ -54,9 +54,10 @@ if (!require("tidyverse")) install.packages("tidyverse") # gosser avec des suite
 # if (!require("tidyr")) install.packages("tidyr") # entre autres : extract_numeric() / extract_numeric() is deprecated: please use readr::parse_number() instead
 # contient purr aussi
 if (!require("sf")) install.packages("sf"); if (!require("lutz")) install.packages("lutz") # GIS in R
-# if (!require("lubridate")) install.packages("lubridate")
-# options(lubridate.verbose = TRUE) # pour expliciter ce que les fonctions font
-# if (!require("parsedate")) install.packages("parsedate") # lire les excel
+# 3 packages inutiles après avoir refomaté le code en tidyverse
+if (!require("lubridate")) install.packages("lubridate")
+options(lubridate.verbose = TRUE) # pour expliciter ce que les fonctions font
+if (!require("parsedate")) install.packages("parsedate") # lire les excel
 ## Librairies de données météo open source : weathercan, meteoStat, etc ----
 if (!require("weathercan")) install.packages("weathercan") # Integrating data from weathercan (ECCC/CCCS), Gouvernement du Canada
 stations_dl()
@@ -75,7 +76,7 @@ SNH <- as.vector(c("_odyssey", "_hobo"), mode = "character") # liste des types d
 # objectif : modifications automatisées pour chaque fichier issus d'une seule période-emplacement de mesures des level loggers
 
 # fichiers de consigne de données
-raw.ll.files <- list.files(path = "connectivite/data/raw", pattern = "_odyssey|_hobo", full.names = T) # equivalent à ll.clean (ancien) # mettre dans "pattern" tous les ID de SNH listés dans l'objet SNH
+raw.ll.files <- list.files(path = "connectivite/data/raw", pattern = "_odyssey|_hobo", full.names = T) # equivalent à ll.pre (ancien) # mettre dans "pattern" tous les ID de SNH listés dans l'objet SNH
 tidy.WTD.data <- list() # équivalent à ll.clean (ancien)
 fichier.uid.df <- data.frame(fichier.uid = NA, file.name = NA, probe.uid = NA, "extraction.donnees.aaaammjj" = NA, "tz_orig" = NA) # pour stocker les fichier.uid (aussi première colonne de cal.data) et autres données intérimaires
 # odyssey_offset_archives <- data.frame(fichier.uid = NA, offset_cm_date = NA, a.slope_excel = NA,	b.verticalIntercept = NA) #, `prof_nappe_bulleur_cm_plus.out` = NA, pre_prof_nappe_odyssey_mm_to_cm = NA,	`prof_nappe_odyssey_cm_plus.out` = NA) # notes des offsets d'années précédantes
@@ -83,10 +84,14 @@ for (i in 1:length(raw.ll.files)) {
   # i<-14 32 9 10 11 12 13 14 15 16# 41362(27 mars 2025)
   print(i)
   raw.ll.files[i] # début de la loop pour les ODYSSEY (if() prochaine ligne)
+  
+  
+  # ici mettre dara.metadata avec le IF À L'INTÉRIEUR *** voir fonctions.phd
+  
   if (grepl(SNH[1], raw.ll.files[i])) {  # début de la loop pour les ODYSSEY
     # read_odyssey(raw.ll.files) # fonction sous jacente non-construite -> elle englobera les fonctions suivantes à la fin
     raw.ll.files.i <- data.metadata.odyssey(raw.ll.files[i]) # séparer données et métadonnées √ OK 20102025
-    metadata.verif(raw.ll.files.i) # objet raw.ll.files.i créé dans fonction précédante √ OK 20102025
+    metadata.verif.odyssey(raw.ll.files.i) # probe.uid correspond à fichier, arrête la boucle si problème √ OK 20102025 
     
     ### extraction d'identifiants à inscrire en métadonnées et dans fichier.uid.df ----
     texte <- raw.ll.files.i[[2]][4] # logger serial no, en base R
@@ -108,15 +113,8 @@ for (i in 1:length(raw.ll.files)) {
     
     # ____Rendue là_____
     
-    # création du fichier.uid.i, nom unique du FICHIER qui ne pourra JAMAIS être dupliqué (utile dans section début et fin des mesures par périodes, pour un mm FICHIER)
-    fichier.uid.i <- paste0(unlist(result)[1], "_", unlist(result)[2]) # ceci sera écrasé à la prochaine itération
-    fichier.uid.df[i,1:4] <- c(paste0(unlist(result)[1], "_", unlist(result)[2]), raw.ll.files[i], probe.uid.i, as.numeric(unlist(result)[2])) # ceci sera gardé en mémoire (doit être identique à la colonne fichier.uid dans cal.data)
-    # ajouts aux métadonnées des fichiers
-    ll.pre.2.metadata[10:13] <- c(paste0("fichier.uid : ", unlist(result)[1], "_", unlist(result)[2]), paste0('file.name : ', "`", ll.pre[i], "`"), 
-                                  paste0("probe.uid : ", probe.uid.i), paste0("date d'extraction des données : ", as.numeric(unlist(result)[2])))
-    
     ### création du dataframe level legger (ll) contenant données de nappe phréatique (NP) et ménage  ----
-    ll.pre.2.data.1 <- read.csv(text = ll.pre.2.data, col.names = c("scan.id", "date.JJ.MM.AAAA", "time.HH.MM.SS",'raw.value.mm',"calibrated.value.cm")) # text = argument de read.csv qui lit la valeur contenue dans l'objet / DATE mauvais format
+    ll.pre.2.data.1 <- read.csv(text = raw.ll.files.i[[1]], col.names = c("scan.id", "date.JJ.MM.AAAA", "time.HH.MM.SS",'raw.value.mm',"calibrated.value.cm")) # text = argument de read.csv qui lit la valeur contenue dans l'objet
     
     # vérifications
     head(ll.pre.2.data.1, n=20); str(ll.pre.2.data.1)
@@ -128,23 +126,14 @@ for (i in 1:length(raw.ll.files)) {
     ### date et heure : format ISO date AAAA-MM-JJTHH:MM:SS,ss-/+FF:ff, voir https://fr.wikipedia.org/wiki/ISO_8601 ----
     # heure : « Z » à la fin lorsqu’il s’agit de l’heure UTC. (« Z » pour méridien zéro, aussi connu sous le nom « Zulu » dans l’alphabet radio international).
     # extraction : nom du site pour trouver les coordonnées qui serviront à connaître le fuseau horaire
-    site.name.pre <- sub("SiteName","",ll.pre.2.metadata[1])
+    site.name.pre <- sub("SiteName","",raw.ll.files.i[[2]][1])
     site.name <- stringr::str_to_title(gsub(",", "", site.name.pre))
     
     # ouvrir données du shapefile pour accéder les zones
-    zones <- read_sf("~Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectitite_PhD_Mergin_26nov24/Ecotone.restauration.zone.pt.shp")
-    zones <- as.data.frame(zones)
-    head(zones); tail(zones)
-    
-    # extraire la bonne lat, long selon le nom du site
-    # coords <- c(zones$latitude[zones$site==site.name], zones$longitude[zones$site==site.name])
-    coords <- c(zones$latitude[zones$site==site.name][1], zones$longitude[zones$site==site.name][1])
-    
-    # trouver le UTC selon la lat long
-    (tz <- tz_lookup_coords(coords[1], coords[2], method = "fast", warn = FALSE))
+    tz <- zones("~Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectitite_PhD_Mergin_26nov24/Ecotone.restauration.zone.pt.shp")
     # ajouts aux métadonnées des fichiers
     fichier.uid.df[i,5] <- tz
-    ll.pre.2.metadata[14] <- paste0("original time zone : ", tz)
+    raw.ll.files.i[[2]][14] <- paste0("original time zone : ", tz)
     
     #### ménage de la date et heure  ----
     # modifier mes colonnes pour avoir le format ISO (manque encore le UTC à ajouter à la fin)
@@ -182,40 +171,10 @@ for (i in 1:length(raw.ll.files)) {
     # fin = heure de retrait
     # note : données de date en format xlsx ça lit TOUT CROCHE, transformé en csv fonctionne bien
     
-    ##### import et nettoyage ----
-    cal.data.pre <- read.csv("connectivite/data/raw/level_logger_calibration_all.csv", sep = ";", dec = ",")
-    str(cal.data.pre)
-    # cal.data <- cal.data.pre %>% mutate_at(c("pre_prof_nappe_odyssey_mm_to_cm", "prof_nappe_bulleur_cm_plus.out", "prof_nappe_odyssey_cm_plus.out",
-    #                                                  "last_offset_cm"), as.numeric) %>% mutate_at("probe.uid", as.character)
-    cal.data <- cal.data.pre %>% mutate_at("probe.uid", as.character)
+    ##### cal.data ----
+    cal.data("connectivite/data/raw/level_logger_calibration_all.csv") # import et nettoyage, bon format de date
     
-    # cal.data$last_offset_date <- as.numeric(cal.data$last_offset_date)
-    colnames(cal.data); str(cal.data)
-    
-    # out = (pt haut - moyenne pt bas)
-    cal.data$out.R = round(cal.data$pt.haut.cm - ((cal.data$pt.bas1.cm+cal.data$pt.bas2.cm+cal.data$pt.bas3.cm)/3), digits = 1)
-    # long négative en mm = cal.length.cm*-10
-    cal.data$long_negative_cal.length_mm_y <- cal.data$cal.length.cm*-10 # longueur de fil nécessaire : en mm et au négatif / les NA seront calculé prochainement
-    
-    cal.data <- cal.data %>% dplyr::select("fichier.uid","measure_type", "measure_status", "site.uid", "well.uid", "trmnt.uid", "lab.probe.id", "probe.uid", "probe.brand", 
-                                    "cal.length.cm", "cal.order", "long_negative_cal.length_mm_y", "cal.value_x", "comment", 
-                                    "day.begining.aaaa.mm.dd.hh.mm", "day.end.aaaa.mm.dd.hh.mm", "distance.m", "out.R", "out.long.tuyau.sol.cm", everything()) #, -"caduque.long.fil.cm")
-    cal.data$period.fichier.uid <- paste0(cal.data$day.begining.aaaa.mm.dd.hh.mm, "--", cal.data$day.end.aaaa.mm.dd.hh.mm, ".",cal.data$fichier.uid)
-    
-    # cal.data$out.R[1] <- 2 # tester si une valeur FALSE, if ci-dessous devrait donner un avertissement
-    # vérification de valeurs OUT
-    cal.data$out.R
-    round(cal.data$out.long.tuyau.sol.cm, digits = 1)
-    if(all(cal.data$out.R == round(cal.data$out.long.tuyau.sol.cm, digits = 1), na.rm = T))  { # si TOUS TRUE (fonction any()) = changer nom de out.R et supprimer la mesure entrée manuellement // si FALSE = avertissement
-      cal.data$out.long.tuyau.sol.cm <- cal.data$out.R
-      cal.data <- cal.data %>% dplyr::select(!out.R) # out.R DISPARAÎT ! NE PLUS LA CHERCHER !
-    } else { stop("Attention, le out entré dans cal.data (syn. level_logger_calibration_all.csv) n'est pas identique à la moyenne des points bas soustraite du point haut du puits.") }
-    # format POSIX begining et end
-    cal.data$day.begining.aaaa.mm.dd.hh.mm <- ymd_hm(cal.data$day.begining.aaaa.mm.dd.hh.mm, tz = tz)
-    cal.data$day.end.aaaa.mm.dd.hh.mm <- ymd_hm(cal.data$day.end.aaaa.mm.dd.hh.mm, tz = tz)
-    
-    head(cal.data); tail(cal.data); str(cal.data)
-    
+     
     ##### boucle de concaténation des données (fichier.uid ensemble, sinon autre calibration et graphique distinct) ----
     # raison de l'étape : si sonde retirée et remise, sans écraser les données contenues (continuation des mesures), retirer la période 
     # de données invalides (quelques heures, période de rééquilibrage) et recoller les lignes ensemble pour former le fichier d'heures valides
@@ -340,18 +299,24 @@ for (i in 1:length(raw.ll.files)) {
     # 
   } # fin de la loop pour les ODYSSEY / # début de la loop pour les HOBO (else if() prochaine ligne)
   
-  else if (grepl(SNH[2], ll.pre[i])) { # début de la loop pour les HOBO
+  else if (grepl(SNH[2], raw.ll.files[i])) { # début de la loop pour les HOBO
+    # hobo <- sub("*_","",SNH[2]) # TESTS.... JE M'ESSAYE À ÉCRIRE DES FONCTIONS
+    
+    
+    
     # import et ménage
     k <- i
     # i<-5
     print(k)
-    ll.pre[k]
-    # ll.pre.0 <- read.csv(paste0("connectivite/data/raw/", ll.pre[k]), sep = "','")
-    ll.pre.0 <- readLines(paste0("connectivite/data/raw/", ll.pre[k])); str(ll.pre.0) # lire en format texte
-    # ** tz orig mentionnée dans la colonne ll.pre.0.metadata[2], coder pour l'obtenir au besoin
-    # Warning message:
-    #   In readLines(paste0("connectivite/data/raw/", ll.pre[k])) :
-    #   incomplete final line found on 'connectivite/data/raw/..._hobo.csv'
+    raw.ll.files[k]
+    
+    
+    # RENDUE LÀ ________________ CODE CI DESSOUS NON À JOUR, PRENDRE DE DATAT WATER TABLE ALL**
+    # ll.pre.0 <- readLines(paste0(raw.ll.files[k])); str(raw.ll.files) # lire en format texte
+    # # ** tz orig mentionnée dans la colonne ll.pre.0.metadata[2], coder pour l'obtenir au besoin
+    # # Warning message:
+    # #   In readLines(paste0("connectivite/data/raw/", ll.pre[k])) :
+    # #   incomplete final line found on 'connectivite/data/raw/..._hobo.csv'
     
     ### création des subsets data & metadata ----
     # notes : les noms réfèrent à l'étape et non à une matrice en particulier, les objets seront remplacés au fil de la boucle. 
