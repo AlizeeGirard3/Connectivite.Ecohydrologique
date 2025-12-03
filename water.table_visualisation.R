@@ -15,10 +15,9 @@ setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
 source("general.scripts/scripts/fonctions_generales.R") # appel du fichier de métadonnées de projet
 
 # Import de données ----
-tidy.WTD.data <- readRDS("connectivite/data/clean/tidy.WTD.data.RDS")
+ll.clean <- readRDS("connectivite/data/clean/tidy.WTD.data.RDS")
 # obtenu via le script "/scripts/data_water.table.all(v.X).R"
 # importer le graphique que topographie
-
 
 # Librairies ----
 library(conflicted) # ℹ Use the conflicted package to force all conflicts to become errors    ---->>>>  devtools::install_github("r-lib/conflicted")
@@ -28,62 +27,141 @@ if (!require("ggplot2")) install.packages("ggplot2")
 if (!require("stringr")) install.packages("stringr") # str_to_title
 if (!require("grDevices")) install.packages("grDevices") # pdf()
 
-# graph.wt <- list()
-for (i in 1:length(tidy.WTD.data)) { # tidy.WTD.data nouveau nom de ll.clean (automne 2025)
-  # i<-46
-  paste(i)
-  
-  # 3 déc. problème d'étiquette
-  # ICI S'ARRANGER POUR RÉFÉRER À UN NUMÉRO unique et non le probe uid qui revient année après année !'
-  # extraire no de sonde
-  # texte <- tidy.WTD.data[[i]]$metadata[4]
-  # numbers <- gregexpr("[0-9]+", texte)
-  # result <- regmatches(texte, numbers)
-  # (probe.serial.no.i <- as.numeric(unlist(result)[1]))
-  # 
-  # # extraire nom de transect/puits
-  # cal.data <- read.csv("connectivite/data/raw/level_logger_calibration_all.csv", sep = ";")
-  # colnames(cal.data)
-  # well.uid.pre <- cal.data %>% dplyr::filter(probe.uid==as.character(probe.serial.no.i)) %>% distinct(well.uid)
-  # year <- substr(tidy.WTD.data[[i]]$metadata[14], start = 20, stop = 24)
-  # well.uid <- dplyr::filter(year, well.uid.pre)
-  #   
-  # class(as.numeric(substr(tidy.WTD.data[[i]]$metadata[14], start = 20, stop = 24)))
-  #   regex(, as.character(well.uid), ignore.case = F)
-  #   substr(tidy.WTD.data[[i]]$metadata[14], start = 20, stop = 24)
-  # 
-  # str_locate(": ^", tidy.WTD.data[[i]]$metadata[13])
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  # extraire nom de site
-  site.name.pre <- sub("SiteName","",tidy.WTD.data[[i]]$metadata[1])
-  site.name.pre.1 <- gsub(",", "", site.name.pre) # ici ce serait ST-HENRI, ça me gosse
-  site.name <- str_to_title(site.name.pre.1)
-  
-  # créer objet contenant les données
-  ll.cal <- tidy.WTD.data[[i]]$data # ll.cal ce sont les données calibrées finales, reprise du nom dans le script d'origine "data_water.table.all.R"
-  class(ll.cal); head(ll.cal); str(ll.cal); colnames(ll.cal)
-  ll.cal$date.time.tz.orig <- as.POSIXct(ll.cal$date.time.tz.orig) #, tryFormats = )
-  # ici joint avec les info de distance (?)
+###########################################################################-
+# ESSAI 3 déc.
+SNH <- as.vector(c("_odyssey", "_hobo"), mode = "character") # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque" est traitée de façon différente
+for (i in 1:length(ll.clean)) {
+  if (!is.null(ll.clean[[i]])) {
+    # i<-5
+    paste(i)
+    ll.clean[[i]]
 
-  
-  # 7 avril 2025 tentative de voir si l'heure se place au bon moment
-    graph.wt <- ll.cal %>% ggplot(mapping = aes(y = calibrated.value.cm, x = date.time.tz.orig)) + # doit être en as.POSICct, mais avec la date et l'heure. Repartir de zéro dans le script water.tanle_all??
-    geom_line(group = 1) +
-    scale_x_datetime(date_minor_breaks = "day", date_breaks = "2 weeks", date_labels = "%D:%H") +
-      ggtitle(paste0(site.name, ", sonde no ", probe.serial.no.i, " à l'emplacement\n", transect.id.i, "\n",
+    # bouble pour les ODYSSEY
+    if (grepl(SNH[1], ll.clean[[i]]$metadata[11])) { #}
+      
+    # 3 déc. problème d'étiquette
+    # ICI S'ARRANGÉ POUR RÉFÉRER À UN NUMÉRO unique et non le probe uid qui revient année après année !'
+    # extraire no de sonde
+    fichier.uid.i <- gsub(".*: ", "", ll.clean[[i]]$metadata[10])
+    # extraire nom de transect/puits
+    cal.data <- read.csv("connectivite/data/raw/level_logger_calibration_all.csv", sep = ";")
+    colnames(cal.data)
+    well.uid <- cal.data %>% dplyr::filter(fichier.uid==fichier.uid.i) %>% distinct(well.uid)
+    
+    texte <- ll.clean[[i]]$metadata[4]
+    numbers <- gregexpr("[0-9]+", texte)
+    result <- regmatches(texte, numbers)
+    (probe.serial.no.i <- as.numeric(unlist(result)[1]))
+    
+    # extraire nom de site
+    site.name.pre <- sub("SiteName","",ll.clean[[i]]$metadata[1])
+    site.name.pre.1 <- gsub(",", "", site.name.pre) # ici ce serait ST-HENRI, ça me gosse
+    site.name <- str_to_title(site.name.pre.1)
+    
+    # créer objet contenant les données
+    ll.cal <- ll.clean[[i]]$data # ll.cal ce sont les données calibrées finales, reprise du nom dans le script d'origine "data_water.table.all.R"
+    # class(ll.cal); head(ll.cal); str(ll.cal); colnames(ll.cal)
+    ll.cal$date.time.tz.orig <- as.POSIXct(ll.cal$date.time.tz.orig, tryFormats = )
+    
+    # graphiques de nappe phréatique
+    graph.wt <- ll.cal %>% ggplot(mapping = aes(y = calibrated.value.cm, x = date.time.tz.orig)) + # ici HOBO je dois faire *-1 pour avoir la hauteur relative (nég si en dessous de surface)
+      geom_line(group = 1) +
+      scale_x_datetime(
+        date_minor_breaks = "day", date_breaks = "2 weeks", date_labels = "%D:%H") +
+      ggtitle(paste0(site.name, ", sonde no ", probe.serial.no.i, " à l'emplacement\n", well.uid, "\n",
                      "nombre de ligne du fichier : ", nrow(ll.cal))) +
-      labs(y = "Profondeur de nappe phréatique (cm)", x = "Date") +
+      labs(y = "Hauteur de nappe phréatique (cm)\nrelative à la surface", x = "Date") +
       theme_bw() + theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 45, hjust = 1, vjust = 0.5))
-  print(graph.wt) # imprimer dans R
-  
+    print(graph.wt) # imprimer dans R
+
+    }
+    
+    if (grepl(SNH[2], ll.clean[[i]]$metadata[4])) { #}
+      
+      # 3 déc. problème d'étiquette
+      # ICI S'ARRANGÉ POUR RÉFÉRER À UN NUMÉRO unique et non le probe uid qui revient année après année !'
+      # extraire no de sonde
+      fichier.uid.i <- gsub(".*: ", "", ll.clean[[i]]$metadata[3])
+      # extraire nom de transect/puits
+      cal.data <- read.csv("connectivite/data/raw/level_logger_calibration_all.csv", sep = ";")
+      colnames(cal.data)
+      well.uid <- cal.data %>% dplyr::filter(fichier.uid==fichier.uid.i) %>% distinct(well.uid)
+      
+      texte <- ll.clean[[i]]$metadata[5]
+      numbers <- gregexpr("[0-9]+", texte)
+      result <- regmatches(texte, numbers)
+      (probe.serial.no.i <- as.numeric(unlist(result)[1]))
+      
+      # extraire nom de site
+      site.name <- gsub(".*: ", "", ll.clean[[i]]$metadata[1])
+
+      # créer objet contenant les données
+      ll.cal <- ll.clean[[i]]$data # ll.cal ce sont les données calibrées finales, reprise du nom dans le script d'origine "data_water.table.all.R"
+      # class(ll.cal); head(ll.cal); str(ll.cal); colnames(ll.cal)
+      ll.cal$date.time.tz.orig <- as.POSIXct(ll.cal$date.time.tz.orig, tryFormats = )
+      
+      graph.wt <- ll.cal %>% ggplot(mapping = aes(y = calibrated.value.cm*-1, x = date.time.tz.orig)) + # ici HOBO je dois faire *-1 pour avoir la hauteur relative (nég si en dessous de surface)
+        geom_line(group = 1) +
+        scale_x_datetime(
+          date_minor_breaks = "day", date_breaks = "2 weeks", date_labels = "%D:%H") +
+        ggtitle(paste0(site.name, ", sonde no ", probe.serial.no.i, " à l'emplacement\n", well.uid, "\n",
+                       "nombre de ligne du fichier : ", nrow(ll.cal))) +
+        labs(y = "Hauteur de nappe phréatique (cm)\nrelative à la surface", x = "Date") +
+        theme_bw() + theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 45, hjust = 1, vjust = 0.5))
+      print(graph.wt) # imprimer dans R
+      
+      # ATTENTION !! surpasser consciemment dans la boucle
+      # ggsave(paste0("connectivite/output/figures/",site.name, "_", probe.serial.no.i, "_", transect.id.i,".pdf"), graph.wt, width = 12, height = 8)
+  }
+  } 
+}
+
+
+
+###########################################################################-
+# ancien
+
+# 
+# # graph.wt <- list()
+# for (i in 1:length(tidy.WTD.data)) { # tidy.WTD.data nouveau nom de ll.clean (automne 2025)
+#   # i<-46
+#   paste(i)
+#   
+#   # 3 déc. problème d'étiquette
+#   # ICI S'ARRANGER POUR RÉFÉRER À UN NUMÉRO unique et non le probe uid qui revient année après année !'
+#   # extraire no de sonde
+#   fichier.uid.i <- gsub(".*: ", "", tidy.WTD.data[[i]]$metadata[10])
+#   # # extraire nom de transect/puits
+#   cal.data <- read.csv("connectivite/data/raw/level_logger_calibration_all.csv", sep = ";")
+#   colnames(cal.data)
+#   well.uid <- cal.data %>% dplyr::filter(fichier.uid==fichier.uid.i) %>% distinct(well.uid)
+# 
+#   texte <- ll.clean[[i]]$metadata[4]
+#   numbers <- gregexpr("[0-9]+", texte)
+#   result <- regmatches(texte, numbers)
+#   (probe.serial.no.i <- as.numeric(unlist(result)[1]))
+#   
+#   # extraire nom de site
+#   site.name.pre <- sub("SiteName","",tidy.WTD.data[[i]]$metadata[1])
+#   site.name.pre.1 <- gsub(",", "", site.name.pre) # ici ce serait ST-HENRI, ça me gosse
+#   site.name <- str_to_title(site.name.pre.1)
+#   
+#   # créer objet contenant les données
+#   ll.cal <- tidy.WTD.data[[i]]$data # ll.cal ce sont les données calibrées finales, reprise du nom dans le script d'origine "data_water.table.all.R"
+#   class(ll.cal); head(ll.cal); str(ll.cal); colnames(ll.cal)
+#   ll.cal$date.time.tz.orig <- as.POSIXct(ll.cal$date.time.tz.orig) #, tryFormats = )
+#   # ici joint avec les info de distance (?)
+# 
+#   
+#   # 7 avril 2025 tentative de voir si l'heure se place au bon moment
+#     graph.wt <- ll.cal %>% ggplot(mapping = aes(y = calibrated.value.cm, x = date.time.tz.orig)) + # doit être en as.POSICct, mais avec la date et l'heure. Repartir de zéro dans le script water.tanle_all??
+#     geom_line(group = 1) +
+#     scale_x_datetime(date_minor_breaks = "day", date_breaks = "2 weeks", date_labels = "%D:%H") +
+#       ggtitle(paste0(site.name, ", sonde no ", probe.serial.no.i, " à l'emplacement\n", well.uid, "\n",
+#                      "nombre de ligne du fichier : ", nrow(ll.cal))) +
+#       labs(y = "Profondeur de nappe phréatique (cm)", x = "Date") +
+#       theme_bw() + theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 45, hjust = 1, vjust = 0.5))
+#   print(graph.wt) # imprimer dans R
   
   
   
