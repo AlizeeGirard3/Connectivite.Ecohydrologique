@@ -30,20 +30,37 @@ if (!require("grDevices")) install.packages("grDevices") # pdf()
 
 # graph.wt <- list()
 for (i in 1:length(tidy.WTD.data)) { # tidy.WTD.data nouveau nom de ll.clean (automne 2025)
-  # i<-7
+  # i<-46
   paste(i)
   
+  # 3 déc. problème d'étiquette
+  # ICI S'ARRANGER POUR RÉFÉRER À UN NUMÉRO unique et non le probe uid qui revient année après année !'
   # extraire no de sonde
-  texte <- tidy.WTD.data[[i]]$metadata[4]
-  numbers <- gregexpr("[0-9]+", texte)
-  result <- regmatches(texte, numbers)
-  (probe.serial.no.i <- as.numeric(unlist(result)[1]))
+  # texte <- tidy.WTD.data[[i]]$metadata[4]
+  # numbers <- gregexpr("[0-9]+", texte)
+  # result <- regmatches(texte, numbers)
+  # (probe.serial.no.i <- as.numeric(unlist(result)[1]))
+  # 
+  # # extraire nom de transect/puits
+  # cal.data <- read.csv("connectivite/data/raw/level_logger_calibration_all.csv", sep = ";")
+  # colnames(cal.data)
+  # well.uid.pre <- cal.data %>% dplyr::filter(probe.uid==as.character(probe.serial.no.i)) %>% distinct(well.uid)
+  # year <- substr(tidy.WTD.data[[i]]$metadata[14], start = 20, stop = 24)
+  # well.uid <- dplyr::filter(year, well.uid.pre)
+  #   
+  # class(as.numeric(substr(tidy.WTD.data[[i]]$metadata[14], start = 20, stop = 24)))
+  #   regex(, as.character(well.uid), ignore.case = F)
+  #   substr(tidy.WTD.data[[i]]$metadata[14], start = 20, stop = 24)
+  # 
+  # str_locate(": ^", tidy.WTD.data[[i]]$metadata[13])
   
-  # extraire nom de transect/puits
-  cal.data <- read.csv("connectivite/data/raw/level_logger_calibration_all.csv", sep = ";")
-  colnames(cal.data)
-  transect.id.i.pre <- cal.data$well.uid[cal.data$probe.uid==probe.serial.no.i]
-  transect.id.i <- unique(transect.id.i.pre[!is.na(transect.id.i.pre)])
+  
+  
+  
+  
+  
+  
+  
   
   # extraire nom de site
   site.name.pre <- sub("SiteName","",tidy.WTD.data[[i]]$metadata[1])

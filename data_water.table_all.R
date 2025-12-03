@@ -77,7 +77,7 @@ tidy.WTD.data <- list() # équivalent à ll.clean (ancien)
 fichier.uid.df <- data.frame(fichier.uid = NA, file.name = NA, probe.uid = NA, "extraction.donnees.aaaammjj" = NA, "tz_orig" = NA) # pour stocker les fichier.uid (aussi première colonne de cal.data) et autres données intérimaires
 odyssey_offset_archives <- data.frame(fichier.uid = NA, offset_cm_date = NA, a.slope_excel = NA,	b.verticalIntercept = NA) #, `prof_nappe_bulleur_cm_plus.out` = NA, pre_prof_nappe_odyssey_mm_to_cm = NA,	`prof_nappe_odyssey_cm_plus.out` = NA)
 for (i in 1:length(ll.pre)) {
-  # i<-13 9 10 11 12 13 14 15 16# 41362(27 mars 2025)
+  # i<-46 9 10 11 12 13 14 15 16# 41362(27 mars 2025)
   print(i)
   ll.pre[i] # début de la loop pour les ODYSSEY (if() prochaine ligne)
   if (grepl(SNH[1], ll.pre[i])) {  # début de la loop pour les ODYSSEY
@@ -120,8 +120,9 @@ for (i in 1:length(ll.pre)) {
     fichier.uid.i <- paste0(unlist(result)[1], "_", unlist(result)[2]) # ceci sera écrasé à la prochaine itération
     fichier.uid.df[i,1:4] <- c(paste0(unlist(result)[1], "_", unlist(result)[2]), ll.pre[i], probe.uid.i, as.numeric(unlist(result)[2])) # ceci sera gardé en mémoire (doit être identique à la colonne fichier.uid dans cal.data)
     # ajouts aux métadonnées des fichiers
-    ll.pre.2.metadata[10:13] <- c(paste0("fichier.uid : ", unlist(result)[1], "_", unlist(result)[2]), paste0('file.name : ', "`", ll.pre[i], "`"), 
-                                  paste0("probe.uid : ", probe.uid.i), paste0("date d'extraction des données : ", as.numeric(unlist(result)[2])))
+    ll.pre.2.metadata[10:14] <- c(paste0("fichier.uid : ", unlist(result)[1], "_", unlist(result)[2]), paste0('file.name : ', "`", ll.pre[i], "`"), 
+                                  paste0("probe.uid : ", probe.uid.i), paste0("date d'extraction des données : ", as.numeric(unlist(result)[2])),
+                                  paste0("année de données : ", substr(unlist(result)[2], 1, 4)))
     class(ll.pre.2.metadata)
     ### création du dataframe level legger (ll) contenant données de nappe phréatique (NP) et ménage  ----
     ll.pre.2.data.1 <- read.csv(text = ll.pre.2.data, col.names = c("scan.id", "date.JJ.MM.AAAA", "time.HH.MM.SS",'raw.value.mm',"calibrated.value.cm")) # text = argument de read.csv qui lit la valeur contenue dans l'objet / DATE mauvais format
@@ -152,7 +153,7 @@ for (i in 1:length(ll.pre)) {
     (tz <- tz_lookup_coords(coords[1], coords[2], method = "fast", warn = FALSE))
     # ajouts aux métadonnées des fichiers
     fichier.uid.df[i,5] <- tz
-    ll.pre.2.metadata[14] <- paste0("original time zone : ", tz)
+    ll.pre.2.metadata[15] <- paste0("original time zone : ", tz)
     
     #### ménage de la date et heure  ----
     # modifier mes colonnes pour avoir le format ISO (manque encore le UTC à ajouter à la fin)
