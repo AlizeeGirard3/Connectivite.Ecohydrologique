@@ -40,8 +40,8 @@
 # tidy.WTD.data <-readRDS("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/clean/ll.clean.RDS") # issu du code ci-présent / non à jour **
 
 # .rs.restartR()
-source("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/general.scripts/scripts/fonctions.R")
-# source("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/connectivite/scripts/fonctions_phd.R")
+# source("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/general.scripts/scripts/fonctions_generales.R")
+source("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/connectivite/scripts/fonctions_phd.R")
 setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
 
 # Librairies ----
@@ -70,7 +70,7 @@ stations_meta()
 
 
 # A  Données issues des sonde de niveau hydrostatique ----
-SNH <- as.vector(c("_odyssey", "_hobo"), mode = "character") # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque" est traitée de façon différente
+# SNH <- as.vector(c("_odyssey", "_hobo"), mode = "character") # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque" est traitée de façon différente
 
 # A.1 nettoyage et enregistrement en RDS ----
 # objectif : modifications automatisées pour chaque fichier issus d'une seule période-emplacement de mesures des level loggers
@@ -78,98 +78,82 @@ SNH <- as.vector(c("_odyssey", "_hobo"), mode = "character") # liste des types d
 # fichiers de consigne de données
 raw.ll.files <- list.files(path = "connectivite/data/raw", pattern = "_odyssey|_hobo", full.names = T) # equivalent à ll.pre (ancien) # mettre dans "pattern" tous les ID de SNH listés dans l'objet SNH
 tidy.WTD.data <- list() # équivalent à ll.clean (ancien)
-fichier.uid.df <- data.frame(fichier.uid = NA, file.name = NA, probe.uid = NA, "extraction.donnees.aaaammjj" = NA, "tz_orig" = NA) # pour stocker les fichier.uid (aussi première colonne de cal.data) et autres données intérimaires
+file.uid.df <- data.frame(file.uid = NA, file.name = NA, probe.uid = NA, "extraction.data.aaaammjj" = NA, "tz_orig" = NA) # pour stocker les fichier.uid (aussi première colonne de cal.data) et autres données intérimaires
 # odyssey_offset_archives <- data.frame(fichier.uid = NA, offset_cm_date = NA, a.slope_excel = NA,	b.verticalIntercept = NA) #, `prof_nappe_bulleur_cm_plus.out` = NA, pre_prof_nappe_odyssey_mm_to_cm = NA,	`prof_nappe_odyssey_cm_plus.out` = NA) # notes des offsets d'années précédantes
 for (i in 1:length(raw.ll.files)) {
-  # i<-14 32 9 10 11 12 13 14 15 16# 41362(27 mars 2025)
+  # i<-86 32 9 10 11 12 13 14 15 16# 41362(27 mars 2025)
   print(i)
   raw.ll.files[i] # début de la loop pour les ODYSSEY (if() prochaine ligne)
   
+  raw.ll.files.i.init <- data.metadata(raw.ll.files[i]) # objet temporaire pour ajouter des lignes
+  raw.ll.files.i <- metadata(raw.ll.files.i.init)
+  file.uid.df <- files.uids(raw.ll.files.i.init); rm(raw.ll.files.i.init)
   
-  # ici mettre dara.metadata avec le IF À L'INTÉRIEUR *** voir fonctions.phd
   
-  if (grepl(SNH[1], raw.ll.files[i])) {  # début de la loop pour les ODYSSEY
-    # read_odyssey(raw.ll.files) # fonction sous jacente non-construite -> elle englobera les fonctions suivantes à la fin
-    raw.ll.files.i <- data.metadata.odyssey(raw.ll.files[i]) # séparer données et métadonnées √ OK 20102025
-    metadata.verif.odyssey(raw.ll.files.i) # probe.uid correspond à fichier, arrête la boucle si problème √ OK 20102025 
-    
-    ### extraction d'identifiants à inscrire en métadonnées et dans fichier.uid.df ----
-    texte <- raw.ll.files.i[[2]][4] # logger serial no, en base R
-    numbers <- gregexpr("[0-9]+", texte)
-    result <- regmatches(texte, numbers)
-    probe.uid.i <- as.numeric(unlist(result))
-    # no du level logger dans le nom du fichier brut (.csv), correspond à l'item "i" de la présente boucle
-    texte <- raw.ll.files[i]
-    numbers <- gregexpr("[0-9]+", texte)
-    result <- regmatches(texte, numbers)
-    fichier <- as.numeric(unlist(result))
-    # création du fichier.uid.i, nom unique du FICHIER qui ne pourra JAMAIS être dupliqué (utile dans section début et fin des mesures par périodes, pour un mm FICHIER)
-    fichier.uid.i <- paste0(unlist(result)[1], "_", unlist(result)[2]) # ceci sera écrasé à la prochaine itération
-    fichier.uid.df[i,1:4] <- c(paste0(unlist(result)[1], "_", unlist(result)[2]), raw.ll.files[i], probe.uid.i, as.numeric(unlist(result)[2])) # ceci sera gardé en mémoire (doit être identique à la colonne fichier.uid dans cal.data)
-    # ajouts aux métadonnées des fichiers
-    raw.ll.files.i[[2]][10:13] <- c(paste0("fichier.uid : ", unlist(result)[1], "_", unlist(result)[2]), paste0('file.name : ', "`", raw.ll.files[i], "`"), 
-                       paste0("probe.uid : ", probe.uid.i), paste0("date d'extraction des données : ", as.numeric(unlist(result)[2])))
-
-    
     # ____Rendue là_____
     
-    ### création du dataframe level legger (ll) contenant données de nappe phréatique (NP) et ménage  ----
-    ll.pre.2.data.1 <- read.csv(text = raw.ll.files.i[[1]], col.names = c("scan.id", "date.JJ.MM.AAAA", "time.HH.MM.SS",'raw.value.mm',"calibrated.value.cm")) # text = argument de read.csv qui lit la valeur contenue dans l'objet
-    
+  # ODYSSEY (SNH[1])
+    # ### création du dataframe level legger (ll) contenant données de nappe phréatique (NP) et ménage  ----
+    # ll.pre.2.data.1 <- read.csv(text = raw.ll.files.i[[1]], col.names = c("scan.id", "date.JJ.MM.AAAA", "time.HH.MM.SS",'raw.value.mm',"calibrated.value.cm")) # text = argument de read.csv qui lit la valeur contenue dans l'objet
+    # 
     # vérifications
-    head(ll.pre.2.data.1, n=20); str(ll.pre.2.data.1)
+    # head(ll.pre.2.data.1, n=20); str(ll.pre.2.data.1)
         # si deux colonnes raw et calibrated sont exactement les mêmes, c'est qu'il n'y a pas eu de calibration; supprimer les valeurs doublons et/ou 
     # les remplacer par les bonnes valeur calibrées (calcul à faire)
-    ll.pre.2.data.1$calibrated.value.cm <- ifelse(ll.pre.2.data.1$raw.value.mm == ll.pre.2.data.1$calibrated.value.cm, yes = ll.pre.2.data.1$calibrated.value.cm[rep("NA", times = length(ll.pre.2.data.1$calibrated.value.cm))], no = ll.pre.2.data.1$calibrated.value.cm)
-    head(ll.pre.2.data.1, n=20) ; str(ll.pre.2.data.1)
+    # ll.pre.2.data.1$calibrated.value.cm <- ifelse(ll.pre.2.data.1$raw.value.mm == ll.pre.2.data.1$calibrated.value.cm, yes = ll.pre.2.data.1$calibrated.value.cm[rep("NA", times = length(ll.pre.2.data.1$calibrated.value.cm))], no = ll.pre.2.data.1$calibrated.value.cm)
+    # head(ll.pre.2.data.1, n=20) ; str(ll.pre.2.data.1)
+    # 
+    # ### date et heure : format ISO date AAAA-MM-JJTHH:MM:SS,ss-/+FF:ff, voir https://fr.wikipedia.org/wiki/ISO_8601 ----
+    # # heure : « Z » à la fin lorsqu’il s’agit de l’heure UTC. (« Z » pour méridien zéro, aussi connu sous le nom « Zulu » dans l’alphabet radio international).
+    # # extraction : nom du site pour trouver les coordonnées qui serviront à connaître le fuseau horaire
+    # site.name.pre <- sub("SiteName","",raw.ll.files.i[[2]][1])
+    # site.name <- stringr::str_to_title(gsub(",", "", site.name.pre))
+    # 
+    # # ouvrir données du shapefile pour accéder les zones
+    # tz <- zones("~Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectitite_PhD_Mergin_26nov24/Ecotone.restauration.zone.pt.shp")
+    # # ajouts aux métadonnées des fichiers
+    # fichier.uid.df[i,5] <- tz
+    # raw.ll.files.i[[2]][14] <- paste0("original time zone : ", tz)
     
-    ### date et heure : format ISO date AAAA-MM-JJTHH:MM:SS,ss-/+FF:ff, voir https://fr.wikipedia.org/wiki/ISO_8601 ----
-    # heure : « Z » à la fin lorsqu’il s’agit de l’heure UTC. (« Z » pour méridien zéro, aussi connu sous le nom « Zulu » dans l’alphabet radio international).
-    # extraction : nom du site pour trouver les coordonnées qui serviront à connaître le fuseau horaire
-    site.name.pre <- sub("SiteName","",raw.ll.files.i[[2]][1])
-    site.name <- stringr::str_to_title(gsub(",", "", site.name.pre))
-    
-    # ouvrir données du shapefile pour accéder les zones
-    tz <- zones("~Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectitite_PhD_Mergin_26nov24/Ecotone.restauration.zone.pt.shp")
-    # ajouts aux métadonnées des fichiers
-    fichier.uid.df[i,5] <- tz
-    raw.ll.files.i[[2]][14] <- paste0("original time zone : ", tz)
-    
-    #### ménage de la date et heure  ----
-    # modifier mes colonnes pour avoir le format ISO (manque encore le UTC à ajouter à la fin)
-    # garder date.AAAA-MM-JJ"
-    ll.pre.2.data.2 <- ll.pre.2.data.1 %>% dplyr::mutate(date.JJ.MM.AAAA_time.HH.MM.SS_tz = paste0(date.JJ.MM.AAAA," ", time.HH.MM.SS, " ", tz)) %>% 
-      dplyr::select(!c(date.JJ.MM.AAAA, time.HH.MM.SS)) # supprimer ces colonnes en format character, recréer bientôt en POSIX
-    ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz <- gsub("00:00", "00:01", ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz) # sinon, les données 00:00:00 étaient effacées !
-    ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz <- gsub("24:00:", "00:00:", ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz)
-    ll.pre.2.data.2$date.time.tz.orig <- readr::parse_datetime(ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz, format = '%d/%m/%Y %H:%M:%S %Z', locale = readr::locale(tz = tz)) # pour convertir AM/PM en décimal (0-24h), élément %p voir documentation
-    ll.pre.2.data.3 <- data.frame(separate_wider_position(ll.pre.2.data.2, # date et time en deux colonnes (idem à ODYSSEY)
-                                                          widths = c("date.AAAA.MM.JJ" = 11, "time.HH.MM.SS" = 8),
-                                                          cols = date.time.tz.orig, cols_remove = F)) 
+  
+  raw_to_clean.ll(raw.ll.files.i[[1]])
+    # #### ménage de la date et heure  ----
+    # # modifier mes colonnes pour avoir le format ISO (manque encore le UTC à ajouter à la fin)
+    # # garder date.AAAA-MM-JJ"
+    # ll.pre.2.data.2 <- ll.pre.2.data.1 %>% dplyr::mutate(date.JJ.MM.AAAA_time.HH.MM.SS_tz = paste0(date.JJ.MM.AAAA," ", time.HH.MM.SS, " ", tz)) %>% 
+    #   dplyr::select(!c(date.JJ.MM.AAAA, time.HH.MM.SS)) # supprimer ces colonnes en format character, recréer bientôt en POSIX
+    # ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz <- gsub("00:00", "00:01", ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz) # sinon, les données 00:00:00 étaient effacées !
     # ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz <- gsub("24:00:", "00:00:", ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz)
-    ll.pre.2.data.3$`date.AAAA-MM-JJ` = ymd(ll.pre.2.data.3$date.AAAA.MM.JJ, tz = tz)
-    ll.pre.2.data.3$date.time.UTC.0pre <- with_tz(ll.pre.2.data.3$date.time.tz.orig, tz = "UTC") # pour convertir AM/PM en décimal (0-24h), élément %p voir documentation
-    tz(ll.pre.2.data.3$date.time.UTC.0pre) # UTC
-    ll.pre.2.data.3$date.time.UTC.0pre.1 <- format_iso_8601(ll.pre.2.data.3$date.time.UTC.0pre)
-    ll.pre.2.data.3$date.time.UTC.0 <- gsub("[+]00:00", "Z",  ll.pre.2.data.3$date.time.UTC.0pre.1)
-    ll.pre.2.data.3$date.time.tz.orig <- gsub("00:00:01", "24:00:01", ll.pre.2.data.3$date.time.tz.orig) # rechanger les 00:00:01 dans date.time.tz.orig pour ne pas perdre des lignes (7 avril 2025)
-    # tel que codé actuellement, il peut y avoir un décalage de +/- une heure à cause que TZ prend l'heure basée sur Sys.timezone, qui dépend de l'heure d'été ou d'hiver
-    # ARRANGER UN JOUR (langage C++ pour plus de complications) 
-    # ou alors setter cette date manuellement (voir à chaque année la date de changement d'heure)
-    # Sys.timezone(location = F) essayé, n'aide pas
-    
-    # vérifications
-    colnames(ll.pre.2.data.3); head(ll.pre.2.data.3, n=35); str(ll.pre.2.data.3) # date et heure ne sont pas sous forme POSIX -> changer dans la section "### date et heure"
-    # nouveau nom préliminaire (et retirer colonnes inutiles)
-    ll.pre.2.data.4 <- ll.pre.2.data.3 %>% dplyr::select(!c(date.AAAA.MM.JJ,  "date.time.UTC.0pre", "date.time.UTC.0pre.1")) %>% 
-      dplyr::select("scan.id", "raw.value.mm", "calibrated.value.cm", "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.tz.orig", date.time.UTC.0) # date et time sans "UTC.0" sont dans le fuseau horaire d'origine (tz trouvé en croisant les coordonnées "coords")
-    head(ll.pre.2.data.4); str(ll.pre.2.data.4)
-    
+    # ll.pre.2.data.2$date.time.tz.orig <- readr::parse_datetime(ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz, format = '%d/%m/%Y %H:%M:%S %Z', locale = readr::locale(tz = tz)) # pour convertir AM/PM en décimal (0-24h), élément %p voir documentation
+    # ll.pre.2.data.3 <- data.frame(separate_wider_position(ll.pre.2.data.2, # date et time en deux colonnes (idem à ODYSSEY)
+    #                                                       widths = c("date.AAAA.MM.JJ" = 11, "time.HH.MM.SS" = 8),
+    #                                                       cols = date.time.tz.orig, cols_remove = F)) 
+    # # ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz <- gsub("24:00:", "00:00:", ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz)
+    # ll.pre.2.data.3$`date.AAAA-MM-JJ` = ymd(ll.pre.2.data.3$date.AAAA.MM.JJ, tz = tz)
+    # ll.pre.2.data.3$date.time.UTC.0pre <- with_tz(ll.pre.2.data.3$date.time.tz.orig, tz = "UTC") # pour convertir AM/PM en décimal (0-24h), élément %p voir documentation
+    # tz(ll.pre.2.data.3$date.time.UTC.0pre) # UTC
+    # ll.pre.2.data.3$date.time.UTC.0pre.1 <- format_iso_8601(ll.pre.2.data.3$date.time.UTC.0pre)
+    # ll.pre.2.data.3$date.time.UTC.0 <- gsub("[+]00:00", "Z",  ll.pre.2.data.3$date.time.UTC.0pre.1)
+    # ll.pre.2.data.3$date.time.tz.orig <- gsub("00:00:01", "24:00:01", ll.pre.2.data.3$date.time.tz.orig) # rechanger les 00:00:01 dans date.time.tz.orig pour ne pas perdre des lignes (7 avril 2025)
+    # # tel que codé actuellement, il peut y avoir un décalage de +/- une heure à cause que TZ prend l'heure basée sur Sys.timezone, qui dépend de l'heure d'été ou d'hiver
+    # # ARRANGER UN JOUR (langage C++ pour plus de complications) 
+    # # ou alors setter cette date manuellement (voir à chaque année la date de changement d'heure)
+    # # Sys.timezone(location = F) essayé, n'aide pas
+    # 
+    # # vérifications
+    # colnames(ll.pre.2.data.3); head(ll.pre.2.data.3, n=35); str(ll.pre.2.data.3) # date et heure ne sont pas sous forme POSIX -> changer dans la section "### date et heure"
+    # # nouveau nom préliminaire (et retirer colonnes inutiles)
+    # ll.pre.2.data.4 <- ll.pre.2.data.3 %>% dplyr::select(!c(date.AAAA.MM.JJ,  "date.time.UTC.0pre", "date.time.UTC.0pre.1")) %>% 
+    #   dplyr::select("scan.id", "raw.value.mm", "calibrated.value.cm", "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.tz.orig", date.time.UTC.0) # date et time sans "UTC.0" sont dans le fuseau horaire d'origine (tz trouvé en croisant les coordonnées "coords")
+    # head(ll.pre.2.data.4); str(ll.pre.2.data.4)
+    # 
     #### début et fin des mesures par fichier.uid.i ----
     # inscrits dans "level_logger_calibration_all.csv"
     # début (généralement) = installation + 48h de rabattement de la NP / ou non, si puits intallé d'avance, dans quel cas inscrire début officiel - 48h)
     # fin = heure de retrait
     # note : données de date en format xlsx ça lit TOUT CROCHE, transformé en csv fonctionne bien
+    
+    
     
     ##### cal.data ----
     cal.data("connectivite/data/raw/level_logger_calibration_all.csv") # import et nettoyage, bon format de date
@@ -202,6 +186,8 @@ for (i in 1:length(raw.ll.files)) {
     # mm fichier.uid (loop extrait séquentiellement toutes les lignes de chaque # de SNH, qui peuvent être uniques ou multiples pour un SNH donné);
     # la loop teste si toutes les lignes de ce # de SNH ont le même fichier.uid (i), dans quel cas, si les périodes sont différentes, 
     # la boucle coupe le fichier pour chaque période différente (l), et ensuite réassemble le fichier avec seules les périodes à conserver
+    
+    
     
     ### calcul de calibration  ----
     # * avec ODYSSEY, calibration est faite selon les colonnes "cal." du fichier cal.data et la donnée de bulleur (qui donne le offset**)
@@ -311,7 +297,6 @@ for (i in 1:length(raw.ll.files)) {
     raw.ll.files[k]
     
     
-    # RENDUE LÀ ________________ CODE CI DESSOUS NON À JOUR, PRENDRE DE DATAT WATER TABLE ALL**
     # ll.pre.0 <- readLines(paste0(raw.ll.files[k])); str(raw.ll.files) # lire en format texte
     # # ** tz orig mentionnée dans la colonne ll.pre.0.metadata[2], coder pour l'obtenir au besoin
     # # Warning message:
@@ -321,85 +306,88 @@ for (i in 1:length(raw.ll.files)) {
     ### création des subsets data & metadata ----
     # notes : les noms réfèrent à l'étape et non à une matrice en particulier, les objets seront remplacés au fil de la boucle. 
     # l'info importante est consignée dans la liste ll.clean.k.hobo[i], à la fin
-    ll.pre.0.metadata <-  ll.pre.0[c(1:2)] # inclus les anciens noms de colonnes, qui sont dans un format et un ordre bizzare
-    ll.pre.0.data <- ll.pre.0[-c(1:2)]
-    str(ll.pre.0.data) # chr
+    # ll.pre.0.metadata <-  ll.pre.0[c(1:2)] # inclus les anciens noms de colonnes, qui sont dans un format et un ordre bizzare
+    # ll.pre.0.data <- ll.pre.0[-c(1:2)]
+    # str(ll.pre.0.data) # chr
+    # 
+    # #### vérification du fichier level logger brut : logger.serial.no == nom du fichier, sinon arrêter TOUT ! ----
+    # {
+    #   texte <- as.data.frame(str_match(ll.pre.0.metadata, "(?s)LGR S/N: \\s*(.*?)\\s*,")) # extraire tout ce qui se trouve
+    #   # entre "LGR S/N: " et la "," directement subséquente, sans savoir s'il y a des sauts de ligne et peu importe les 
+    #   # espaces dans l'énoncé.
+    #   probe.uid.k <- as.numeric(texte[2,2])
+    #   # no du level logger dans le nom du fichier brut (.csv), correspond à l'item "k" de la présente boucle
+    #   texte <- ll.pre[k]
+    #   nombres <- gregexpr("[0-9]+", texte)
+    #   resultat <- regmatches(texte, nombres)
+    #   fichier <- as.numeric(unlist(resultat)[1])
+    #   # test logger.serial.no == nom du fichier
+    #   if(!(probe.uid.k %in% fichier)) { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc "else" statement)
+    #     stop(paste0("Attention, le nom du fichier ne correspond pas au numéro de série du level logger. Fichier problématique : i = ", paste(i), "; ", ll.pre[i]))
+    #   }
+    #   # si problème : aller changer manuellement en utilisant le no de série (unique) inscrit dans le fichier et PAS son nom 
+    #   # ** 1. créer copie -> archive; 2. s'assurer de changer partout ** : QGIS, fichier, onglet, data_site.id
+    # }
+    # # création du fichier.uid.i, nom unique du FICHIER qui ne pourra JAMAIS être dupliqué (utila dans seciton début et fin des mesures par périodes, pour un mm FICHIER)
+    # fichier.uid.i <- paste0(unlist(resultat)[1], "_", unlist(resultat)[2]) # ceci sera écrasé à la prochaine itération
+    # fichier.uid.df[i,1:4] <- c(paste0(unlist(resultat)[1], "_", unlist(resultat)[2]), ll.pre[i], probe.uid.k, as.numeric(unlist(resultat)[2])) # ceci sera gardé en mémoire (doit être identique à la colonne fichier.uid dans cal.data)
+    # # ajouts aux métadonnées des fichiers
+    # ll.pre.0.metadata[3:6] <-c(paste0("fichier.uid : ", unlist(resultat)[1], "_", unlist(resultat)[2]), paste0('file.name : ', "`", ll.pre[i], "`"), 
+    #                            paste0("probe.uid : ", probe.uid.k), paste0("date d'extraction des données : ", as.numeric(unlist(resultat)[2])))
+    # 
     
-    #### vérification du fichier level logger brut : logger.serial.no == nom du fichier, sinon arrêter TOUT ! ----
-    {
-      texte <- as.data.frame(str_match(ll.pre.0.metadata, "(?s)LGR S/N: \\s*(.*?)\\s*,")) # extraire tout ce qui se trouve
-      # entre "LGR S/N: " et la "," directement subséquente, sans savoir s'il y a des sauts de ligne et peu importe les 
-      # espaces dans l'énoncé.
-      probe.uid.k <- as.numeric(texte[2,2])
-      # no du level logger dans le nom du fichier brut (.csv), correspond à l'item "k" de la présente boucle
-      texte <- ll.pre[k]
-      nombres <- gregexpr("[0-9]+", texte)
-      resultat <- regmatches(texte, nombres)
-      fichier <- as.numeric(unlist(resultat)[1])
-      # test logger.serial.no == nom du fichier
-      if(!(probe.uid.k %in% fichier)) { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc "else" statement)
-        stop(paste0("Attention, le nom du fichier ne correspond pas au numéro de série du level logger. Fichier problématique : i = ", paste(i), "; ", ll.pre[i]))
-      }
-      # si problème : aller changer manuellement en utilisant le no de série (unique) inscrit dans le fichier et PAS son nom 
-      # ** 1. créer copie -> archive; 2. s'assurer de changer partout ** : QGIS, fichier, onglet, data_site.id
-    }
-    # création du fichier.uid.i, nom unique du FICHIER qui ne pourra JAMAIS être dupliqué (utila dans seciton début et fin des mesures par périodes, pour un mm FICHIER)
-    fichier.uid.i <- paste0(unlist(resultat)[1], "_", unlist(resultat)[2]) # ceci sera écrasé à la prochaine itération
-    fichier.uid.df[i,1:4] <- c(paste0(unlist(resultat)[1], "_", unlist(resultat)[2]), ll.pre[i], probe.uid.k, as.numeric(unlist(resultat)[2])) # ceci sera gardé en mémoire (doit être identique à la colonne fichier.uid dans cal.data)
-    # ajouts aux métadonnées des fichiers
-    ll.pre.0.metadata[3:6] <-c(paste0("fichier.uid : ", unlist(resultat)[1], "_", unlist(resultat)[2]), paste0('file.name : ', "`", ll.pre[i], "`"), 
-                               paste0("probe.uid : ", probe.uid.k), paste0("date d'extraction des données : ", as.numeric(unlist(resultat)[2])))
+    # RENDUE LÀ ________________ CODE CI DESSOUS NON À JOUR, PRENDRE DE DATAT WATER TABLE ALL**
     
     #### création du dataframe level legger (ll) contenant données de nappe phréatique (NP) et ménage  ----
-    ll.pre.0.data.0 <- read.csv(text = ll.pre.0.data, header = F, col.names = c("scan.id", "date.JJ.MM.AAAA_time.HH.MM.SS",	"raw.value.kPa_pres.abs",	"temperature_dC", "Coupleur détaché", "Coupleur attaché", 'Hôte connecté',	"Arrêté", "Fin de fichier")) # text = argument de read.csv qui lit la valeur contenue dans l'objet / DATE mauvais format
-    ll.pre.0.data.1 <- ll.pre.0.data.0[1:4] # garder seules les colonnes pertinentes
-    
-    #### date et heure : format ISO date AAAA-MM-JJTHH:MM:SS,ss-/+FF:ff, voir https://fr.wikipedia.org/wiki/ISO_8601 ----
-    # heure : « Z » à la fin lorsqu’il s’agit de l’heure UTC. (« Z » pour méridien zéro, aussi connu sous le nom « Zulu » dans l’alphabet radio international).
-    # extraction : nom du site pour trouver les coordonnées qui serviront à connaître le fuseau horaire
-    site.name.pre <- sub("Titre de tracé : ","",ll.pre.0.metadata[1])
-    site.name <- stringr::str_to_title(gsub(",", "", site.name.pre))
-    
-    # ouvrir données du shapefile pour accéder les zones
-    zones <- read_sf("~Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectitite_PhD_Mergin_26nov24/Ecotone.restauration.zone.pt.shp")
-    zones <- as.data.frame(zones)
-    head(zones); str(zones)
-    
-    # extraire la bonne lat, long selon le nom du site
-    coords <- c(zones$latitude[zones$site==site.name][1], zones$longitude[zones$site==site.name][1])
-    
-    # trouver le UTC selon la lat long
-    (tz <- tz_lookup_coords(coords[1], coords[2], method = "fast", warn = FALSE))
-    # ajouts aux métadonnées des fichiers
-    fichier.uid.df[i,5] <- tz
-    ll.pre.0.metadata[7] <- paste0("original time zone : ", tz)
-    
-    #### ménage de la date et heure  ----
-    # coller le tz dans la colonne "date.JJ.MM.AAAA_time.pre.HH.MM.SS"
-    ll.pre.0.data.1$date.JJ.MM.AAAA_time.HH.MM.SS_tz <- paste0(ll.pre.0.data.1$date.JJ.MM.AAAA_time.HH.MM.SS, " ", tz)
-    ll.pre.0.data.1$date.JJ.MM.AAAA_time.HH.MM.SS_tz <- gsub("00:00", "00:01", ll.pre.0.data.1$date.JJ.MM.AAAA_time.HH.MM.SS_tz) # sinon, les données 00:00:00 étaient effacées !
-    ll.pre.0.data.1$date.time.tz.orig <- readr::parse_datetime(ll.pre.0.data.1$date.JJ.MM.AAAA_time.HH.MM.SS_tz, format = '%m/%d/%y %I:%M:%S %p %Z', locale = readr::locale(tz = tz)) # pour convertir AM/PM en décimal (0-24h), élément %p voir documentation
-    ll.pre.0.data.2 <- data.frame(separate_wider_position(ll.pre.0.data.1, # date et time en deux colonnes (idem à ODYSSEY)
-                                                          widths = c("date.AAAA.MM.JJ" = 11, "time.HH.MM.SS" = 8),
-                                                          cols = date.time.tz.orig, cols_remove = F)) 
-    ll.pre.0.data.2$`date.AAAA-MM-JJ` = ymd(ll.pre.0.data.2$date.AAAA.MM.JJ, tz = tz)
-    ll.pre.0.data.2$date.time.UTC.0pre <- with_tz(ll.pre.0.data.2$date.time.tz.orig, tz = "UTC") # pour convertir AM/PM en décimal (0-24h), élément %p voir documentation
-    tz(ll.pre.0.data.2$date.time.UTC.0pre) # GMT = UTC
-    ll.pre.0.data.2$date.time.UTC.0pre.1 <- format_iso_8601(ll.pre.0.data.2$date.time.UTC.0pre)
-    ll.pre.0.data.2$date.time.UTC.0 <- gsub("[+]00:00", "Z",  ll.pre.0.data.2$date.time.UTC.0pre.1)
-
-    # ajouter colonne vide "calibrated value" à l'instar de ODYSSEY, où sera inséré la valeur finale de nappe phréatique
-    ll.pre.0.data.2$"calibrated.value.cm" <- rep(NA, times = nrow(ll.pre.0.data.2))
-  
-    # vérifications
-    colnames(ll.pre.0.data.2); head(ll.pre.0.data.2); str(ll.pre.0.data.2) # date et heure ne sont pas sous forme POSIX -> changer dans la section "### date et heure"
-    # nouveau nom préliminaire (et retirer colonnes inutiles)
-    ll.pre.0.data.3 <- ll.pre.0.data.2 %>% select(!c(date.JJ.MM.AAAA_time.HH.MM.SS, date.AAAA.MM.JJ,  "date.time.UTC.0pre", "date.time.UTC.0pre.1")) %>% 
-      select("scan.id", "date.JJ.MM.AAAA_time.HH.MM.SS_tz", "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.tz.orig", "date.time.UTC.0", 
-             "raw.value.kPa_pres.abs", "temperature_dC", "calibrated.value.cm")
-    head(ll.pre.0.data.3); str(ll.pre.0.data.3)
-    # suite :
-    # si calibration intégrée avec le hobo, QUE FAIRE ? coder ici, voir procédure avec ODYSSEY
+    # ll.pre.0.data.0 <- read.csv(text = ll.pre.0.data, header = F, col.names = c("scan.id", "date.JJ.MM.AAAA_time.HH.MM.SS",	"raw.value.kPa_pres.abs",	"temperature_dC", "Coupleur détaché", "Coupleur attaché", 'Hôte connecté',	"Arrêté", "Fin de fichier")) # text = argument de read.csv qui lit la valeur contenue dans l'objet / DATE mauvais format
+    # ll.pre.0.data.1 <- ll.pre.0.data.0[1:4] # garder seules les colonnes pertinentes
+    # 
+    # #### date et heure : format ISO date AAAA-MM-JJTHH:MM:SS,ss-/+FF:ff, voir https://fr.wikipedia.org/wiki/ISO_8601 ----
+    # # heure : « Z » à la fin lorsqu’il s’agit de l’heure UTC. (« Z » pour méridien zéro, aussi connu sous le nom « Zulu » dans l’alphabet radio international).
+    # # extraction : nom du site pour trouver les coordonnées qui serviront à connaître le fuseau horaire
+    # site.name.pre <- sub("Titre de tracé : ","",ll.pre.0.metadata[1])
+    # site.name <- stringr::str_to_title(gsub(",", "", site.name.pre))
+    # 
+    # # ouvrir données du shapefile pour accéder les zones
+    # zones <- read_sf("~Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectitite_PhD_Mergin_26nov24/Ecotone.restauration.zone.pt.shp")
+    # zones <- as.data.frame(zones)
+    # head(zones); str(zones)
+    # 
+    # # extraire la bonne lat, long selon le nom du site
+    # coords <- c(zones$latitude[zones$site==site.name][1], zones$longitude[zones$site==site.name][1])
+    # 
+    # # trouver le UTC selon la lat long
+    # (tz <- tz_lookup_coords(coords[1], coords[2], method = "fast", warn = FALSE))
+    # # ajouts aux métadonnées des fichiers
+    # fichier.uid.df[i,5] <- tz
+    # ll.pre.0.metadata[7] <- paste0("original time zone : ", tz)
+    # 
+    # #### ménage de la date et heure  ----
+    # # coller le tz dans la colonne "date.JJ.MM.AAAA_time.pre.HH.MM.SS"
+    # ll.pre.0.data.1$date.JJ.MM.AAAA_time.HH.MM.SS_tz <- paste0(ll.pre.0.data.1$date.JJ.MM.AAAA_time.HH.MM.SS, " ", tz)
+    # ll.pre.0.data.1$date.JJ.MM.AAAA_time.HH.MM.SS_tz <- gsub("00:00", "00:01", ll.pre.0.data.1$date.JJ.MM.AAAA_time.HH.MM.SS_tz) # sinon, les données 00:00:00 étaient effacées !
+    # ll.pre.0.data.1$date.time.tz.orig <- readr::parse_datetime(ll.pre.0.data.1$date.JJ.MM.AAAA_time.HH.MM.SS_tz, format = '%m/%d/%y %I:%M:%S %p %Z', locale = readr::locale(tz = tz)) # pour convertir AM/PM en décimal (0-24h), élément %p voir documentation
+    # ll.pre.0.data.2 <- data.frame(separate_wider_position(ll.pre.0.data.1, # date et time en deux colonnes (idem à ODYSSEY)
+    #                                                       widths = c("date.AAAA.MM.JJ" = 11, "time.HH.MM.SS" = 8),
+    #                                                       cols = date.time.tz.orig, cols_remove = F)) 
+    # ll.pre.0.data.2$`date.AAAA-MM-JJ` = ymd(ll.pre.0.data.2$date.AAAA.MM.JJ, tz = tz)
+    # ll.pre.0.data.2$date.time.UTC.0pre <- with_tz(ll.pre.0.data.2$date.time.tz.orig, tz = "UTC") # pour convertir AM/PM en décimal (0-24h), élément %p voir documentation
+    # tz(ll.pre.0.data.2$date.time.UTC.0pre) # GMT = UTC
+    # ll.pre.0.data.2$date.time.UTC.0pre.1 <- format_iso_8601(ll.pre.0.data.2$date.time.UTC.0pre)
+    # ll.pre.0.data.2$date.time.UTC.0 <- gsub("[+]00:00", "Z",  ll.pre.0.data.2$date.time.UTC.0pre.1)
+    # 
+    # # ajouter colonne vide "calibrated value" à l'instar de ODYSSEY, où sera inséré la valeur finale de nappe phréatique
+    # ll.pre.0.data.2$"calibrated.value.cm" <- rep(NA, times = nrow(ll.pre.0.data.2))
+    # 
+    # # vérifications
+    # colnames(ll.pre.0.data.2); head(ll.pre.0.data.2); str(ll.pre.0.data.2) # date et heure ne sont pas sous forme POSIX -> changer dans la section "### date et heure"
+    # # nouveau nom préliminaire (et retirer colonnes inutiles)
+    # ll.pre.0.data.3 <- ll.pre.0.data.2 %>% select(!c(date.JJ.MM.AAAA_time.HH.MM.SS, date.AAAA.MM.JJ,  "date.time.UTC.0pre", "date.time.UTC.0pre.1")) %>% 
+    #   select("scan.id", "date.JJ.MM.AAAA_time.HH.MM.SS_tz", "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.tz.orig", "date.time.UTC.0", 
+    #          "raw.value.kPa_pres.abs", "temperature_dC", "calibrated.value.cm")
+    # head(ll.pre.0.data.3); str(ll.pre.0.data.3)
+    # # suite :
+    # # si calibration intégrée avec le hobo, QUE FAIRE ? coder ici, voir procédure avec ODYSSEY
     
     #### début et fin des mesures par PROBE.WELL.UID ----
     # inscrits dans "level_logger_calibration_all.csv"
