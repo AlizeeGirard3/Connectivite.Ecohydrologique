@@ -490,6 +490,9 @@ for (i in 1:length(ll.pre)) {
     cal.data$day.end.aaaa.mm.dd.hh.mm <- ymd_hm(cal.data$day.end.aaaa.mm.dd.hh.mm, tz = tz)
     head(cal.data); tail(cal.data); str(cal.data)
     
+    
+    
+    
     ##### boucle de concaténation des données (fichier.uid ensemble, sinon autre calibration et graphique disctinct) ----
     ll.cal.pre.i.l <- list()  # rappel : i == k, changer un jour au besoin, vestige
     for (l in 1:length(unique(cal.data$period.fichier.uid[which(grepl(fichier.uid.i, cal.data$fichier.uid))]))) { # si mm fichier.uid.i, coller les périodes ensemble (ainsi, retirer et remettre ne demande pas plus de manipulations et surtout ps des manipulations incividuelles)

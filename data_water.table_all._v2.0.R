@@ -90,7 +90,6 @@ for (i in 1:length(raw.ll.files)) {
   file.uid.df <- files.uids(raw.ll.files.i.init); rm(raw.ll.files.i.init)
   
   
-    # ____Rendue là_____
     
   # ODYSSEY (SNH[1])
     # ### création du dataframe level legger (ll) contenant données de nappe phréatique (NP) et ménage  ----
@@ -154,7 +153,10 @@ for (i in 1:length(raw.ll.files)) {
     # note : données de date en format xlsx ça lit TOUT CROCHE, transformé en csv fonctionne bien
     
     
-    
+  # ____Rendue là_____
+  
+  
+  
     ##### cal.data ----
     cal.data("connectivite/data/raw/level_logger_calibration_all.csv") # import et nettoyage, bon format de date
     
