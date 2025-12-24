@@ -45,32 +45,16 @@ source("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/connectivite/scripts/fonct
 setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
 
 # Librairies ----
-if (!require("conflicted")) install.packages("conflicted") # ℹ Use the conflicted package to force all conflicts to become errors    ---->>>>  devtools::install_github("r-lib/conflicted")
-if (!require("readxl")) install.packages("readxl") # lire les excel
-if (!require("openxlsx")) install.packages("openxlsx") # lire les excel
-if (!require("stringr")) install.packages("stringr") # gosser avec des suites de caractères, str_replace, [...]
-if (!require("tidyverse")) install.packages("tidyverse") # gosser avec des suites de caractères, str_replace, [...]
-# if (!require("dplyr")) install.packages("dplyr") # entre autres : left_join()
-# if (!require("tidyr")) install.packages("tidyr") # entre autres : extract_numeric() / extract_numeric() is deprecated: please use readr::parse_number() instead
-# contient purr aussi
-if (!require("sf")) install.packages("sf"); if (!require("lutz")) install.packages("lutz") # GIS in R
-# 3 packages inutiles après avoir refomaté le code en tidyverse
-if (!require("lubridate")) install.packages("lubridate")
-options(lubridate.verbose = TRUE) # pour expliciter ce que les fonctions font
-if (!require("parsedate")) install.packages("parsedate") # lire les excel
+# -> packages dans le code sourcé
+# ARCHIVES, supprimer 4 lignes ci-dessous
 ## Librairies de données météo open source : weathercan, meteoStat, etc ----
-if (!require("weathercan")) install.packages("weathercan") # Integrating data from weathercan (ECCC/CCCS), Gouvernement du Canada
-stations_dl()
-stations_meta()
-# if (!require("naniar")) install.packages("naniar") # Checking data completeness
-# if (!require("mapview")) install.packages("mapview") ## Spatial analyses
-# option d'arrêter le code si message d'erreur (source fonctions.R)
-# options(error=pause)
-# options(error=NULL) # annuler
+# if (!require("weathercan")) install.packages("weathercan") # Integrating data from weathercan (ECCC/CCCS), Gouvernement du Canada
+# stations_dl()
+# stations_meta()
+##
 
-
-# A  Données issues des sonde de niveau hydrostatique ----
-# SNH <- as.vector(c("_odyssey", "_hobo"), mode = "character") # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque" est traitée de façon différente
+# A.Données issues des sonde de niveau hydrostatique ----
+# ARCHIVE supprimer SNH <- as.vector(c("_odyssey", "_hobo"), mode = "character") # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque" est traitée de façon différente
 
 # A.1 nettoyage et enregistrement en RDS ----
 # objectif : modifications automatisées pour chaque fichier issus d'une seule période-emplacement de mesures des level loggers
@@ -78,19 +62,16 @@ stations_meta()
 # fichiers de consigne de données
 raw.ll.files <- list.files(path = "connectivite/data/raw", pattern = "_odyssey|_hobo", full.names = T) # equivalent à ll.pre (ancien) # mettre dans "pattern" tous les ID de SNH listés dans l'objet SNH
 tidy.WTD.data <- list() # équivalent à ll.clean (ancien)
-file.uid.df <- data.frame(file.uid = NA, file.name = NA, probe.uid = NA, "extraction.data.aaaammjj" = NA, "tz_orig" = NA) # pour stocker les fichier.uid (aussi première colonne de cal.data) et autres données intérimaires
 # odyssey_offset_archives <- data.frame(fichier.uid = NA, offset_cm_date = NA, a.slope_excel = NA,	b.verticalIntercept = NA) #, `prof_nappe_bulleur_cm_plus.out` = NA, pre_prof_nappe_odyssey_mm_to_cm = NA,	`prof_nappe_odyssey_cm_plus.out` = NA) # notes des offsets d'années précédantes
 for (i in 1:length(raw.ll.files)) {
-  # i<-86 32 9 10 11 12 13 14 15 16# 41362(27 mars 2025)
+  # i<-80 32 9 10 11 12 13 14 15 16# 41362(27 mars 2025)
   print(i)
   raw.ll.files[i] # début de la loop pour les ODYSSEY (if() prochaine ligne)
   
   raw.ll.files.i.init <- data.metadata(raw.ll.files[i]) # objet temporaire pour ajouter des lignes
   raw.ll.files.i <- metadata(raw.ll.files.i.init)
-  file.uid.df <- files.uids(raw.ll.files.i.init); rm(raw.ll.files.i.init)
+  files.uid.df <- files.uid(raw.ll.files.i.init); rm(raw.ll.files.i.init)
   
-  
-    
   # ODYSSEY (SNH[1])
     # ### création du dataframe level legger (ll) contenant données de nappe phréatique (NP) et ménage  ----
     # ll.pre.2.data.1 <- read.csv(text = raw.ll.files.i[[1]], col.names = c("scan.id", "date.JJ.MM.AAAA", "time.HH.MM.SS",'raw.value.mm',"calibrated.value.cm")) # text = argument de read.csv qui lit la valeur contenue dans l'objet
@@ -114,9 +95,10 @@ for (i in 1:length(raw.ll.files)) {
     # fichier.uid.df[i,5] <- tz
     # raw.ll.files.i[[2]][14] <- paste0("original time zone : ", tz)
     
+  #### ménage de la date et heure  ----
+  tz <- zone.tz("~Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectitite_PhD_Mergin_26nov24/Ecotone.restauration.zone.pt.shp")
+  ll.clean <- raw.to.clean_ll(raw.ll.files.i[[1]])  # NOTES : début = installation du puits + 48h de rabattement de la NP / ou non, si puits intallé d'avance, dans quel cas inscrire début officiel - 24h) # fin = heure de retrait
   
-  raw_to_clean.ll(raw.ll.files.i[[1]])
-    # #### ménage de la date et heure  ----
     # # modifier mes colonnes pour avoir le format ISO (manque encore le UTC à ajouter à la fin)
     # # garder date.AAAA-MM-JJ"
     # ll.pre.2.data.2 <- ll.pre.2.data.1 %>% dplyr::mutate(date.JJ.MM.AAAA_time.HH.MM.SS_tz = paste0(date.JJ.MM.AAAA," ", time.HH.MM.SS, " ", tz)) %>% 
@@ -152,128 +134,129 @@ for (i in 1:length(raw.ll.files)) {
     # fin = heure de retrait
     # note : données de date en format xlsx ça lit TOUT CROCHE, transformé en csv fonctionne bien
     
-    
-  # ____Rendue là_____
+  ##### cal.data ----
+  cal.data <- raw.to.clean_cal.data("connectivite/data/raw/level_logger_calibration_all.csv") # import et nettoyage, bon format de date
+  ll.cal.pre.i <- concatenate.ll(ll.clean)
   
   
-  
-    ##### cal.data ----
-    cal.data("connectivite/data/raw/level_logger_calibration_all.csv") # import et nettoyage, bon format de date
-    
      
-    ##### boucle de concaténation des données (fichier.uid ensemble, sinon autre calibration et graphique distinct) ----
-    # raison de l'étape : si sonde retirée et remise, sans écraser les données contenues (continuation des mesures), retirer la période 
-    # de données invalides (quelques heures, période de rééquilibrage) et recoller les lignes ensemble pour former le fichier d'heures valides
-    ll.cal.pre.i.l <- list()
-    for (l in 1:length(unique(cal.data$period.fichier.uid[which(grepl(fichier.uid.i, cal.data$fichier.uid))]))) { # si mm fichier.uid.i, coller les périodes ensemble (ainsi, retirer et remettre ne demande pas plus de manipulations et surtout ps des manipulations individuelles)
-      print(l)
-      cal.data.i.l <- unique(cal.data[which(grepl(fichier.uid.i, cal.data$fichier.uid)),
-                                      c("fichier.uid", "site.uid", "well.uid", "trmnt.uid", 'lab.probe.id', 'probe.uid', 'probe.brand',
-                                        "day.begining.aaaa.mm.dd.hh.mm", 'day.end.aaaa.mm.dd.hh.mm', "period.fichier.uid")])[l,] # cal.data.i.l = les infos dont j'ai besoin pour recouper selon la période l du fichier i
-      # recoupage de ll.pre.data selon cal.data selon début et fin des mesures et retrait de colonnes
-      ll.pre.2.data.4.l <- ll.pre.2.data.4 %>%
-        dplyr::filter(date.time.tz.orig >= cal.data.i.l$day.begining.aaaa.mm.dd.hh.mm) %>% # >= date de mesure de NP plus grand ou égale à la date beginning dans cal.data.i.l
-        dplyr::filter(date.time.tz.orig <= cal.data.i.l$day.end.aaaa.mm.dd.hh.mm) %>% # <= date de mesure de NP plus petite ou égale à la date end dans cal.data.i.l 
-        dplyr::select("scan.id", "raw.value.mm", "calibrated.value.cm", "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.tz.orig", "date.time.UTC.0") # %>%  # date et time sans "UTC.0" sont dans le fuseau horaire d'origine (tz trouvé en croisant les coordonnées "coords")
-      # vérifications
-      head(ll.pre.2.data.4.l); colnames(ll.pre.2.data.4.l); nrow(ll.pre.2.data.4.l)
-      # changer pour un nom explicite, fichier encore à calibrer (d'où "pre")
-      ll.cal.pre.i.l[[l]] <- ll.pre.2.data.4.l
-      nrow(ll.cal.pre.i.l[[l]])
-    }
-    
-    # coller toutes les données de la sonde k ensemble (différentes mesures temporelles, mm puits.trmnt.année) ----
-    ll.cal.pre.i <- do.call(rbind, ll.cal.pre.i.l) # row bind -> on colle deux df de structure identique (les l nombre de ll.cal.pre.i.l) de différents k.l, associées à différents temps de la période de mesure de la sonde k
-    # explications de cette loop ----
-    # mm fichier.uid (loop extrait séquentiellement toutes les lignes de chaque # de SNH, qui peuvent être uniques ou multiples pour un SNH donné);
-    # la loop teste si toutes les lignes de ce # de SNH ont le même fichier.uid (i), dans quel cas, si les périodes sont différentes, 
-    # la boucle coupe le fichier pour chaque période différente (l), et ensuite réassemble le fichier avec seules les périodes à conserver
-    
-    
-    
-    ### calcul de calibration  ----
-    # * avec ODYSSEY, calibration est faite selon les colonnes "cal." du fichier cal.data et la donnée de bulleur (qui donne le offset**)
-    # ** le offset doit être ensuite appliqué à toute les données
-    
-    # extraire les données de calibration pour le fichier.uid (3 lignes min.)
-    cal.probe.i <- cal.data %>% dplyr::filter(cal.data$fichier.uid == fichier.uid.i) %>% dplyr::mutate_at("cal.order", ~replace(., is.na(.), 0)) # remplacer les NA dans cal.order par 0, sinon inclus dans les résultats
-    
-    # test: si raw.value == vecteur de "NA", on peut procédéer à la calibration, sinon ça veut dire qu'on a la cal du programme de la sonde, garder ces données (créer autre colonne)
-    if(FALSE %in% (!ll.cal.pre.i$calibrated.value.cm %in% rep("NA", times = length(ll.cal.pre.i$calibrated.value.cm)))) { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
-      stop(paste0("Attention, la colonne calibrated.value n'est pas vide. Sonde problématique : i = ", paste(i), "; ", ll.pre[i]))
-      # créer une autre colonne, le cas échéant (à faire)
-    }
-    ### calibration ----
-    # PRÉALABLE : utiliser la valeur NÉGATIVE de longueur de fil à la calibration
-    #### étape 1 : si y=ax+b, calcul des termes a et b  ----
-    # FORMULES
-    # a.slope = ( y2 - y1 ) / ( x2 - x1 ), soit la proportion de changement de y pour chaque changement de x
-    # où
-    # y = raw.value aux longueurs 1 et 2 du test de calibration (p. ex. 200 mm et 800 mm ou 1400 mm, pour STH)
-    # x2 = longueur fil test où "cal.order"=2, x1 = longueur fil test où "cal.order"=1
-    # et finalement
-    # b.verticalIntercept = y1 - a.slope * x1
-    {
-      # long_negative_cal.length_mm_y.R déjà calculé ci-haut// ou sinon  = cal.probe.i$cal.length.cm[cal.probe.i$cal.order==1]*-10 # en cm et au négatif
-      y2 = cal.probe.i$long_negative_cal.length_mm_y[cal.probe.i$cal.order==2]
-      y1 = cal.probe.i$long_negative_cal.length_mm_y[cal.probe.i$cal.order==1]
-      x2 = cal.probe.i$cal.value_x[cal.probe.i$cal.order==2]
-      x1 = cal.probe.i$cal.value_x[cal.probe.i$cal.order==1]
-      a.slope = ( y2 - y1 ) / ( x2 - x1 )
-      b.verticalIntercept = y1 - (a.slope * x1)
-    }
+    # ##### boucle de concaténation des données (fichier.uid ensemble, sinon autre calibration et graphique distinct) ----
+    # # raison de l'étape : si sonde retirée et remise, sans écraser les données contenues (continuation des mesures), retirer la période 
+    # # de données invalides (quelques heures, période de rééquilibrage) et recoller les lignes ensemble pour former le fichier d'heures valides
+    # ll.cal.pre.i.l <- list()
+    # for (l in 1:length(unique(cal.data$period.file.uid[which(grepl(fichier.uid.i, cal.data$fichier.uid))]))) { # si mm fichier.uid.i, coller les périodes ensemble (ainsi, retirer et remettre ne demande pas plus de manipulations et surtout ps des manipulations individuelles)
+    #   print(l)
+    #   cal.data.i.l <- unique(cal.data[which(grepl(fichier.uid.i, cal.data$fichier.uid)),
+    #                                   c("fichier.uid", "site.uid", "well.uid", "trmnt.uid", 'lab.probe.id', 'probe.uid', 'probe.brand',
+    #                                     "day.begining.aaaa.mm.dd.hh.mm", 'day.end.aaaa.mm.dd.hh.mm', "period.file.uid")])[l,] # cal.data.i.l = les infos dont j'ai besoin pour recouper selon la période l du fichier i
+    #   # recoupage de ll.pre.data selon cal.data selon début et fin des mesures et retrait de colonnes
+    #   ll.pre.2.data.4.l <- ll.pre.2.data.4 %>%
+    #     dplyr::filter(date.time.tz.orig >= cal.data.i.l$day.begining.aaaa.mm.dd.hh.mm) %>% # >= date de mesure de NP plus grand ou égale à la date beginning dans cal.data.i.l
+    #     dplyr::filter(date.time.tz.orig <= cal.data.i.l$day.end.aaaa.mm.dd.hh.mm) %>% # <= date de mesure de NP plus petite ou égale à la date end dans cal.data.i.l 
+    #     dplyr::select("scan.id", "raw.value.mm", "calibrated.value.cm", "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.tz.orig", "date.time.UTC.0") # %>%  # date et time sans "UTC.0" sont dans le fuseau horaire d'origine (tz trouvé en croisant les coordonnées "coords")
+    #   # vérifications
+    #   head(ll.pre.2.data.4.l); colnames(ll.pre.2.data.4.l); nrow(ll.pre.2.data.4.l)
+    #   # changer pour un nom explicite, fichier encore à calibrer (d'où "pre")
+    #   ll.cal.pre.i.l[[l]] <- ll.pre.2.data.4.l
+    #   nrow(ll.cal.pre.i.l[[l]])
+    # }
+    # 
+    # # coller toutes les données de la sonde k ensemble (différentes mesures temporelles, mm puits.trmnt.année) ----
+    # ll.cal.pre.i <- do.call(rbind, ll.cal.pre.i.l) # row bind -> on colle deux df de structure identique (les l nombre de ll.cal.pre.i.l) de différents k.l, associées à différents temps de la période de mesure de la sonde k
+    # # explications de cette loop ----
+    # # mm fichier.uid (loop extrait séquentiellement toutes les lignes de chaque # de SNH, qui peuvent être uniques ou multiples pour un SNH donné);
+    # # la loop teste si toutes les lignes de ce # de SNH ont le même fichier.uid (i), dans quel cas, si les périodes sont différentes, 
+    # # la boucle coupe le fichier pour chaque période différente (l), et ensuite réassemble le fichier avec seules les périodes à conserver
 
-    #### étape 2 : appliquer a et b pour trouver le offsets à appliquer aux données ----
-    # pour les lignes de measure_type == offset_measurement :
-    # avec les valeurs a.slope et b.offset, calcluler la "longueur équivalente" (long_negative_cal.length_mm_y) de fil, avec la donnée de ll au moment de la mesure de bulleur = pre_prof_nappe_odyssey_mm_to_cm
-    # prof_nappe_odyssey_cm_plus.out.R = pre_prof_nappe_odyssey_mm_to_cm.R + out.long.tuyau.sol.cm # NOTER L'ADDITION DU OUT
-    # prof_nappe_bulleur_cm_plus.out.R = prof_nappe_bulleur_cm_+out.R + out.long.tuyau.sol.cm # NOTER L'ADDITION DU OUT
-    # offset_cm = prof_nappe_odyssey_cm_plus.out.R - prof_nappe_bulleur_cm_plus.out.R # Noter : SOUSTRACTION et ordre
-    # placer la valeur de offset_cm dans un dataframe de consigne de toutes les valeurs de offset obtenus + autres métadonnées importantes
-      long_negative_cal.length_mm_y <- (cal.probe.i$cal.value_x[cal.probe.i$measure_type=="offset_measurement"]*a.slope)+b.verticalIntercept
-      pre_prof_nappe_odyssey_mm_to_cm <- long_negative_cal.length_mm_y/10 #  sensé donner NA (mais actuellement remplis, à écraser avec calcul automatisé), on va remplir cette donnée avec les nouvelles valeurs -> longueur fictive em mm transformée en cm
-      prof_nappe_odyssey_cm_plus.out <- pre_prof_nappe_odyssey_mm_to_cm + cal.probe.i$out.long.tuyau.sol.cm[cal.probe.i$measure_type=="offset_measurement"]
-      prof_nappe_bulleur_cm_plus.out <- cal.probe.i$`in.bulleur1.rel.to.surface.cm`[cal.probe.i$measure_type=="offset_measurement"] + cal.probe.i$out.long.tuyau.sol.cm[cal.probe.i$measure_type=="offset_measurement"]
-      offset_cm <- prof_nappe_odyssey_cm_plus.out - prof_nappe_bulleur_cm_plus.out
-
-      # FAIRE DU MÉNAGE caduque
-      # cal.probe.i$long_negative_cal.length_mm_y[cal.probe.i$measure_type=="offset_measurement"] # sensé donner NA, on va remplir cette donnée avec la formule obtenue y=ax+b
-      # cal.probe.i$long_negative_cal.length_mm_y[cal.probe.i$measure_type=="offset_measurement"] <- (cal.probe.i$cal.value_x[cal.probe.i$measure_type=="offset_measurement"]*a.slope)+b.verticalIntercept
-      # cal.probe.i$long_negative_cal.length_mm_y[cal.probe.i$measure_type=="offset_measurement"] # vérification de la valeur
-      
-      # cal.probe.i$pre_prof_nappe_odyssey_mm_to_cm[cal.probe.i$measure_type=="offset_measurement"] #  sensé donner NA (mais actuellement remplis, à écraser avec calcul automatisé), on va remplir cette donnée avec les nouvelles valeurs
-      # cal.probe.i$pre_prof_nappe_odyssey_mm_to_cm[cal.probe.i$measure_type=="offset_measurement"] <- cal.probe.i$long_negative_cal.length_mm_y[cal.probe.i$measure_type=="offset_measurement"]/10 #  sensé donner NA (mais actuellement remplis, à écraser avec calcul automatisé), on va remplir cette donnée avec les nouvelles valeurs -> longueur fictive em mm transformée en cm
-      # cal.probe.i$pre_prof_nappe_odyssey_mm_to_cm[cal.probe.i$measure_type=="offset_measurement"] #  vérification de la valeur
-      
-      # cal.probe.i$prof_nappe_odyssey_cm_plus.out[cal.probe.i$measure_type=="offset_measurement"]
-      # cal.probe.i$prof_nappe_odyssey_cm_plus.out[cal.probe.i$measure_type=="offset_measurement"] <- cal.probe.i$pre_prof_nappe_odyssey_mm_to_cm[cal.probe.i$measure_type=="offset_measurement"] + cal.probe.i$out.long.tuyau.sol.cm[cal.probe.i$measure_type=="offset_measurement"]
-      # cal.probe.i$prof_nappe_odyssey_cm_plus.out[cal.probe.i$measure_type=="offset_measurement"]
-      
-      # cal.probe.i$prof_nappe_bulleur_cm_plus.out[cal.probe.i$measure_type=="offset_measurement"]
-      # cal.probe.i$prof_nappe_bulleur_cm_plus.out[cal.probe.i$measure_type=="offset_measurement"] <- cal.probe.i$`bulleur.1.rel.to.surface.cm`[cal.probe.i$measure_type=="offset_measurement"] + cal.probe.i$out.long.tuyau.sol.cm[cal.probe.i$measure_type=="offset_measurement"]
-      # cal.probe.i$prof_nappe_bulleur_cm_plus.out[cal.probe.i$measure_type=="offset_measurement"]
+  
+    # ____Rendue là_____
+  brand.i <- cal.data$probe.brand[which(grepl(files.uid.df[i,1], cal.data$file.uid))]
+  tidy.WTD.data <- clean.to.calibrated_ll(ll.cal.pre.i)
+  
     
-    # Consigne du offset par date et par fichier.uid dans un format d'archivage (non-écrasable)
-    # NOTE : je suis encore dans la loop par fichier.uid (période, site, probe.uid); la calibration est valide et doit être appliquée à tout le fichier
-    odyssey_offset_archives[i, 1] <- fichier.uid.i
-    odyssey_offset_archives[i, 2] <- paste0(round(prof_nappe_odyssey_cm_plus.out - prof_nappe_bulleur_cm_plus.out, 3), "-", Sys.Date())
-    odyssey_offset_archives[i, 3] <- paste0(round(a.slope, 3), "-", Sys.Date())
-    odyssey_offset_archives[i, 4] <- paste0(round(b.verticalIntercept, 3), "-", Sys.Date())
-    
-    # changer la colonne calibrated pour les données corrigées
-    ## tests 9 avril
-    # ll.cal.pre.i$slope <-((ll.cal.pre.i$raw.value.mm*a.slope) + b.verticalIntercept)/10
-    # ll.cal.pre.i$pre.offset <- ll.cal.pre.i$slope+cal.probe.i$out.long.tuyau.sol.cm[cal.probe.i$measure_type=="offset_measurement"] 
-    # ll.cal.pre.i$offset <-  ll.cal.pre.i$pre.offset-offset_cm
-    ll.cal.pre.i$calibrated.value.cm = (((ll.cal.pre.i$raw.value.mm*a.slope) + b.verticalIntercept)/10) + cal.probe.i$out.long.tuyau.sol.cm[cal.probe.i$measure_type=="offset_measurement"] - offset_cm
-    colnames(ll.cal.pre.i); head(ll.cal.pre.i); tail(ll.cal.pre.i)
-    
-    # format final -> nom final
-    ll.cal <- ll.cal.pre.i # ceci est donc le format final, à intégrer dans la liste ll.clean
-    
-    ### création de la liste dans la liste [[i]]  ----
-    # noted : <- le fichier du level logger correspondant à la position i; [1] : data (dataframe), [2] : metadata (character string)
-    ll.clean[[i]] <- list("data" = ll.cal, "metadata" = ll.pre.2.metadata) 
+    # ### calcul de calibration  ----
+    # # * avec ODYSSEY, calibration est faite selon les colonnes "cal." du fichier cal.data et la donnée de bulleur (qui donne le offset**)
+    # # ** le offset doit être ensuite appliqué à toute les données
+    # 
+    # # extraire les données de calibration pour le fichier.uid (3 lignes min.)
+    # cal.probe.i <- cal.data %>% dplyr::filter(cal.data$fichier.uid == fichier.uid.i) %>% dplyr::mutate_at("cal.order", ~replace(., is.na(.), 0)) # remplacer les NA dans cal.order par 0, sinon inclus dans les résultats
+    # 
+    # # test: si raw.value == vecteur de "NA", on peut procédéer à la calibration, sinon ça veut dire qu'on a la cal du programme de la sonde, garder ces données (créer autre colonne)
+    # if(FALSE %in% (!ll.cal.pre.i$calibrated.value.cm %in% rep("NA", times = length(ll.cal.pre.i$calibrated.value.cm)))) { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
+    #   stop(paste0("Attention, la colonne calibrated.value n'est pas vide. Sonde problématique : i = ", paste(i), "; ", ll.pre[i]))
+    #   # créer une autre colonne, le cas échéant (à faire)
+    # }
+    # ### calibration ----
+    # # PRÉALABLE : utiliser la valeur NÉGATIVE de longueur de fil à la calibration
+    # #### étape 1 : si y=ax+b, calcul des termes a et b  ----
+    # # FORMULES
+    # # a.slope = ( y2 - y1 ) / ( x2 - x1 ), soit la proportion de changement de y pour chaque changement de x
+    # # où
+    # # y = raw.value aux longueurs 1 et 2 du test de calibration (p. ex. 200 mm et 800 mm ou 1400 mm, pour STH)
+    # # x2 = longueur fil test où "cal.order"=2, x1 = longueur fil test où "cal.order"=1
+    # # et finalement
+    # # b.verticalIntercept = y1 - a.slope * x1
+    # {
+    #   # long_negative_cal.length_mm_y.R déjà calculé ci-haut// ou sinon  = cal.probe.i$cal.length.cm[cal.probe.i$cal.order==1]*-10 # en cm et au négatif
+    #   y2 = cal.probe.i$long_negative_cal.length_mm_y[cal.probe.i$cal.order==2]
+    #   y1 = cal.probe.i$long_negative_cal.length_mm_y[cal.probe.i$cal.order==1]
+    #   x2 = cal.probe.i$cal.value_x[cal.probe.i$cal.order==2]
+    #   x1 = cal.probe.i$cal.value_x[cal.probe.i$cal.order==1]
+    #   a.slope = ( y2 - y1 ) / ( x2 - x1 )
+    #   b.verticalIntercept = y1 - (a.slope * x1)
+    # }
+    # 
+    # #### étape 2 : appliquer a et b pour trouver le offsets à appliquer aux données ----
+    # # pour les lignes de measure_type == offset_measurement :
+    # # avec les valeurs a.slope et b.offset, calcluler la "longueur équivalente" (long_negative_cal.length_mm_y) de fil, avec la donnée de ll au moment de la mesure de bulleur = pre_prof_nappe_odyssey_mm_to_cm
+    # # prof_nappe_odyssey_cm_plus.out.R = pre_prof_nappe_odyssey_mm_to_cm.R + out.long.tuyau.sol.cm # NOTER L'ADDITION DU OUT
+    # # prof_nappe_bulleur_cm_plus.out.R = prof_nappe_bulleur_cm_+out.R + out.long.tuyau.sol.cm # NOTER L'ADDITION DU OUT
+    # # offset_cm = prof_nappe_odyssey_cm_plus.out.R - prof_nappe_bulleur_cm_plus.out.R # Noter : SOUSTRACTION et ordre
+    # # placer la valeur de offset_cm dans un dataframe de consigne de toutes les valeurs de offset obtenus + autres métadonnées importantes
+    #   long_negative_cal.length_mm_y <- (cal.probe.i$cal.value_x[cal.probe.i$measure_type=="offset_measurement"]*a.slope)+b.verticalIntercept
+    #   pre_prof_nappe_odyssey_mm_to_cm <- long_negative_cal.length_mm_y/10 #  sensé donner NA (mais actuellement remplis, à écraser avec calcul automatisé), on va remplir cette donnée avec les nouvelles valeurs -> longueur fictive em mm transformée en cm
+    #   prof_nappe_odyssey_cm_plus.out <- pre_prof_nappe_odyssey_mm_to_cm + cal.probe.i$out.long.tuyau.sol.cm[cal.probe.i$measure_type=="offset_measurement"]
+    #   prof_nappe_bulleur_cm_plus.out <- cal.probe.i$`in.bulleur1.rel.to.surface.cm`[cal.probe.i$measure_type=="offset_measurement"] + cal.probe.i$out.long.tuyau.sol.cm[cal.probe.i$measure_type=="offset_measurement"]
+    #   offset_cm <- prof_nappe_odyssey_cm_plus.out - prof_nappe_bulleur_cm_plus.out
+    # 
+    #   # FAIRE DU MÉNAGE caduque
+    #   # cal.probe.i$long_negative_cal.length_mm_y[cal.probe.i$measure_type=="offset_measurement"] # sensé donner NA, on va remplir cette donnée avec la formule obtenue y=ax+b
+    #   # cal.probe.i$long_negative_cal.length_mm_y[cal.probe.i$measure_type=="offset_measurement"] <- (cal.probe.i$cal.value_x[cal.probe.i$measure_type=="offset_measurement"]*a.slope)+b.verticalIntercept
+    #   # cal.probe.i$long_negative_cal.length_mm_y[cal.probe.i$measure_type=="offset_measurement"] # vérification de la valeur
+    #   
+    #   # cal.probe.i$pre_prof_nappe_odyssey_mm_to_cm[cal.probe.i$measure_type=="offset_measurement"] #  sensé donner NA (mais actuellement remplis, à écraser avec calcul automatisé), on va remplir cette donnée avec les nouvelles valeurs
+    #   # cal.probe.i$pre_prof_nappe_odyssey_mm_to_cm[cal.probe.i$measure_type=="offset_measurement"] <- cal.probe.i$long_negative_cal.length_mm_y[cal.probe.i$measure_type=="offset_measurement"]/10 #  sensé donner NA (mais actuellement remplis, à écraser avec calcul automatisé), on va remplir cette donnée avec les nouvelles valeurs -> longueur fictive em mm transformée en cm
+    #   # cal.probe.i$pre_prof_nappe_odyssey_mm_to_cm[cal.probe.i$measure_type=="offset_measurement"] #  vérification de la valeur
+    #   
+    #   # cal.probe.i$prof_nappe_odyssey_cm_plus.out[cal.probe.i$measure_type=="offset_measurement"]
+    #   # cal.probe.i$prof_nappe_odyssey_cm_plus.out[cal.probe.i$measure_type=="offset_measurement"] <- cal.probe.i$pre_prof_nappe_odyssey_mm_to_cm[cal.probe.i$measure_type=="offset_measurement"] + cal.probe.i$out.long.tuyau.sol.cm[cal.probe.i$measure_type=="offset_measurement"]
+    #   # cal.probe.i$prof_nappe_odyssey_cm_plus.out[cal.probe.i$measure_type=="offset_measurement"]
+    #   
+    #   # cal.probe.i$prof_nappe_bulleur_cm_plus.out[cal.probe.i$measure_type=="offset_measurement"]
+    #   # cal.probe.i$prof_nappe_bulleur_cm_plus.out[cal.probe.i$measure_type=="offset_measurement"] <- cal.probe.i$`bulleur.1.rel.to.surface.cm`[cal.probe.i$measure_type=="offset_measurement"] + cal.probe.i$out.long.tuyau.sol.cm[cal.probe.i$measure_type=="offset_measurement"]
+    #   # cal.probe.i$prof_nappe_bulleur_cm_plus.out[cal.probe.i$measure_type=="offset_measurement"]
+    # 
+    # # Consigne du offset par date et par fichier.uid dans un format d'archivage (non-écrasable)
+    # # NOTE : je suis encore dans la loop par fichier.uid (période, site, probe.uid); la calibration est valide et doit être appliquée à tout le fichier
+    # odyssey_offset_archives[i, 1] <- fichier.uid.i
+    # odyssey_offset_archives[i, 2] <- paste0(round(prof_nappe_odyssey_cm_plus.out - prof_nappe_bulleur_cm_plus.out, 3), "-", Sys.Date())
+    # odyssey_offset_archives[i, 3] <- paste0(round(a.slope, 3), "-", Sys.Date())
+    # odyssey_offset_archives[i, 4] <- paste0(round(b.verticalIntercept, 3), "-", Sys.Date())
+    # 
+    # # changer la colonne calibrated pour les données corrigées
+    # ## tests 9 avril
+    # # ll.cal.pre.i$slope <-((ll.cal.pre.i$raw.value.mm*a.slope) + b.verticalIntercept)/10
+    # # ll.cal.pre.i$pre.offset <- ll.cal.pre.i$slope+cal.probe.i$out.long.tuyau.sol.cm[cal.probe.i$measure_type=="offset_measurement"] 
+    # # ll.cal.pre.i$offset <-  ll.cal.pre.i$pre.offset-offset_cm
+    # ll.cal.pre.i$calibrated.value.cm = (((ll.cal.pre.i$raw.value.mm*a.slope) + b.verticalIntercept)/10) + cal.probe.i$out.long.tuyau.sol.cm[cal.probe.i$measure_type=="offset_measurement"] - offset_cm
+    # colnames(ll.cal.pre.i); head(ll.cal.pre.i); tail(ll.cal.pre.i)
+    # 
+    # # format final -> nom final
+    # ll.cal <- ll.cal.pre.i # ceci est donc le format final, à intégrer dans la liste ll.clean
+    # 
+    # ### création de la liste dans la liste [[i]]  ----
+    # # noted : <- le fichier du level logger correspondant à la position i; [1] : data (dataframe), [2] : metadata (character string)
+    # ll.clean[[i]] <- list("data" = ll.cal, "metadata" = ll.pre.2.metadata) 
     
     ### création de fichiers excels propres  ----
     # À FAIRE : excel [[i]] avec un onglet metadata et onglet data
@@ -285,18 +268,18 @@ for (i in 1:length(raw.ll.files)) {
     #   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
     # } else { write.xlsx(ll.clean, file = "connectivite/data/clean/ll.clean.xlsx") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
     # 
-  } # fin de la loop pour les ODYSSEY / # début de la loop pour les HOBO (else if() prochaine ligne)
+  # } # fin de la loop pour les ODYSSEY / # début de la loop pour les HOBO (else if() prochaine ligne)
   
-  else if (grepl(SNH[2], raw.ll.files[i])) { # début de la loop pour les HOBO
+  # else if (grepl(SNH[2], raw.ll.files[i])) { # début de la loop pour les HOBO
     # hobo <- sub("*_","",SNH[2]) # TESTS.... JE M'ESSAYE À ÉCRIRE DES FONCTIONS
     
     
     
     # import et ménage
-    k <- i
-    # i<-5
-    print(k)
-    raw.ll.files[k]
+    # k <- i
+    # # i<-5
+    # print(k)
+    # raw.ll.files[k]
     
     
     # ll.pre.0 <- readLines(paste0(raw.ll.files[k])); str(raw.ll.files) # lire en format texte
@@ -397,187 +380,198 @@ for (i in 1:length(raw.ll.files)) {
     # fin = heure de retrait
     # note : données de date en format xlsx ça lit TOUT CROCHE, transformé en csv fonctionne bien
     
-    ##### import et nettoyage ----
-    cal.data <- read.csv("connectivite/data/raw/level_logger_calibration_all.csv", sep = ";", dec = ",")
-    # out = (pt haut - moyenne pt bas)
-    cal.data$out.R = round(cal.data$pt.haut.cm - ((cal.data$pt.bas1.cm+cal.data$pt.bas2.cm+cal.data$pt.bas3.cm)/3), digits = 1)
-    colnames(cal.data)
-    cal.data <- cal.data %>% select("site.uid", "well.uid", "trmnt.uid", "lab.probe.id", "probe.uid", "probe.brand", 
-                                    "cal.length.cm", "cal.order", "cal.value_x", "comment", 
-                                    "day.begining.aaaa.mm.dd.hh.mm", "day.end.aaaa.mm.dd.hh.mm", "distance.m", "out.R", "out.long.tuyau.sol.cm", everything())
-    # vérification de valeurs OUT
-    if(all(cal.data$out.R == round(cal.data$out.long.tuyau.sol.cm, digits = 1), na.rm =T))  { # si TOUS TRUE (fonction any()) = changer nom de out.R et supprimer la mesure entrée manuellement // si FALSE = avertissement
-      cal.data$out.long.tuyau.sol.cm <- cal.data$out.R
-      cal.data <- cal.data %>% select(!out.R)
-    } else { stop("Attention, le out entré dans cal.data (syn. level_logger_calibration_all.csv) n'est pas identique à la moyenne des points bas soustraite du point haut du puits.") } 
-    # création d'une colonne unique
-    cal.data$period.fichier.uid <- paste0(cal.data$day.begining.aaaa.mm.dd.hh.mm, "--", cal.data$day.end.aaaa.mm.dd.hh.mm, ".",cal.data$fichier.uid)
-    # format POSIX begining et end
-    cal.data$day.begining.aaaa.mm.dd.hh.mm <- ymd_hm(cal.data$day.begining.aaaa.mm.dd.hh.mm, tz = tz)
-    cal.data$day.end.aaaa.mm.dd.hh.mm <- ymd_hm(cal.data$day.end.aaaa.mm.dd.hh.mm, tz = tz)
-    head(cal.data); tail(cal.data); str(cal.data)
-    
-    ##### boucle de concaténation des données (fichier.uid ensemble, sinon autre calibration et graphique disctinct) ----
-    ll.cal.pre.i.l <- list()  # rappel : i == k, changer un jour au besoin, vestige
-    for (l in 1:length(unique(cal.data$period.fichier.uid[which(grepl(fichier.uid.i, cal.data$fichier.uid))]))) { # si mm fichier.uid.i, coller les périodes ensemble (ainsi, retirer et remettre ne demande pas plus de manipulations et surtout ps des manipulations incividuelles)
-      if (length(unique(cal.data$period.fichier.uid[which(grepl(fichier.uid.i, cal.data$fichier.uid))])) != 0) {
-        ll.pre[[i]]; print(l)
-        cal.data.i.l <- unique(cal.data[which(grepl(fichier.uid.i, cal.data$fichier.uid)),
-                                        c("fichier.uid", "site.uid", "well.uid", "trmnt.uid", 'lab.probe.id', 'probe.uid', 'probe.brand',
-                                          "day.begining.aaaa.mm.dd.hh.mm", 'day.end.aaaa.mm.dd.hh.mm', "period.fichier.uid")])[l,] # cal.data.i.l = les infos dont j'ai besoin pour recouper selon la période l du fichier i
-        period.fichier.uid.l <- cal.data.i.l$period.fichier.uid
-        # recoupage de ll.pre.data selon cal.data selon début et fin des mesures et retrait de colonnes
-        ll.pre.0.data.4.l.pre <- ll.pre.0.data.3 %>%
-          dplyr::filter(date.time.tz.orig >= cal.data.i.l$day.begining.aaaa.mm.dd.hh.mm) %>% # >= date de mesure de NP plus grand ou égale à la date beginning dans cal.data.i.l
-          dplyr::filter(date.time.tz.orig <= cal.data.i.l$day.end.aaaa.mm.dd.hh.mm) %>% # <= date de mesure de NP plus petite ou égale à la date end dans cal.data.i.l 
-          select("scan.id", "raw.value.kPa_pres.abs", "calibrated.value.cm",  "temperature_dC", "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.tz.orig", "date.time.UTC.0") # %>%  # date et time sans "UTC.0" sont dans le fuseau horaire d'origine (tz trouvé en croisant les coordonnées "coords")
-        # répliquer les données cal.data.k.l à chaque ligne de ll.pre.0.data.4.l.pre
-        cal.data.i.l.all <- cal.data[cal.data$period.fichier.uid == period.fichier.uid.l,]
-        rownames(cal.data.i.l.all) <- NULL
-        cal.data.i.l.rep <- cbind(cal.data.i.l.all, rep(row.names(cal.data.i.l.all), each = nrow(ll.pre.0.data.4.l.pre)))
-        colnames(cal.data.i.l.rep)
-        # assembler les colonnes
-        ll.pre.0.data.4.l <- bind_cols(ll.pre.0.data.4.l.pre, cal.data.i.l.rep)
-        ll.pre.0.data.4.l <- ll.pre.0.data.4.l %>% select(!"rep(row.names(cal.data.i.l.all), each = nrow(ll.pre.0.data.4.l.pre))")
-        # chaque cal.data.k = une section de mesures de la sonde k, durant l'été, associée ou non à une mesure au bulleur et à une longueur de fil
-        # vérifications
-        head(ll.pre.0.data.4.l); colnames(ll.pre.0.data.4.l); nrow(ll.pre.0.data.4.l)
-        # changer pour un nom explicite, fichier encore à calibrer (d'où "pre")
-        ll.cal.pre.i.l[[l]] <- ll.pre.0.data.4.l
-      }
-      # coller toutes les données de la sonde k ensemble (différentes mesures temporelles, mm puits.trmnt.année) ----
-      ll.cal.pre.i <- do.call(rbind, ll.cal.pre.i.l) # row bind -> on colle deux df de structure identique (les ll.cal.pre.i) de différents k.l, associées à différents temps de la période de mesure de la sonde k
-      # explications de cette loop ----
-      # mm fichier.uid (loop extrait séquentiellement toutes les lignes de chaque # de SNH, qui peuvent être uniques ou multiples pour un SNH donné);
-      # la loop teste si toutes les lignes de ce # de SNH ont le même fichier.uid (i), dans quel cas, si les périodes sont différentes, 
-      # la boucle coupe le fichier pour chaque période différente (l), et ensuite réassemble le fichier avec seules les périodes à conserver
-    }
-    
-    ### calcul de calibration  ----
-    # * avec HOBO, calibration est faite selon une station météorologique *
-    # Référence : Jutras et Bourgault, 2024, Version 2.0, section 7 (/Users/Aliz/Documents/Doctorat/_Connectivité/Protocoles (dossiers copiés du serveur A'24)/Leveloggers & Hauteur nappe phréatique/_HOBO_Protocole de mesure de nappe_2024-11-01_NE PAS DIFFUSER.docx)
-    
-    #### extraction des données de ECCC/CCCS et ménage ----
-    # transformer eccc.data avec le mm format de colonne que ll.cal.pre.i 0$date.time.tz.orig
-    station_ids <- unique(cal.data$cal.station_id[cal.data$probe.uid == probe.uid.k]) # pas grave ici si plusieurs probe.uid
-    # weather_dl(6915, start = min(ll.cal.pre.i$date.time.tz.orig), end = max(ll.cal.pre.i$date.time.tz.orig))
-    eccc.data.pre.0 <- weather_dl(station_ids, start = min(ll.cal.pre.i$date.time.tz.orig), end = max(ll.cal.pre.i$date.time.tz.orig), time_disp = "none") # , interval = "hour" 
-    # **dates absentes du ll.cal.pre.i si, p. ex sonde retirée momentanément, seront enlevées dans le left_join**
-    # As of weathercan v0.3.0 time display is either local time or UTC
-    # See Details under ?weather_dl for more information.
-    # This message is shown once per session
-
+    # ##### import et nettoyage ----
+    # cal.data <- read.csv("connectivite/data/raw/level_logger_calibration_all.csv", sep = ";", dec = ",")
+    # # out = (pt haut - moyenne pt bas)
+    # cal.data$out.R = round(cal.data$pt.haut.cm - ((cal.data$pt.bas1.cm+cal.data$pt.bas2.cm+cal.data$pt.bas3.cm)/3), digits = 1)
+    # colnames(cal.data)
+    # cal.data <- cal.data %>% select("site.uid", "well.uid", "trmnt.uid", "lab.probe.id", "probe.uid", "probe.brand", 
+    #                                 "cal.length.cm", "cal.order", "cal.value_x", "comment", 
+    #                                 "day.begining.aaaa.mm.dd.hh.mm", "day.end.aaaa.mm.dd.hh.mm", "distance.m", "out.R", "out.long.tuyau.sol.cm", everything())
+    # # vérification de valeurs OUT
+    # if(all(cal.data$out.R == round(cal.data$out.long.tuyau.sol.cm, digits = 1), na.rm =T))  { # si TOUS TRUE (fonction any()) = changer nom de out.R et supprimer la mesure entrée manuellement // si FALSE = avertissement
+    #   cal.data$out.long.tuyau.sol.cm <- cal.data$out.R
+    #   cal.data <- cal.data %>% select(!out.R)
+    # } else { stop("Attention, le out entré dans cal.data (syn. level_logger_calibration_all.csv) n'est pas identique à la moyenne des points bas soustraite du point haut du puits.") } 
+    # # création d'une colonne unique
+    # cal.data$period.file.uid <- paste0(cal.data$day.begining.aaaa.mm.dd.hh.mm, "--", cal.data$day.end.aaaa.mm.dd.hh.mm, ".",cal.data$fichier.uid)
+    # # format POSIX begining et end
+    # cal.data$day.begining.aaaa.mm.dd.hh.mm <- ymd_hm(cal.data$day.begining.aaaa.mm.dd.hh.mm, tz = tz)
+    # cal.data$day.end.aaaa.mm.dd.hh.mm <- ymd_hm(cal.data$day.end.aaaa.mm.dd.hh.mm, tz = tz)
+    # head(cal.data); tail(cal.data); str(cal.data)
+    # 
     
     
-    
-    # à faire
-    # REMETTRE FICHIERS BRNTC dans dossier principal
-    # SI MESSAGE D'ERREUR contient les caractères suivants, UTILISER LES DONNÉES DE LA STATION MÉTÉO LOCALE
-    # "There are no data for station 6128 for this interval (hour)"
-    # PRO : JE N'AI PAS DE DONNÉES HORAIRES de pression atmosphérique
-
-    
-    
-    
-    
-    # sélection des colonnes pertinentes à la présente manoeuvre
-    eccc.data.pre <- eccc.data.pre.0[, !names(eccc.data.pre.0) %in% 
-                                       c("WMO_id","TC_id", "wind_chill", "year", "month", "day", "hour", "weather", "hmdx", 
-                                         "hmdx_flag", "precip_amt", "precip_amt_flag", "pressure_flag", "rel_hum", "rel_hum_flag", 
-                                         "temp", "temp_dew", "temp_dew_flag", "temp_flag", "visib", "visib_flag", "wind_chill_flag", 
-                                         "wind_dir", "wind_dir_flag", "wind_spd", "wind_spd_flag")] 
-    # changement de nom pour identifier quelles colonnes du futur cal.eccc.data proviennent de eccc/cccs
-    colnames(eccc.data.pre) <- paste0(colnames(eccc.data.pre), ".wc") # ajout de ".wc" pour identifier les colonnes issues de WeatherCan
-    
-    ##### inscrire le time zone (tz) dans la colonne time (équivalent à "date.time.tz.orig.pre") ----
-    # trouver la station météorologique canadienne à moins de 25km de distance (inscrire manuellement dans "data/raw/ll.calibration.all.csv")
-    station_tz.pre <- stations_search(coords = c(zones$latitude[zones$site == site.name][1],
-                                                 zones$longitude[zones$site == site.name][1]), dist = 45)
-    station_tz.pre.1 <- stations_search(unique(station_tz.pre$station_name[station_tz.pre$station_id == station_ids]))
-    station_tz <- unique(station_tz.pre.1$tz) # OlsonNames() compatible
-    
-    # à l'aide de la tz, ajouter une seconde (idem aux infos temporelles dans ll.cal.pre.i)
-    eccc.data.pre$date.time.tz.orig.wc <- force_tz(eccc.data.pre$time.wc, tz = station_tz) + 1 # ajout d'une seconde, sinon, les données 00:00:00 étaient effacées !
-    # eccc.data.pre$date.time.tz.orig <- force_tz(eccc.data.pre$time, tz = "America/Moncton") + 1
-    
-    eccc.data.pre <- eccc.data.pre %>% select(date.time.tz.orig.wc, time.wc, everything())
-    
-    # convertir au bon format de date et manip de colonnes (idem aux infos temporelles dans ll.cal.pre.i) / date.time.UTC selon norme iso
-    eccc.data.pre.1 <- eccc.data.pre %>%
-      mutate(date.time.UTC.0.pre = with_tz(ymd_hms(eccc.data.pre$date.time.tz.orig.wc, tz = tz), tzone = "GMT")) # les heures sont ainsi ramenées à UTC +0 / ceci écrase la colonne du mm nom
-    head(eccc.data.pre.1$date.time.UTC.0.pre) # ok ici
-    
-    eccc.data.pre.2 <- eccc.data.pre.1 %>%  # enlever l'espace entre date et heure (ISO 8601)
-      mutate(date.time.UTC.0.pre.1 = str_replace(eccc.data.pre.1$date.time.UTC.0.pre, " ", "T")) %>% 
-      select(date.time.tz.orig.wc, time.wc, date.time.UTC.0.pre, date.time.UTC.0.pre.1, everything())
-    head(eccc.data.pre.2$date.time.UTC.0.pre.1) # ok ici
-    # head(eccc.data.pre$time.wc)
-    # head(eccc.data.pre$date.time.tz.orig.wc) # alors que ici, 
-    
-    eccc.data.pre.2$date.time.UTC.0 <- str_replace_all(eccc.data.pre.2$date.time.UTC.0.pre.1, "00:01","00:01Z") # ajouter le Z à la fin (ISO 8601)
-    eccc.data <- eccc.data.pre.2 %>% select(`date.AAAA-MM-JJ` = "date.wc", time.wc, date.time.tz.orig.wc, date.time.UTC.0, everything()) %>% select(!c(date.time.UTC.0.pre, date.time.UTC.0.pre.1))
-    eccc.data <- as.data.frame(eccc.data)
-    head(eccc.data); str(eccc.data); class(eccc.data)
-    
-    # # # vérif pour le join, il faut que la sytaxe soit exactement la mm entre les deux df
-    # c(class(eccc.data[60,]$date.time.UTC.0), class(ll.cal.pre.i[50,]$date.time.UTC.0))
-    # c(as.character(eccc.data[60,]$date.time.UTC.0), as.character(ll.cal.pre.i[50,]$date.time.UTC.0))
-    # c(eccc.data[60,]$date.time.UTC.0, ll.cal.pre.i[50,]$date.time.UTC.0)
-    # eccc.data[60,]$date.time.UTC.0 == ll.cal.pre.i[50,]$date.time.UTC.0 # -> doit renvoyer T
-    
-    #### assembler données du HOBO et données de ECCC/CCCS selon la date et l'heure ----
-    # Jutras&Bourgault V2.0, 2024; étape a) Associer par dates et par heures les données mesurées par les sondes de niveau hydrostatique et la pression atmosphérique
-    cal.eccc.data <- left_join(ll.cal.pre.i, eccc.data, by = join_by(date.time.UTC.0)) %>% 
-      select("scan.id", "date.time.UTC.0","raw.value.kPa_pres.abs", "temperature_dC", "calibrated.value.cm",
-             `date.AAAA-MM-JJ` = "date.AAAA-MM-JJ.x", "time.HH.MM.SS", `date.time.tz.orig`,
-             "date.time.tz.orig.wc", "station_name.wc", pressure.kPa.wc = "pressure.wc", everything()) %>% 
-      select(!c(`date.AAAA-MM-JJ.y`, "time.wc")) # enlever les nombreuses colonnes qui n'ont pas rapport dans ces démarches
-    colnames(cal.eccc.data)
-    cal.eccc.data$pressure.kPa.wc
-    
-    # Jutras&Bourgault V2.0, 2024; étape b)	Calculer la hauteur d’eau au-dessus de la sonde par la soustraction de la pression atmosphérique, convertie en cm d’eau, à la pression mesurée par la sonde
-    # Jutras&Bourgault V2.0, 2024; étape b.i)	La conversion de kPa en cm d’eau est : 1 kPa = 10,1972 cm d’eau 
-    cal.eccc.data$pression.eau.kPa <- cal.eccc.data$raw.value.kPa_pres.abs - cal.eccc.data$pressure.kPa.wc
-    cal.eccc.data$hauteur.eau.cm.pre <- cal.eccc.data$pression.eau.kPa * 10.197162129779 # règle de trois
-    cal.eccc.data$hauteur.eau.cm <- cal.eccc.data$hauteur.eau.cm.pre # dépend de la façon dont les mesures de longueurs en cm sont prises
-    cal.eccc.data <- cal.eccc.data %>% select("scan.id", "date.time.UTC.0","raw.value.kPa_pres.abs", pression.eau.kPa, hauteur.eau.cm, everything()) 
-    
-    # Jutras&Bourgault V2.0, 2024; étape c)	Convertir la hauteur d’eau au-dessus de la sonde en profondeur de la nappe phréatique par rapport à la surface du sol
-                                         # c.bis) création d'un vecteur de longueur CDS à ajouter à la longueur du fil (protocole pour éviter l'erreur humaine)
-    # Jutras&Bourgault V2.0, 2024; étape c.i)	La profondeur de la nappe phréatique par rapport à la surface du sol = 
-    # ((La longueur du fil + La constante CDS) – La longueur du puits d’observation qui dépasse la surface du sol) – La hauteur d’eau au-dessus de la sonde
-    
-    # c.bis
-    # D'abord, constante de distance à la sonde en fonction de l'appareil de mesure, à ajouter à la longueur de fil
-    # Cette valeur équivauit à la "" dans Jutras&Bourgault V2.0, 2024
-    CDS <- data.frame(type = c("U20", "U20L", "odyssey"), # Hobo seulement : mesure longueur du fil tel que dans protocole; à la limite de la boîte de sonde. Les constantes de longueur de boîte de sonde à la sonde à l'interface intérieur de la sonde sont ajoutées à cette étape-ci.
-                      constante = c("12.93", "13.3", "0")) %>% 
-      mutate_at('constante', as.numeric) # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque/modèle" (type) est traitée de façon différente 
-    str(CDS)
-    
-    # vérifications des types de chaque variable
-    str(cal.eccc.data$long.fil.cm) # numeric
-    str(cal.eccc.data$out.long.tuyau.sol.cm) # numeric
-    str(cal.eccc.data$hauteur.eau.cm) # numeric
-    # calcul de la profondeur
-    cal.eccc.data$calibrated.value.cm <-  cal.eccc.data$long.fil.cm - cal.eccc.data$out.long.tuyau.sol.cm - cal.eccc.data$hauteur.eau.cm # avec le moins, ça donne 20 de profondeur
-    # cal.eccc.data$calibrated.value.cm <- cal.eccc.data$long.fil.cm - cal.eccc.data$out.long.tuyau.sol.cm + cal.eccc.data$hauteur.eau.cm
-    head(cal.eccc.data)$calibrated.value.cm
-    
-    # format final -> nom final
-    ll.cal.k <- cal.eccc.data %>%  # ceci est donc le format final, à intégrer dans la liste ll.clean
-      select(scan.id, raw.value.kPa_pres.abs, calibrated.value.cm, `date.AAAA-MM-JJ`, time.HH.MM.SS, date.time.tz.orig, # retirer des colonnes intermédiaires et mm format que ll.clean[[i]]$data
-             date.time.UTC.0)
-
-        ### création de la liste dans la liste [[i]]  ----
-    # noted : <- le fichier du level logger correspondant à la position i; [1] : data (dataframe), [2] : metadata (character string)
-    
-    ll.clean[[i]] <- list("data" = ll.cal.k, "metadata" = ll.pre.0.metadata) 
-  } # fin de la loop pour les HOBO
-  # else {
-  #  stop("ERREUR : CODER ICI") # si nécessaire, ajouter 3e type de traitement de SNH
-  # }
-}  
+  #   ##### boucle de concaténation des données (fichier.uid ensemble, sinon autre calibration et graphique disctinct) ----
+  #   ll.cal.pre.i.l <- list()  # rappel : i == k, changer un jour au besoin, vestige
+  #   for (l in 1:length(unique(cal.data$period.file.uid[which(grepl(fichier.uid.i, cal.data$fichier.uid))]))) { # si mm fichier.uid.i, coller les périodes ensemble (ainsi, retirer et remettre ne demande pas plus de manipulations et surtout ps des manipulations incividuelles)
+  #     if (length(unique(cal.data$period.file.uid[which(grepl(fichier.uid.i, cal.data$fichier.uid))])) != 0) {
+  #       ll.pre[[i]]; print(l)
+  #       cal.data.i.l <- unique(cal.data[which(grepl(fichier.uid.i, cal.data$fichier.uid)),
+  #                                       c("fichier.uid", "site.uid", "well.uid", "trmnt.uid", 'lab.probe.id', 'probe.uid', 'probe.brand',
+  #                                         "day.begining.aaaa.mm.dd.hh.mm", 'day.end.aaaa.mm.dd.hh.mm', "period.file.uid")])[l,] # cal.data.i.l = les infos dont j'ai besoin pour recouper selon la période l du fichier i
+  #       period.file.uid.l <- cal.data.i.l$period.file.uid
+  #       # recoupage de ll.pre.data selon cal.data selon début et fin des mesures et retrait de colonnes
+  #       ll.pre.0.data.4.l.pre <- ll.pre.0.data.3 %>%
+  #         dplyr::filter(date.time.tz.orig >= cal.data.i.l$day.begining.aaaa.mm.dd.hh.mm) %>% # >= date de mesure de NP plus grand ou égale à la date beginning dans cal.data.i.l
+  #         dplyr::filter(date.time.tz.orig <= cal.data.i.l$day.end.aaaa.mm.dd.hh.mm) %>% # <= date de mesure de NP plus petite ou égale à la date end dans cal.data.i.l 
+  #         select("scan.id", "raw.value.kPa_pres.abs", "calibrated.value.cm",  "temperature_dC", "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.tz.orig", "date.time.UTC.0") # %>%  # date et time sans "UTC.0" sont dans le fuseau horaire d'origine (tz trouvé en croisant les coordonnées "coords")
+  #       # répliquer les données cal.data.k.l à chaque ligne de ll.pre.0.data.4.l.pre
+  #       cal.data.i.l.all <- cal.data[cal.data$period.file.uid == period.file.uid.l,]
+  #       rownames(cal.data.i.l.all) <- NULL
+  #       cal.data.i.l.rep <- cbind(cal.data.i.l.all, rep(row.names(cal.data.i.l.all), each = nrow(ll.pre.0.data.4.l.pre)))
+  #       colnames(cal.data.i.l.rep)
+  #       # assembler les colonnes
+  #       ll.pre.0.data.4.l <- bind_cols(ll.pre.0.data.4.l.pre, cal.data.i.l.rep)
+  #       ll.pre.0.data.4.l <- ll.pre.0.data.4.l %>% select(!"rep(row.names(cal.data.i.l.all), each = nrow(ll.pre.0.data.4.l.pre))")
+  #       # chaque cal.data.k = une section de mesures de la sonde k, durant l'été, associée ou non à une mesure au bulleur et à une longueur de fil
+  #       # vérifications
+  #       head(ll.pre.0.data.4.l); colnames(ll.pre.0.data.4.l); nrow(ll.pre.0.data.4.l)
+  #       # changer pour un nom explicite, fichier encore à calibrer (d'où "pre")
+  #       ll.cal.pre.i.l[[l]] <- ll.pre.0.data.4.l
+  #     }
+  #     # coller toutes les données de la sonde k ensemble (différentes mesures temporelles, mm puits.trmnt.année) ----
+  #     ll.cal.pre.i <- do.call(rbind, ll.cal.pre.i.l) # row bind -> on colle deux df de structure identique (les ll.cal.pre.i) de différents k.l, associées à différents temps de la période de mesure de la sonde k
+  #     # explications de cette loop ----
+  #     # mm fichier.uid (loop extrait séquentiellement toutes les lignes de chaque # de SNH, qui peuvent être uniques ou multiples pour un SNH donné);
+  #     # la loop teste si toutes les lignes de ce # de SNH ont le même fichier.uid (i), dans quel cas, si les périodes sont différentes, 
+  #     # la boucle coupe le fichier pour chaque période différente (l), et ensuite réassemble le fichier avec seules les périodes à conserver
+  #   }
+  #   
+  #   ### calcul de calibration  ----
+  #   # * avec HOBO, calibration est faite selon une station météorologique *
+  #   # Référence : Jutras et Bourgault, 2024, Version 2.0, section 7 (/Users/Aliz/Documents/Doctorat/_Connectivité/Protocoles (dossiers copiés du serveur A'24)/Leveloggers & Hauteur nappe phréatique/_HOBO_Protocole de mesure de nappe_2024-11-01_NE PAS DIFFUSER.docx)
+  #   
+  #   
+  #   
+  #   # ____Rendue là_____
+  #   
+  #   
+  #   
+  #   
+  #   
+  #   #### extraction des données de ECCC/CCCS et ménage ----
+  #   # transformer eccc.data avec le mm format de colonne que ll.cal.pre.i 0$date.time.tz.orig
+  #   station_ids <- unique(cal.data$cal.station_id[cal.data$probe.uid == probe.uid.k]) # pas grave ici si plusieurs probe.uid
+  #   # weather_dl(6915, start = min(ll.cal.pre.i$date.time.tz.orig), end = max(ll.cal.pre.i$date.time.tz.orig))
+  #   eccc.data.pre.0 <- weather_dl(station_ids, start = min(ll.cal.pre.i$date.time.tz.orig), end = max(ll.cal.pre.i$date.time.tz.orig), time_disp = "none") # , interval = "hour" 
+  #   # **dates absentes du ll.cal.pre.i si, p. ex sonde retirée momentanément, seront enlevées dans le left_join**
+  #   # As of weathercan v0.3.0 time display is either local time or UTC
+  #   # See Details under ?weather_dl for more information.
+  #   # This message is shown once per session
+  # 
+  #   
+  #   
+  #   
+  #   # à faire
+  #   # REMETTRE FICHIERS BRNTC dans dossier principal
+  #   # SI MESSAGE D'ERREUR contient les caractères suivants, UTILISER LES DONNÉES DE LA STATION MÉTÉO LOCALE
+  #   # "There are no data for station 6128 for this interval (hour)"
+  #   # PRO : JE N'AI PAS DE DONNÉES HORAIRES de pression atmosphérique
+  # 
+  #   
+  #   
+  #   
+  #   
+  #   # sélection des colonnes pertinentes à la présente manoeuvre
+  #   eccc.data.pre <- eccc.data.pre.0[, !names(eccc.data.pre.0) %in% 
+  #                                      c("WMO_id","TC_id", "wind_chill", "year", "month", "day", "hour", "weather", "hmdx", 
+  #                                        "hmdx_flag", "precip_amt", "precip_amt_flag", "pressure_flag", "rel_hum", "rel_hum_flag", 
+  #                                        "temp", "temp_dew", "temp_dew_flag", "temp_flag", "visib", "visib_flag", "wind_chill_flag", 
+  #                                        "wind_dir", "wind_dir_flag", "wind_spd", "wind_spd_flag")] 
+  #   # changement de nom pour identifier quelles colonnes du futur cal.eccc.data proviennent de eccc/cccs
+  #   colnames(eccc.data.pre) <- paste0(colnames(eccc.data.pre), ".wc") # ajout de ".wc" pour identifier les colonnes issues de WeatherCan
+  #   
+  #   ##### inscrire le time zone (tz) dans la colonne time (équivalent à "date.time.tz.orig.pre") ----
+  #   # trouver la station météorologique canadienne à moins de 25km de distance (inscrire manuellement dans "data/raw/ll.calibration.all.csv")
+  #   station_tz.pre <- stations_search(coords = c(zones$latitude[zones$site == site.name][1],
+  #                                                zones$longitude[zones$site == site.name][1]), dist = 45)
+  #   station_tz.pre.1 <- stations_search(unique(station_tz.pre$station_name[station_tz.pre$station_id == station_ids]))
+  #   station_tz <- unique(station_tz.pre.1$tz) # OlsonNames() compatible
+  #   
+  #   # à l'aide de la tz, ajouter une seconde (idem aux infos temporelles dans ll.cal.pre.i)
+  #   eccc.data.pre$date.time.tz.orig.wc <- force_tz(eccc.data.pre$time.wc, tz = station_tz) + 1 # ajout d'une seconde, sinon, les données 00:00:00 étaient effacées !
+  #   # eccc.data.pre$date.time.tz.orig <- force_tz(eccc.data.pre$time, tz = "America/Moncton") + 1
+  #   
+  #   eccc.data.pre <- eccc.data.pre %>% select(date.time.tz.orig.wc, time.wc, everything())
+  #   
+  #   # convertir au bon format de date et manip de colonnes (idem aux infos temporelles dans ll.cal.pre.i) / date.time.UTC selon norme iso
+  #   eccc.data.pre.1 <- eccc.data.pre %>%
+  #     mutate(date.time.UTC.0.pre = with_tz(ymd_hms(eccc.data.pre$date.time.tz.orig.wc, tz = tz), tzone = "GMT")) # les heures sont ainsi ramenées à UTC +0 / ceci écrase la colonne du mm nom
+  #   head(eccc.data.pre.1$date.time.UTC.0.pre) # ok ici
+  #   
+  #   eccc.data.pre.2 <- eccc.data.pre.1 %>%  # enlever l'espace entre date et heure (ISO 8601)
+  #     mutate(date.time.UTC.0.pre.1 = str_replace(eccc.data.pre.1$date.time.UTC.0.pre, " ", "T")) %>% 
+  #     select(date.time.tz.orig.wc, time.wc, date.time.UTC.0.pre, date.time.UTC.0.pre.1, everything())
+  #   head(eccc.data.pre.2$date.time.UTC.0.pre.1) # ok ici
+  #   # head(eccc.data.pre$time.wc)
+  #   # head(eccc.data.pre$date.time.tz.orig.wc) # alors que ici, 
+  #   
+  #   eccc.data.pre.2$date.time.UTC.0 <- str_replace_all(eccc.data.pre.2$date.time.UTC.0.pre.1, "00:01","00:01Z") # ajouter le Z à la fin (ISO 8601)
+  #   eccc.data <- eccc.data.pre.2 %>% select(`date.AAAA-MM-JJ` = "date.wc", time.wc, date.time.tz.orig.wc, date.time.UTC.0, everything()) %>% select(!c(date.time.UTC.0.pre, date.time.UTC.0.pre.1))
+  #   eccc.data <- as.data.frame(eccc.data)
+  #   head(eccc.data); str(eccc.data); class(eccc.data)
+  #   
+  #   # # # vérif pour le join, il faut que la sytaxe soit exactement la mm entre les deux df
+  #   # c(class(eccc.data[60,]$date.time.UTC.0), class(ll.cal.pre.i[50,]$date.time.UTC.0))
+  #   # c(as.character(eccc.data[60,]$date.time.UTC.0), as.character(ll.cal.pre.i[50,]$date.time.UTC.0))
+  #   # c(eccc.data[60,]$date.time.UTC.0, ll.cal.pre.i[50,]$date.time.UTC.0)
+  #   # eccc.data[60,]$date.time.UTC.0 == ll.cal.pre.i[50,]$date.time.UTC.0 # -> doit renvoyer T
+  #   
+  #   #### assembler données du HOBO et données de ECCC/CCCS selon la date et l'heure ----
+  #   # Jutras&Bourgault V2.0, 2024; étape a) Associer par dates et par heures les données mesurées par les sondes de niveau hydrostatique et la pression atmosphérique
+  #   cal.eccc.data <- left_join(ll.cal.pre.i, eccc.data, by = join_by(date.time.UTC.0)) %>% 
+  #     select("scan.id", "date.time.UTC.0","raw.value.kPa_pres.abs", "temperature_dC", "calibrated.value.cm",
+  #            `date.AAAA-MM-JJ` = "date.AAAA-MM-JJ.x", "time.HH.MM.SS", `date.time.tz.orig`,
+  #            "date.time.tz.orig.wc", "station_name.wc", pressure.kPa.wc = "pressure.wc", everything()) %>% 
+  #     select(!c(`date.AAAA-MM-JJ.y`, "time.wc")) # enlever les nombreuses colonnes qui n'ont pas rapport dans ces démarches
+  #   colnames(cal.eccc.data)
+  #   cal.eccc.data$pressure.kPa.wc
+  #   
+  #   # Jutras&Bourgault V2.0, 2024; étape b)	Calculer la hauteur d’eau au-dessus de la sonde par la soustraction de la pression atmosphérique, convertie en cm d’eau, à la pression mesurée par la sonde
+  #   # Jutras&Bourgault V2.0, 2024; étape b.i)	La conversion de kPa en cm d’eau est : 1 kPa = 10,1972 cm d’eau 
+  #   cal.eccc.data$pression.eau.kPa <- cal.eccc.data$raw.value.kPa_pres.abs - cal.eccc.data$pressure.kPa.wc
+  #   cal.eccc.data$hauteur.eau.cm.pre <- cal.eccc.data$pression.eau.kPa * 10.197162129779 # règle de trois
+  #   cal.eccc.data$hauteur.eau.cm <- cal.eccc.data$hauteur.eau.cm.pre # dépend de la façon dont les mesures de longueurs en cm sont prises
+  #   cal.eccc.data <- cal.eccc.data %>% select("scan.id", "date.time.UTC.0","raw.value.kPa_pres.abs", pression.eau.kPa, hauteur.eau.cm, everything()) 
+  #   
+  #   # Jutras&Bourgault V2.0, 2024; étape c)	Convertir la hauteur d’eau au-dessus de la sonde en profondeur de la nappe phréatique par rapport à la surface du sol
+  #                                        # c.bis) création d'un vecteur de longueur CDS à ajouter à la longueur du fil (protocole pour éviter l'erreur humaine)
+  #   # Jutras&Bourgault V2.0, 2024; étape c.i)	La profondeur de la nappe phréatique par rapport à la surface du sol = 
+  #   # ((La longueur du fil + La constante CDS) – La longueur du puits d’observation qui dépasse la surface du sol) – La hauteur d’eau au-dessus de la sonde
+  #   
+  #   # c.bis
+  #   # D'abord, constante de distance à la sonde en fonction de l'appareil de mesure, à ajouter à la longueur de fil
+  #   # Cette valeur équivauit à la "" dans Jutras&Bourgault V2.0, 2024
+  #   CDS <- data.frame(type = c("U20", "U20L", "odyssey"), # Hobo seulement : mesure longueur du fil tel que dans protocole; à la limite de la boîte de sonde. Les constantes de longueur de boîte de sonde à la sonde à l'interface intérieur de la sonde sont ajoutées à cette étape-ci.
+  #                     constante = c("12.93", "13.3", "0")) %>% 
+  #     mutate_at('constante', as.numeric) # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque/modèle" (type) est traitée de façon différente 
+  #   str(CDS)
+  #   
+  #   # vérifications des types de chaque variable
+  #   str(cal.eccc.data$long.fil.cm) # numeric
+  #   str(cal.eccc.data$out.long.tuyau.sol.cm) # numeric
+  #   str(cal.eccc.data$hauteur.eau.cm) # numeric
+  #   # calcul de la profondeur
+  #   cal.eccc.data$calibrated.value.cm <-  cal.eccc.data$long.fil.cm - cal.eccc.data$out.long.tuyau.sol.cm - cal.eccc.data$hauteur.eau.cm # avec le moins, ça donne 20 de profondeur
+  #   # cal.eccc.data$calibrated.value.cm <- cal.eccc.data$long.fil.cm - cal.eccc.data$out.long.tuyau.sol.cm + cal.eccc.data$hauteur.eau.cm
+  #   head(cal.eccc.data)$calibrated.value.cm
+  #   
+  #   # format final -> nom final
+  #   ll.cal.k <- cal.eccc.data %>%  # ceci est donc le format final, à intégrer dans la liste ll.clean
+  #     select(scan.id, raw.value.kPa_pres.abs, calibrated.value.cm, `date.AAAA-MM-JJ`, time.HH.MM.SS, date.time.tz.orig, # retirer des colonnes intermédiaires et mm format que ll.clean[[i]]$data
+  #            date.time.UTC.0)
+  # 
+  #       ### création de la liste dans la liste [[i]]  ----
+  #   # noted : <- le fichier du level logger correspondant à la position i; [1] : data (dataframe), [2] : metadata (character string)
+  #   
+  #   ll.clean[[i]] <- list("data" = ll.cal.k, "metadata" = ll.pre.0.metadata) 
+  # # } # fin de la loop pour les HOBO
+  # # else {
+  # #  stop("ERREUR : CODER ICI") # si nécessaire, ajouter 3e type de traitement de SNH
+  # # }
+}
+warnings()
 # vérifier que les erreurs sont tjrs la meme affaire inutile -> incomplete final line, tenté de régler le problème, mais sans succès; 
 # et different length (ça le dit quand le "cal" est vide, et ça met des NA, ce qui est parfait)
 

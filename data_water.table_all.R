@@ -74,7 +74,7 @@ SNH <- as.vector(c("_odyssey", "_hobo"), mode = "character") # liste des types d
 # fichiers de consigne de données
 ll.pre <- list.files("connectivite/data/raw", pattern = "_odyssey|_hobo") # mettre dans "pattern" tous les ID de SNH listés dans l'objet SNH
 tidy.WTD.data <- list() # équivalent à ll.clean (ancien)
-fichier.uid.df <- data.frame(fichier.uid = NA, file.name = NA, probe.uid = NA, "extraction.donnees.aaaammjj" = NA, "tz_orig" = NA) # pour stocker les fichier.uid (aussi première colonne de cal.data) et autres données intérimaires
+files.uid.df <- data.frame(fichier.uid = NA, file.name = NA, probe.uid = NA, "extraction.donnees.aaaammjj" = NA, "tz_orig" = NA) # pour stocker les fichier.uid (aussi première colonne de cal.data) et autres données intérimaires
 odyssey_offset_archives <- data.frame(fichier.uid = NA, offset_cm_date = NA, a.slope_excel = NA,	b.verticalIntercept = NA) #, `prof_nappe_bulleur_cm_plus.out` = NA, pre_prof_nappe_odyssey_mm_to_cm = NA,	`prof_nappe_odyssey_cm_plus.out` = NA)
 for (i in 1:length(ll.pre)) {
   # i<-46 9 10 11 12 13 14 15 16# 41362(27 mars 2025)
@@ -118,7 +118,7 @@ for (i in 1:length(ll.pre)) {
     }
     # création du fichier.uid.i, nom unique du FICHIER qui ne pourra JAMAIS être dupliqué (utila dans seciton début et fin des mesures par périodes, pour un mm FICHIER)
     fichier.uid.i <- paste0(unlist(result)[1], "_", unlist(result)[2]) # ceci sera écrasé à la prochaine itération
-    fichier.uid.df[i,1:4] <- c(paste0(unlist(result)[1], "_", unlist(result)[2]), ll.pre[i], probe.uid.i, as.numeric(unlist(result)[2])) # ceci sera gardé en mémoire (doit être identique à la colonne fichier.uid dans cal.data)
+    files.uid.df[i,1:4] <- c(paste0(unlist(result)[1], "_", unlist(result)[2]), ll.pre[i], probe.uid.i, as.numeric(unlist(result)[2])) # ceci sera gardé en mémoire (doit être identique à la colonne fichier.uid dans cal.data)
     # ajouts aux métadonnées des fichiers
     ll.pre.2.metadata[10:14] <- c(paste0("fichier.uid : ", unlist(result)[1], "_", unlist(result)[2]), paste0('file.name : ', "`", ll.pre[i], "`"), 
                                   paste0("probe.uid : ", probe.uid.i), paste0("date d'extraction des données : ", as.numeric(unlist(result)[2])),
@@ -152,7 +152,7 @@ for (i in 1:length(ll.pre)) {
     # trouver le UTC selon la lat long
     (tz <- tz_lookup_coords(coords[1], coords[2], method = "fast", warn = FALSE))
     # ajouts aux métadonnées des fichiers
-    fichier.uid.df[i,5] <- tz
+    files.uid.df[i,5] <- tz
     ll.pre.2.metadata[15] <- paste0("original time zone : ", tz)
     
     #### ménage de la date et heure  ----
@@ -529,97 +529,105 @@ for (i in 1:length(ll.pre)) {
       # la boucle coupe le fichier pour chaque période différente (l), et ensuite réassemble le fichier avec seules les périodes à conserver
     }
     
-    ### calcul de calibration  ----
-    # * avec HOBO, calibration est faite selon une station météorologique *
-    # Référence : Jutras et Bourgault, 2024, Version 2.0, section 7 (/Users/Aliz/Documents/Doctorat/_Connectivité/Protocoles (dossiers copiés du serveur A'24)/Leveloggers & Hauteur nappe phréatique/_HOBO_Protocole de mesure de nappe_2024-11-01_NE PAS DIFFUSER.docx)
-    
-    #### extraction des données de METEOSTAT //[auparavant : ECCC/CCCS] et ménage ----
-    meteoStat.data.pre.0 <- read.csv(paste0("connectivite/data/raw/", list.files(path = "connectivite/data/raw", pattern = site)))
-    meteoStat.data.pre.1 <- meteoStat.data.pre.0 %>% mutate(date.time = paste(year, month, day, hour)) %>% mutate(pressure.kPa = pres * 0.1) # pression donnée en hPa (hectopascal). 1 hPa = 0,1 kPa. Example: convert 15 hPa to kPa: 15 hPa = 15 × 0.1 kPa = 1.5 kPa
-    meteoStat.data.pre.1$date.time <- ymd_h(meteoStat.data.pre.1$date.time, tz = tz) + 1
-    meteoStat.data.pre.1 <- meteoStat.data.pre.1 %>%  select(date.time, everything(), -c("year", month, day, hour, X, pres, "wdir","wdir_source","wspd","wspd_source","cldc","cldc_source","coco","coco_source")) # ajuster la date et l'heure et ajout d'une seconde, sinon, les données 00:00:00 étaient effacées !
-    
-    # changement de nom pour identifier quelles colonnes du futur cal.meteoStat.data proviennent de meteoStat
-    colnames(meteoStat.data.pre.1) <- paste0(colnames(meteoStat.data.pre.1), ".ms") # ajout de ".ms" pour identifier les colonnes issues de MeteoStat
-    
-    # convertir au bon format de date et manip de colonnes (idem aux infos temporelles de fichier de sonde) / date.time.UTC selon norme iso
-    meteoStat.data.pre.2 <- meteoStat.data.pre.1 %>%
-      mutate(date.time.UTC.0.pre = with_tz(ymd_hms(meteoStat.data.pre.1$date.time.ms, tz = tz), tzone = "GMT")) # les heures sont ainsi ramenées à UTC +0 / ceci écrase la colonne du mm nom
-    head(meteoStat.data.pre.2$date.time.UTC.0.pre) # ok ici
-    
-    meteoStat.data.pre.3 <- meteoStat.data.pre.2 %>%  # enlever l'espace entre date et heure (ISO 8601)
-      mutate(date.time.UTC.0.pre.1 = str_replace(meteoStat.data.pre.2$date.time.UTC.0.pre, " ", "T")) %>% 
-      select(date.time.ms, date.time.UTC.0.pre, date.time.UTC.0.pre.1, everything())
-    head(meteoStat.data.pre.3$date.time.UTC.0.pre.1) # ok ici
-    
-    meteoStat.data.pre.3$date.time.UTC.0 <- str_replace_all(meteoStat.data.pre.3$date.time.UTC.0.pre.1, "00:01","00:01Z") # ajouter le Z à la fin (ISO 8601)
-    meteoStat.data <- meteoStat.data.pre.3 %>% select(date.time.ms, date.time.UTC.0, everything()) %>% select(!c(date.time.UTC.0.pre, date.time.UTC.0.pre.1))
-    head(meteoStat.data); str(meteoStat.data); class(meteoStat.data)
-    
-    # # vérif pour le join, il faut que la sytaxe soit exactement la mm entre les deux df
-    # c(class(meteoStat.data[4523,]$date.time.UTC.0), class(ll.cal.pre.i[1,]$date.time.UTC.0))
-    # c(as.character(meteoStat.data[4523,]$date.time.UTC.0), as.character(ll.cal.pre.i[1,]$date.time.UTC.0))
-    # c(meteoStat.data[4523,]$date.time.UTC.0, ll.cal.pre.i[1,]$date.time.UTC.0)
-    # meteoStat.data[4523,]$date.time.UTC.0 == ll.cal.pre.i[1,]$date.time.UTC.0 # -> doit renvoyer T
-    
-    #### assembler données du HOBO et données de ECCC/CCCS selon la date et l'heure ----
-    # Jutras&Bourgault V2.0, 2024; étape a) Associer par dates et par heures les données mesurées par les sondes de niveau hydrostatique et la pression atmosphérique
-    cal.meteoStat.data <- left_join(ll.cal.pre.i, meteoStat.data, by = join_by(date.time.UTC.0)) %>% 
-      select("scan.id", "date.time.UTC.0","raw.value.kPa_pres.abs", "temperature_dC", "calibrated.value.cm",
-             `date.AAAA-MM-JJ`, "time.HH.MM.SS", `date.time.tz.orig`, "date.time.ms", pressure.kPa.ms, everything(), -x.archive.well.uid) # enlever les nombreuses colonnes qui n'ont pas rapport dans ces démarches
-    colnames(cal.meteoStat.data)
-
-    
-    # À faire : VÉRIFIER SI TOUT EST OK NIVEAU TIME ZONES... 
-    ##### inscrire le time zone (tz) dans la colonne time (équivalent à "date.time.tz.orig.pre") ----
-    # json_data <- fromJSON(file ="connectivite/data/raw/full.json") # time zone inscrite dans ce fichier
-    # trouver ma station
-     # ??? et le bon UTC...
-    
-    
-    # à faire
-    # REMETTRE FICHIERS BRNTC dans dossier principal
-    # SI MESSAGE D'ERREUR contient les caractères suivants, UTILISER LES DONNÉES DE LA STATION MÉTÉO LOCALE
-    # "There are no data for station 6128 for this interval (hour)"
-    # PRO : JE N'AI PAS DE DONNÉES HORAIRES de pression atmosphérique
-
-    
-    
-    # Jutras&Bourgault V2.0, 2024; étape b)	Calculer la hauteur d’eau au-dessus de la sonde par la soustraction de la pression atmosphérique, convertie en cm d’eau, à la pression mesurée par la sonde
-    # Jutras&Bourgault V2.0, 2024; étape b.i)	La conversion de kPa en cm d’eau est : 1 kPa = 10,1972 cm d’eau 
-    cal.meteoStat.data$pression.eau.kPa <- cal.meteoStat.data$raw.value.kPa_pres.abs - cal.meteoStat.data$pressure.kPa.ms
-    cal.meteoStat.data$hauteur.eau.cm.pre <- cal.meteoStat.data$pression.eau.kPa * 10.197162129779 # règle de trois
-    cal.meteoStat.data$hauteur.eau.cm <- cal.meteoStat.data$hauteur.eau.cm.pre # dépend de la façon dont les mesures de longueurs en cm sont prises
-    cal.meteoStat.data <- cal.meteoStat.data %>% select("scan.id", "date.time.UTC.0","raw.value.kPa_pres.abs", pression.eau.kPa, hauteur.eau.cm, everything()) 
-    
-    # Jutras&Bourgault V2.0, 2024; étape c)	Convertir la hauteur d’eau au-dessus de la sonde en profondeur de la nappe phréatique par rapport à la surface du sol
-                                         # c.bis) création d'un vecteur de longueur CDS à ajouter à la longueur du fil (protocole pour éviter l'erreur humaine)
-    # Jutras&Bourgault V2.0, 2024; étape c.i)	La profondeur de la nappe phréatique par rapport à la surface du sol = 
-    # ((La longueur du fil + La constante CDS) – La longueur du puits d’observation qui dépasse la surface du sol) – La hauteur d’eau au-dessus de la sonde
-    
-    # c.bis
-    # D'abord, constante de distance à la sonde en fonction de l'appareil de mesure, à ajouter à la longueur de fil
-    CDS <- data.frame(type = c("U20", "U20L", "odyssey"), # Hobo seulement : mesure longueur du fil tel que dans protocole; à la limite de la boîte de sonde. Les constantes de longueur de boîte de sonde à la sonde à l'interface intérieur de la sonde sont ajoutées à cette étape-ci.
-                      constante = c("12.93", "13.3", "0")) %>% 
-      mutate_at('constante', as.numeric) # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque/modèle" (type) est traitée de façon différente 
-    str(CDS)
-    
-    # vérifications des types de chaque variable
-    str(cal.meteoStat.data$long.fil.cm); str(cal.meteoStat.data$out.long.tuyau.sol.cm); str(cal.meteoStat.data$hauteur.eau.cm)  # numeric
-    # calcul de la profondeur
-    cal.meteoStat.data$calibrated.value.cm <-  cal.meteoStat.data$long.fil.cm - cal.meteoStat.data$out.long.tuyau.sol.cm - cal.meteoStat.data$hauteur.eau.cm # avec le moins, ça donne 20 de profondeur
-    # cal.eccc.data$calibrated.value.cm <- cal.eccc.data$long.fil.cm - cal.eccc.data$out.long.tuyau.sol.cm + cal.eccc.data$hauteur.eau.cm
-    head(cal.meteoStat.data)$calibrated.value.cm
-    
-    # format final -> nom final
-    ll.cal.k <- cal.meteoStat.data %>%  # ceci est donc le format final, à intégrer dans la liste ll.clean
-      select(scan.id, raw.value.kPa_pres.abs, calibrated.value.cm, `date.AAAA-MM-JJ`, time.HH.MM.SS, date.time.tz.orig, # retirer des colonnes intermédiaires et mm format que ll.clean[[i]]$data
-             date.time.UTC.0)
-
-        ### création de la liste dans la liste [[i]]  ----
-    # noted : <- le fichier du level logger correspondant à la position i; [1] : data (dataframe), [2] : metadata (character string)
-    
-    tidy.WTD.data[[i]] <- list("data" = ll.cal.k, "metadata" = ll.pre.0.metadata) 
+    # QUOI <- clean.to.calibrated_ll(paste0("connectivite/data/raw/", list.files(path = "connectivite/data/raw", pattern = site.name)))
+    # ____Rendue là_____
+    # 
+    # 
+    # 
+    # 
+    # 
+    # 
+    # ### calcul de calibration  ----
+    # # * avec HOBO, calibration est faite selon une station météorologique *
+    # # Référence : Jutras et Bourgault, 2024, Version 2.0, section 7 (/Users/Aliz/Documents/Doctorat/_Connectivité/Protocoles (dossiers copiés du serveur A'24)/Leveloggers & Hauteur nappe phréatique/_HOBO_Protocole de mesure de nappe_2024-11-01_NE PAS DIFFUSER.docx)
+    # 
+    # #### extraction des données de METEOSTAT //[auparavant : ECCC/CCCS] et ménage ----
+    # meteoStat.data.pre.0 <- read.csv(paste0("connectivite/data/raw/", list.files(path = "connectivite/data/raw", pattern = site)))
+    # meteoStat.data.pre.1 <- meteoStat.data.pre.0 %>% mutate(date.time = paste(year, month, day, hour)) %>% mutate(pressure.kPa = pres * 0.1) # pression donnée en hPa (hectopascal). 1 hPa = 0,1 kPa. Example: convert 15 hPa to kPa: 15 hPa = 15 × 0.1 kPa = 1.5 kPa
+    # meteoStat.data.pre.1$date.time <- ymd_h(meteoStat.data.pre.1$date.time, tz = tz) + 1
+    # meteoStat.data.pre.1 <- meteoStat.data.pre.1 %>%  select(date.time, everything(), -c("year", month, day, hour, X, pres, "wdir","wdir_source","wspd","wspd_source","cldc","cldc_source","coco","coco_source")) # ajuster la date et l'heure et ajout d'une seconde, sinon, les données 00:00:00 étaient effacées !
+    # 
+    # # changement de nom pour identifier quelles colonnes du futur cal.meteoStat.data proviennent de meteoStat
+    # colnames(meteoStat.data.pre.1) <- paste0(colnames(meteoStat.data.pre.1), ".ms") # ajout de ".ms" pour identifier les colonnes issues de MeteoStat
+    # 
+    # # convertir au bon format de date et manip de colonnes (idem aux infos temporelles de fichier de sonde) / date.time.UTC selon norme iso
+    # meteoStat.data.pre.2 <- meteoStat.data.pre.1 %>%
+    #   mutate(date.time.UTC.0.pre = with_tz(ymd_hms(meteoStat.data.pre.1$date.time.ms, tz = tz), tzone = "GMT")) # les heures sont ainsi ramenées à UTC +0 / ceci écrase la colonne du mm nom
+    # head(meteoStat.data.pre.2$date.time.UTC.0.pre) # ok ici
+    # 
+    # meteoStat.data.pre.3 <- meteoStat.data.pre.2 %>%  # enlever l'espace entre date et heure (ISO 8601)
+    #   mutate(date.time.UTC.0.pre.1 = str_replace(meteoStat.data.pre.2$date.time.UTC.0.pre, " ", "T")) %>% 
+    #   select(date.time.ms, date.time.UTC.0.pre, date.time.UTC.0.pre.1, everything())
+    # head(meteoStat.data.pre.3$date.time.UTC.0.pre.1) # ok ici
+    # 
+    # meteoStat.data.pre.3$date.time.UTC.0 <- str_replace_all(meteoStat.data.pre.3$date.time.UTC.0.pre.1, "00:01","00:01Z") # ajouter le Z à la fin (ISO 8601)
+    # meteoStat.data <- meteoStat.data.pre.3 %>% select(date.time.ms, date.time.UTC.0, everything()) %>% select(!c(date.time.UTC.0.pre, date.time.UTC.0.pre.1))
+    # head(meteoStat.data); str(meteoStat.data); class(meteoStat.data)
+    # 
+    # # # vérif pour le join, il faut que la sytaxe soit exactement la mm entre les deux df
+    # # c(class(meteoStat.data[4523,]$date.time.UTC.0), class(ll.cal.pre.i[1,]$date.time.UTC.0))
+    # # c(as.character(meteoStat.data[4523,]$date.time.UTC.0), as.character(ll.cal.pre.i[1,]$date.time.UTC.0))
+    # # c(meteoStat.data[4523,]$date.time.UTC.0, ll.cal.pre.i[1,]$date.time.UTC.0)
+    # # meteoStat.data[4523,]$date.time.UTC.0 == ll.cal.pre.i[1,]$date.time.UTC.0 # -> doit renvoyer T
+    # 
+    # #### assembler données du HOBO et données de ECCC/CCCS selon la date et l'heure ----
+    # # Jutras&Bourgault V2.0, 2024; étape a) Associer par dates et par heures les données mesurées par les sondes de niveau hydrostatique et la pression atmosphérique
+    # cal.meteoStat.data <- left_join(ll.cal.pre.i, meteoStat.data, by = join_by(date.time.UTC.0)) %>% 
+    #   select("scan.id", "date.time.UTC.0","raw.value.kPa_pres.abs", "temperature_dC", "calibrated.value.cm",
+    #          `date.AAAA-MM-JJ`, "time.HH.MM.SS", `date.time.tz.orig`, "date.time.ms", pressure.kPa.ms, everything(), -x.archive.well.uid) # enlever les nombreuses colonnes qui n'ont pas rapport dans ces démarches
+    # colnames(cal.meteoStat.data)
+    # 
+    # 
+    # # À faire : VÉRIFIER SI TOUT EST OK NIVEAU TIME ZONES... 
+    # ##### inscrire le time zone (tz) dans la colonne time (équivalent à "date.time.tz.orig.pre") ----
+    # # json_data <- fromJSON(file ="connectivite/data/raw/full.json") # time zone inscrite dans ce fichier
+    # # trouver ma station
+    #  # ??? et le bon UTC...
+    # 
+    # 
+    # # à faire
+    # # REMETTRE FICHIERS BRNTC dans dossier principal
+    # # SI MESSAGE D'ERREUR contient les caractères suivants, UTILISER LES DONNÉES DE LA STATION MÉTÉO LOCALE
+    # # "There are no data for station 6128 for this interval (hour)"
+    # # PRO : JE N'AI PAS DE DONNÉES HORAIRES de pression atmosphérique
+    # 
+    # 
+    # 
+    # # Jutras&Bourgault V2.0, 2024; étape b)	Calculer la hauteur d’eau au-dessus de la sonde par la soustraction de la pression atmosphérique, convertie en cm d’eau, à la pression mesurée par la sonde
+    # # Jutras&Bourgault V2.0, 2024; étape b.i)	La conversion de kPa en cm d’eau est : 1 kPa = 10,1972 cm d’eau 
+    # cal.meteoStat.data$pression.eau.kPa <- cal.meteoStat.data$raw.value.kPa_pres.abs - cal.meteoStat.data$pressure.kPa.ms
+    # cal.meteoStat.data$hauteur.eau.cm.pre <- cal.meteoStat.data$pression.eau.kPa * 10.197162129779 # règle de trois
+    # cal.meteoStat.data$hauteur.eau.cm <- cal.meteoStat.data$hauteur.eau.cm.pre # dépend de la façon dont les mesures de longueurs en cm sont prises
+    # cal.meteoStat.data <- cal.meteoStat.data %>% select("scan.id", "date.time.UTC.0","raw.value.kPa_pres.abs", pression.eau.kPa, hauteur.eau.cm, everything()) 
+    # 
+    # # Jutras&Bourgault V2.0, 2024; étape c)	Convertir la hauteur d’eau au-dessus de la sonde en profondeur de la nappe phréatique par rapport à la surface du sol
+    #                                      # c.bis) création d'un vecteur de longueur CDS à ajouter à la longueur du fil (protocole pour éviter l'erreur humaine)
+    # # Jutras&Bourgault V2.0, 2024; étape c.i)	La profondeur de la nappe phréatique par rapport à la surface du sol = 
+    # # ((La longueur du fil + La constante CDS) – La longueur du puits d’observation qui dépasse la surface du sol) – La hauteur d’eau au-dessus de la sonde
+    # 
+    # # c.bis
+    # # D'abord, constante de distance à la sonde en fonction de l'appareil de mesure, à ajouter à la longueur de fil
+    # CDS <- data.frame(type = c("U20", "U20L", "odyssey"), # Hobo seulement : mesure longueur du fil tel que dans protocole; à la limite de la boîte de sonde. Les constantes de longueur de boîte de sonde à la sonde à l'interface intérieur de la sonde sont ajoutées à cette étape-ci.
+    #                   constante = c("12.93", "13.3", "0")) %>% 
+    #   mutate_at('constante', as.numeric) # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque/modèle" (type) est traitée de façon différente 
+    # str(CDS)
+    # 
+    # # vérifications des types de chaque variable
+    # str(cal.meteoStat.data$long.fil.cm); str(cal.meteoStat.data$out.long.tuyau.sol.cm); str(cal.meteoStat.data$hauteur.eau.cm)  # numeric
+    # # calcul de la profondeur
+    # cal.meteoStat.data$calibrated.value.cm <-  cal.meteoStat.data$long.fil.cm - cal.meteoStat.data$out.long.tuyau.sol.cm - cal.meteoStat.data$hauteur.eau.cm # avec le moins, ça donne 20 de profondeur
+    # # cal.eccc.data$calibrated.value.cm <- cal.eccc.data$long.fil.cm - cal.eccc.data$out.long.tuyau.sol.cm + cal.eccc.data$hauteur.eau.cm
+    # head(cal.meteoStat.data)$calibrated.value.cm
+    # 
+    # # format final -> nom final
+    # ll.cal.k <- cal.meteoStat.data %>%  # ceci est donc le format final, à intégrer dans la liste ll.clean
+    #   select(scan.id, raw.value.kPa_pres.abs, calibrated.value.cm, `date.AAAA-MM-JJ`, time.HH.MM.SS, date.time.tz.orig, # retirer des colonnes intermédiaires et mm format que ll.clean[[i]]$data
+    #          date.time.UTC.0)
+    # 
+    #     ### création de la liste dans la liste [[i]]  ----
+    # # noted : <- le fichier du level logger correspondant à la position i; [1] : data (dataframe), [2] : metadata (character string)
+    # 
+    # tidy.WTD.data[[i]] <- list("data" = ll.cal.k, "metadata" = ll.pre.0.metadata) 
   } # fin de la loop pour les HOBO
   # else {
   #  stop("ERREUR : CODER ICI") # si nécessaire, ajouter 3e type de traitement de SNH
@@ -631,7 +639,7 @@ for (i in 1:length(ll.pre)) {
 # enregistrer le tableau des métadonnées de fichier
 if("metadata_SNH_fichiers.csv" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
-} else { write.csv(fichier.uid.df, file = "connectivite/data/clean/metadata_SNH_fichiers.csv") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
+} else { write.csv(files.uid.df, file = "connectivite/data/clean/metadata_SNH_fichiers.csv") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
 
 # format R des ll.clean
 if("tidy.WTD.data.RDS" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
