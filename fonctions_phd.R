@@ -515,7 +515,39 @@ zone.tz <- function(zone.shp) {
   }
 }
 
+# ============================================================================= /
+#  Date-time manipulation ----
+# ============================================================================= /
 
+#### ménage de la date et heure  ----
+# data <- raw.ll.data # arranger pour me donner un exemple, mais que ce soit aussi versatile
+# 
+
+date.time_manips <- function(data, date.col, time.col) {} 
+
+
+# {# modifier mes colonnes pour avoir le format ISO (manque encore le UTC à ajouter à la fin) # garder date.AAAA-MM-JJ"
+# ll.pre.2.data.2 <- raw.ll.data %>% dplyr::mutate(date.JJ.MM.AAAA_time.HH.MM.SS_tz = paste0(date.JJ.MM.AAAA," ", time.HH.MM.SS, " ", tz)) %>% 
+#   dplyr::select(!c(date.JJ.MM.AAAA, time.HH.MM.SS)) # supprimer ces colonnes en format character, recréer bientôt en POSIX
+# ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz <- gsub("00:00", "00:01", ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz) # sinon, les données 00:00:00 étaient effacées !
+# ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz <- gsub("24:00:", "00:00:", ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz)
+# ll.pre.2.data.2$date.time.tz.orig <- readr::parse_datetime(ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz, format = '%d/%m/%Y %H:%M:%S %Z', locale = readr::locale(tz = tz)) # pour convertir AM/PM en décimal (0-24h), élément %p voir documentation
+# ll.pre.2.data.3 <- data.frame(separate_wider_position(ll.pre.2.data.2, # date et time en deux colonnes (idem à ODYSSEY)
+#                                                       widths = c("date.AAAA.MM.JJ" = 11, "time.HH.MM.SS" = 8),
+#                                                       cols = date.time.tz.orig, cols_remove = F)) 
+# # ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz <- gsub("24:00:", "00:00:", ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz)
+# ll.pre.2.data.3$`date.AAAA-MM-JJ` = ymd(ll.pre.2.data.3$date.AAAA.MM.JJ, tz = tz)
+# ll.pre.2.data.3$date.time.UTC.0pre <- with_tz(ll.pre.2.data.3$date.time.tz.orig, tz = "UTC") # pour convertir AM/PM en décimal (0-24h), élément %p voir documentation
+# tz(ll.pre.2.data.3$date.time.UTC.0pre) # UTC
+# ll.pre.2.data.3$date.time.UTC.0pre.1 <- format_iso_8601(ll.pre.2.data.3$date.time.UTC.0pre)
+# ll.pre.2.data.3$date.time.UTC.0 <- gsub("[+]00:00", "Z",  ll.pre.2.data.3$date.time.UTC.0pre.1)
+# ll.pre.2.data.3$date.time.tz.orig <- gsub("00:00:01", "24:00:01", ll.pre.2.data.3$date.time.tz.orig) # rechanger les 00:00:01 dans date.time.tz.orig pour ne pas perdre des lignes (7 avril 2025)
+# # tel que codé actuellement, il peut y avoir un décalage de +/- une heure à cause que TZ prend l'heure basée sur Sys.timezone, qui dépend de l'heure d'été ou d'hiver
+# # ARRANGER UN JOUR (langage C++ pour plus de complications) # ou alors setter cette date manuellement (voir à chaque année la date de changement d'heure) # Sys.timezone(location = F) essayé, n'aide pas
+# # nom final (et retirer colonnes inutiles)
+# ll.clean <- ll.pre.2.data.3 %>% dplyr::select(!c(date.AAAA.MM.JJ,  "date.time.UTC.0pre", "date.time.UTC.0pre.1")) %>% 
+#   dplyr::select("scan.id", "raw.value.mm", "calibrated.value.cm", "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.tz.orig", date.time.UTC.0) # date et time sans "UTC.0" sont dans le fuseau horaire d'origine (tz trouvé en croisant les coordonnées "coords")
+# }
 
 # ============================================================================= /
 #  EN CHANTIER ----

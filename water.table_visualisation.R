@@ -15,7 +15,7 @@ setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
 source("general.scripts/scripts/fonctions_generales.R") # appel du fichier de métadonnées de projet
 
 # Import de données ----
-ll.clean <- readRDS("connectivite/data/clean/tidy.WTD.data.RDS")
+tidy.WTD.data <- readRDS("connectivite/data/clean/tidy.WTD.data.RDS")
 # obtenu via le script "/scripts/data_water.table.all(v.X).R"
 # importer le graphique que topographie
 
@@ -30,36 +30,36 @@ if (!require("grDevices")) install.packages("grDevices") # pdf()
 ###########################################################################-
 # ESSAI 3 déc.
 SNH <- as.vector(c("_odyssey", "_hobo"), mode = "character") # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque" est traitée de façon différente
-for (i in 1:length(ll.clean)) {
-  if (!is.null(ll.clean[[i]])) {
+for (i in 1:length(tidy.WTD.data)) {
+  if (!is.null(tidy.WTD.data[[i]])) {
     # i<-5
     paste(i)
-    ll.clean[[i]]
+    tidy.WTD.data[[i]]
 
     # bouble pour les ODYSSEY
-    if (grepl(SNH[1], ll.clean[[i]]$metadata[11])) { #}
+    if (grepl(SNH[1], tidy.WTD.data[[i]]$metadata[11])) { #}
       
     # 3 déc. problème d'étiquette
     # ICI S'ARRANGÉ POUR RÉFÉRER À UN NUMÉRO unique et non le probe uid qui revient année après année !'
     # extraire no de sonde
-    fichier.uid.i <- gsub(".*: ", "", ll.clean[[i]]$metadata[10])
+    file.uid.i <- gsub(".*: ", "", tidy.WTD.data[[i]]$metadata[10])
     # extraire nom de transect/puits
     cal.data <- read.csv("connectivite/data/raw/level_logger_calibration_all.csv", sep = ";")
     colnames(cal.data)
-    well.uid <- cal.data %>% dplyr::filter(fichier.uid==fichier.uid.i) %>% distinct(well.uid)
+    well.uid <- cal.data %>% dplyr::filter(file.uid==file.uid.i) %>% distinct(well.uid)
     
-    texte <- ll.clean[[i]]$metadata[4]
+    texte <- tidy.WTD.data[[i]]$metadata[4]
     numbers <- gregexpr("[0-9]+", texte)
     result <- regmatches(texte, numbers)
     (probe.serial.no.i <- as.numeric(unlist(result)[1]))
     
     # extraire nom de site
-    site.name.pre <- sub("SiteName","",ll.clean[[i]]$metadata[1])
+    site.name.pre <- sub("SiteName","",tidy.WTD.data[[i]]$metadata[1])
     site.name.pre.1 <- gsub(",", "", site.name.pre) # ici ce serait ST-HENRI, ça me gosse
     site.name <- str_to_title(site.name.pre.1)
     
     # créer objet contenant les données
-    ll.cal <- ll.clean[[i]]$data # ll.cal ce sont les données calibrées finales, reprise du nom dans le script d'origine "data_water.table.all.R"
+    ll.cal <- tidy.WTD.data[[i]]$data # ll.cal ce sont les données calibrées finales, reprise du nom dans le script d'origine "data_water.table.all.R"
     # class(ll.cal); head(ll.cal); str(ll.cal); colnames(ll.cal)
     ll.cal$date.time.tz.orig <- as.POSIXct(ll.cal$date.time.tz.orig, tryFormats = )
     
@@ -76,27 +76,27 @@ for (i in 1:length(ll.clean)) {
 
     }
     
-    if (grepl(SNH[2], ll.clean[[i]]$metadata[4])) { #}
+    if (grepl(SNH[2], tidy.WTD.data[[i]]$metadata[4])) { #}
       
       # 3 déc. problème d'étiquette
       # ICI S'ARRANGÉ POUR RÉFÉRER À UN NUMÉRO unique et non le probe uid qui revient année après année !'
       # extraire no de sonde
-      fichier.uid.i <- gsub(".*: ", "", ll.clean[[i]]$metadata[3])
+      file.uid.i <- gsub(".*: ", "", tidy.WTD.data[[i]]$metadata[3])
       # extraire nom de transect/puits
       cal.data <- read.csv("connectivite/data/raw/level_logger_calibration_all.csv", sep = ";")
       colnames(cal.data)
-      well.uid <- cal.data %>% dplyr::filter(fichier.uid==fichier.uid.i) %>% distinct(well.uid)
+      well.uid <- cal.data %>% dplyr::filter(file.uid==file.uid.i) %>% distinct(well.uid)
       
-      texte <- ll.clean[[i]]$metadata[5]
+      texte <- tidy.WTD.data[[i]]$metadata[5]
       numbers <- gregexpr("[0-9]+", texte)
       result <- regmatches(texte, numbers)
       (probe.serial.no.i <- as.numeric(unlist(result)[1]))
       
       # extraire nom de site
-      site.name <- gsub(".*: ", "", ll.clean[[i]]$metadata[1])
+      site.name <- gsub(".*: ", "", tidy.WTD.data[[i]]$metadata[1])
 
       # créer objet contenant les données
-      ll.cal <- ll.clean[[i]]$data # ll.cal ce sont les données calibrées finales, reprise du nom dans le script d'origine "data_water.table.all.R"
+      ll.cal <- tidy.WTD.data[[i]]$data # ll.cal ce sont les données calibrées finales, reprise du nom dans le script d'origine "data_water.table.all.R"
       # class(ll.cal); head(ll.cal); str(ll.cal); colnames(ll.cal)
       ll.cal$date.time.tz.orig <- as.POSIXct(ll.cal$date.time.tz.orig, tryFormats = )
       

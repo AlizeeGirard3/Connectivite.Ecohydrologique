@@ -37,25 +37,25 @@ if (!require("kableExtra")) install.packages("kableExtra") # Integrating data fr
 ll.clean <- readRDS("connectivite/data/clean/tidy.WTD.data.RDS")
 SNH <- as.vector(c("_odyssey", "_hobo"), mode = "character") # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque" est traitée de façon différente
 for (j in 1:length(ll.clean)) {
-  if(ll.clean[[j]])
+  if(tidy.WTD.data[[j]])
   print(j)
   # j<-14
-  ll.clean.j <- ll.clean[[j]]
+  tidy.WTD.data.j <- tidy.WTD.data[[j]]
   
   # ODYSSEY
-  if (grepl(SNH[1], ll.clean.j$metadata[11])) {
+  if (grepl(SNH[1], tidy.WTD.data.j$metadata[11])) {
     # où trouver no de sonde dans ODYSSEY
-    metadata.line <- ll.clean.j$metadata[12] # probe.uid
+    metadata.line <- tidy.WTD.data.j$metadata[12] # probe.uid
     numbers <- gregexpr("[0-9]+", metadata.line)
     sonde <- regmatches(metadata.line, numbers)
-  } else if (grepl(SNH[2], ll.clean.j$metadata[4])) {
+  } else if (grepl(SNH[2], tidy.WTD.data.j$metadata[4])) {
     # où trouver no de sonde dans HOBO
-    metadata.line <- ll.clean.j$metadata[5] # probe.uid
+    metadata.line <- tidy.WTD.data.j$metadata[5] # probe.uid
     numbers <- gregexpr("[0-9]+", metadata.line)
     sonde <- regmatches(metadata.line, numbers)
   }
   # données à visualiser
-  data <- ll.clean[[j]]$data
+  data <- tidy.WTD.data[[j]]$data
   if (nrow(data) > 0) {
     hist(data$calibrated.value.cm/10, warn.unused = F, 
          main = paste("Histograme des données de sonde no ", paste(sonde,"\n"))) # en cm
@@ -97,38 +97,38 @@ if (!require("knitr")) install.packages("knitr") # Integrating data from weather
 
 ```{r, echo = FALSE}
 setwd("~/Documents/Doctorat/_R.&.Stats_PhD") # fonctions utiles et working directory
-ll.clean <- readRDS("connectivite/data/clean/tidy.WTD.data.RDS")
+tidy.WTD.data <- readRDS("connectivite/data/clean/tidy.WTD.data.RDS")
 SNH <- as.vector(c("_odyssey", "_hobo"), mode = "character") # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque" est traitée de façon différente
-for (i in 1:length(ll.clean)) {
-  if (!is.null(ll.clean[[i]])) {
+for (i in 1:length(tidy.WTD.data)) {
+  if (!is.null(tidy.WTD.data[[i]])) {
     # i<-5
     paste(i)
-    ll.clean[[i]]
+    tidy.WTD.data[[i]]
 
     # bouble pour les ODYSSEY
-    if (grepl(SNH[1], ll.clean[[i]]$metadata[11])) { #}
+    if (grepl(SNH[1], tidy.WTD.data[[i]]$metadata[11])) { #}
       
     # 3 déc. problème d'étiquette
     # ICI S'ARRANGÉ POUR RÉFÉRER À UN NUMÉRO unique et non le probe uid qui revient année après année !'
     # extraire no de sonde
-    fichier.uid.i <- gsub(".*: ", "", ll.clean[[i]]$metadata[10])
+    file.uid.i <- gsub(".*: ", "", tidy.WTD.data[[i]]$metadata[10])
     # extraire nom de transect/puits
     cal.data <- read.csv("connectivite/data/raw/level_logger_calibration_all.csv", sep = ";")
     colnames(cal.data)
-    well.uid <- cal.data %>% dplyr::filter(fichier.uid==fichier.uid.i) %>% distinct(well.uid)
+    well.uid <- cal.data %>% dplyr::filter(file.uid==file.uid.i) %>% distinct(well.uid)
     
-    texte <- ll.clean[[i]]$metadata[4]
+    texte <- tidy.WTD.data[[i]]$metadata[4]
     numbers <- gregexpr("[0-9]+", texte)
     result <- regmatches(texte, numbers)
     (probe.serial.no.i <- as.numeric(unlist(result)[1]))
     
     # extraire nom de site
-    site.name.pre <- sub("SiteName","",ll.clean[[i]]$metadata[1])
+    site.name.pre <- sub("SiteName","",tidy.WTD.data[[i]]$metadata[1])
     site.name.pre.1 <- gsub(",", "", site.name.pre) # ici ce serait ST-HENRI, ça me gosse
     site.name <- str_to_title(site.name.pre.1)
     
     # créer objet contenant les données
-    ll.cal <- ll.clean[[i]]$data # ll.cal ce sont les données calibrées finales, reprise du nom dans le script d'origine "data_water.table.all.R"
+    ll.cal <- tidy.WTD.data[[i]]$data # ll.cal ce sont les données calibrées finales, reprise du nom dans le script d'origine "data_water.table.all.R"
     # class(ll.cal); head(ll.cal); str(ll.cal); colnames(ll.cal)
     ll.cal$date.time.tz.orig <- as.POSIXct(ll.cal$date.time.tz.orig, tryFormats = )
     
@@ -145,27 +145,27 @@ for (i in 1:length(ll.clean)) {
 
     }
     
-    if (grepl(SNH[2], ll.clean[[i]]$metadata[4])) { #}
+    if (grepl(SNH[2], tidy.WTD.data[[i]]$metadata[4])) { #}
       
       # 3 déc. problème d'étiquette
       # ICI S'ARRANGÉ POUR RÉFÉRER À UN NUMÉRO unique et non le probe uid qui revient année après année !'
       # extraire no de sonde
-      fichier.uid.i <- gsub(".*: ", "", ll.clean[[i]]$metadata[3])
+      file.uid.i <- gsub(".*: ", "", tidy.WTD.data[[i]]$metadata[3])
       # extraire nom de transect/puits
       cal.data <- read.csv("connectivite/data/raw/level_logger_calibration_all.csv", sep = ";")
       colnames(cal.data)
-      well.uid <- cal.data %>% dplyr::filter(fichier.uid==fichier.uid.i) %>% distinct(well.uid)
+      well.uid <- cal.data %>% dplyr::filter(file.uid==file.uid.i) %>% distinct(well.uid)
       
-      texte <- ll.clean[[i]]$metadata[5]
+      texte <- tidy.WTD.data[[i]]$metadata[5]
       numbers <- gregexpr("[0-9]+", texte)
       result <- regmatches(texte, numbers)
       (probe.serial.no.i <- as.numeric(unlist(result)[1]))
       
       # extraire nom de site
-      site.name <- gsub(".*: ", "", ll.clean[[i]]$metadata[1])
+      site.name <- gsub(".*: ", "", tidy.WTD.data[[i]]$metadata[1])
 
       # créer objet contenant les données
-      ll.cal <- ll.clean[[i]]$data # ll.cal ce sont les données calibrées finales, reprise du nom dans le script d'origine "data_water.table.all.R"
+      ll.cal <- tidy.WTD.data[[i]]$data # ll.cal ce sont les données calibrées finales, reprise du nom dans le script d'origine "data_water.table.all.R"
       # class(ll.cal); head(ll.cal); str(ll.cal); colnames(ll.cal)
       ll.cal$date.time.tz.orig <- as.POSIXct(ll.cal$date.time.tz.orig, tryFormats = )
       

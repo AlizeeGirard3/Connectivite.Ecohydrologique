@@ -64,7 +64,7 @@ raw.ll.files <- list.files(path = "connectivite/data/raw", pattern = "_odyssey|_
 tidy.WTD.data <- list() # équivalent à ll.clean (ancien)
 # odyssey_offset_archives <- data.frame(fichier.uid = NA, offset_cm_date = NA, a.slope_excel = NA,	b.verticalIntercept = NA) #, `prof_nappe_bulleur_cm_plus.out` = NA, pre_prof_nappe_odyssey_mm_to_cm = NA,	`prof_nappe_odyssey_cm_plus.out` = NA) # notes des offsets d'années précédantes
 for (i in 1:length(raw.ll.files)) {
-  # i<-80 32 9 10 11 12 13 14 15 16# 41362(27 mars 2025)
+  # i<-44 32 9 10 11 12 13 14 15 16# 41362(27 mars 2025)
   print(i)
   raw.ll.files[i] # début de la loop pour les ODYSSEY (if() prochaine ligne)
   
@@ -581,9 +581,9 @@ if("metadata_SNH_fichiers.csv" %in% list.files("connectivite/data/clean"))  { # 
 } else { write.csv(fichier.uid.df, file = "connectivite/data/clean/metadata_SNH_fichiers.csv") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
 
 # format R des ll.clean
-if("ll.clean.RDS" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
+if("tidy.WTD.data" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
-} else { saveRDS(ll.clean, file = "connectivite/data/clean/ll.clean.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
+} else { saveRDS(tidy.WTD.data, file = "connectivite/data/clean/tidy.WTD.data.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
 
 # supprimer ?
 # # Joindre les lignes de offset de l'objet "odyssey_offset_archives" dans le fichier "level.logger_offset_archive.csv"
