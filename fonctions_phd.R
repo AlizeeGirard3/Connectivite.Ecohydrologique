@@ -211,17 +211,20 @@ raw.to.clean_ll <- function(file.i.raw.data) { # ne calibre pas encore les donn�
     raw.ll.files.i[[2]][14] <- paste0("original time zone : ", tz)
     #### ménage de la date et heure  ----
     # modifier mes colonnes pour avoir le format ISO (manque encore le UTC à ajouter à la fin) # garder date.AAAA-MM-JJ"
-    ll.pre.2.data.2 <- raw.ll.data %>% dplyr::mutate(date.JJ.MM.AAAA_time.HH.MM.SS_tz = paste0(date.JJ.MM.AAAA," ", time.HH.MM.SS, " ", tz)) %>% 
+    ll.pre.2.data.2 <- raw.ll.data %>% dplyr::mutate(date.JJ.MM.AAAA_time.HH.MM.SS = paste0(date.JJ.MM.AAAA," ", time.HH.MM.SS))
+    ll.pre.2.data.2$date.time.tz.orig <- readr::parse_datetime(ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS, format = '%d/%m/%Y %H:%M:%S') #, locale = readr::locale(tz = tz)) # pour convertir AM/PM en décimal (0-24h), élément %p voir documentation
+    ll.pre.2.data.2 <- ll.pre.2.data.2 %>% 
+      mutate(date.time.tz.orig.roundd.pre = round_date(date.time.tz.orig, unit = "hours") + seconds(1)) 
+    ll.pre.2.data.2$date.time.tz.orig.roundd <- gsub("24:00:", "00:00:", ll.pre.2.data.2$date.time.tz.orig.roundd.pre)
+    
+    ll.pre.2.data.2 <- ll.pre.2.data.2 %>% mutate(date.JJ.MM.AAAA_time.HH.MM.SS_tz =  paste0(date.time.tz.orig.roundd, " ", tz)) %>% 
       dplyr::select(!c(date.JJ.MM.AAAA, time.HH.MM.SS)) # supprimer ces colonnes en format character, recréer bientôt en POSIX
-    ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz <- gsub("00:00", "00:01", ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz) # sinon, les données 00:00:00 étaient effacées !
-    ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz <- gsub("24:00:", "00:00:", ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz)
-    ll.pre.2.data.2$date.time.tz.orig <- readr::parse_datetime(ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz, format = '%d/%m/%Y %H:%M:%S %Z', locale = readr::locale(tz = tz)) # pour convertir AM/PM en décimal (0-24h), élément %p voir documentation
+    ll.pre.2.data.2$date.time.tz.orig <- readr::parse_datetime(ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz, format = '%Y-%m-%d %H:%M:%S %Z', locale = readr::locale(tz = tz)) # pour convertir AM/PM en décimal (0-24h), élément %p voir documentation
     ll.pre.2.data.3 <- data.frame(separate_wider_position(ll.pre.2.data.2, # date et time en deux colonnes (idem à ODYSSEY)
                                                           widths = c("date.AAAA.MM.JJ" = 11, "time.HH.MM.SS" = 8),
                                                           cols = date.time.tz.orig, cols_remove = F)) 
-    # ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz <- gsub("24:00:", "00:00:", ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz)
     ll.pre.2.data.3$`date.AAAA-MM-JJ` = ymd(ll.pre.2.data.3$date.AAAA.MM.JJ, tz = tz)
-    ll.pre.2.data.3$date.time.UTC.0pre <- with_tz(ll.pre.2.data.3$date.time.tz.orig, tz = "UTC") # pour convertir AM/PM en décimal (0-24h), élément %p voir documentation
+    ll.pre.2.data.3$date.time.UTC.0pre <- with_tz(ll.pre.2.data.3$date.time.tz.orig, tz = "UTC") # pour convertir AM/PM en décimales (0-24h), élément %p voir documentation
     tz(ll.pre.2.data.3$date.time.UTC.0pre) # UTC
     ll.pre.2.data.3$date.time.UTC.0pre.1 <- format_iso_8601(ll.pre.2.data.3$date.time.UTC.0pre)
     ll.pre.2.data.3$date.time.UTC.0 <- gsub("[+]00:00", "Z",  ll.pre.2.data.3$date.time.UTC.0pre.1)
@@ -290,6 +293,7 @@ concatenate.ll <- function(file.to.concat) {
   ll.cal.pre.i.l <- list()
   if (grepl("odyssey", raw.ll.files[i])) {
     for (l in 1:length(unique(cal.data$period.file.uid[which(grepl(files.uid.df[i,1], cal.data$file.uid))]))) { print(l) # si mm fichier.uid.i, coller les périodes ensemble (ainsi, retirer et remettre ne demande pas plus de manipulations et surtout ps des manipulations individuelles)
+      # l<-1
       cal.data.i.l <- unique(cal.data[which(grepl(files.uid.df[i,1], cal.data$file.uid)),
                                       c("file.uid", "site.uid", "well.uid", "trmnt.uid", 'lab.probe.id', 'probe.uid', 'probe.brand',
                                         "day.begining.aaaa.mm.dd.hh.mm", 'day.end.aaaa.mm.dd.hh.mm', "period.file.uid")])[l,] # cal.data.i.l = les infos dont j'ai besoin pour recouper selon la période l du fichier i
@@ -363,12 +367,12 @@ clean.to.calibrated_ll <- function(y) {
     # b.verticalIntercept = y1 - a.slope * x1
     {
       # long_negative_cal.length_mm_y.R déjà calculé ci-haut// ou sinon  = cal.probe.i$cal.length.cm[cal.probe.i$cal.order==1]*-10 # en cm et au négatif
-      y2 = cal.probe.i$long_negative_cal.length_mm[cal.probe.i$cal.order==2]
+      y2 = cal.probe.i$long_negative_cal.length_mm[cal.probe.i$cal.order==2] 
       y1 = cal.probe.i$long_negative_cal.length_mm[cal.probe.i$cal.order==1]
       x2 = cal.probe.i$cal.value[cal.probe.i$cal.order==2] + CDS$constante[CDS$type == brand.i] # pour les ODYSSEY, valeur CDS = 0
       x1 = cal.probe.i$cal.value[cal.probe.i$cal.order==1]
-      a.slope = ( y2 - y1 ) / ( x2 - x1 )
-      b.verticalIntercept = y1 - (a.slope * x1)
+      a.slope = ( y2 - y1 ) / ( x2 - x1 ) # sans unité
+      b.verticalIntercept = y1 - (a.slope * x1) # mm - SU*?
     }
 
     #### étape 2 : appliquer a et b pour trouver le offsets à appliquer aux données ----
@@ -422,7 +426,7 @@ clean.to.calibrated_ll <- function(y) {
     # Jutras&Bourgault V2.0, 2024; étape a) Associer par dates et par heures les données mesurées par les sondes de niveau hydrostatique et la pression atmosphérique
     cal.meteoStat.data <- left_join(ll.cal.pre.i, meteoStat.data, by = join_by(date.time.UTC.0)) %>%
       select("scan.id", "date.time.UTC.0","raw.value.kPa_pres.abs", "temperature_dC", "calibrated.value.cm",
-             `date.AAAA-MM-JJ`, "time.HH.MM.SS", `date.time.tz.orig`, "date.time.ms", pressure.kPa.ms, everything(), -x.archive.well.uid) # enlever les nombreuses colonnes qui n'ont pas rapport dans ces démarches
+             `date.AAAA-MM-JJ`, "time.HH.MM.SS", `date.time.tz.orig`, "date.time.ms", pressure.kPa.ms, everything()) # enlever les nombreuses colonnes qui n'ont pas rapport dans ces démarches
     # À faire : VÉRIFIER SI TOUT EST OK NIVEAU TIME ZONES...
     ##### inscrire le time zone (tz) dans la colonne time (équivalent à "date.time.tz.orig.pre") ----
     # json_data <- fromJSON(file ="connectivite/data/raw/full.json") # time zone inscrite dans ce fichier
@@ -491,6 +495,7 @@ raw.to.clean_cal.data <- function(cal.data.path) { # ne calibre pas encore les d
   cal.data$day.begining.aaaa.mm.dd.hh.mm <- ymd_hm(cal.data$day.begining.aaaa.mm.dd.hh.mm, tz = tz)
   cal.data$day.end.aaaa.mm.dd.hh.mm <- ymd_hm(cal.data$day.end.aaaa.mm.dd.hh.mm, tz = tz)
     return(cal.data)}
+
 # ============================================================================= /
 #  Georeferenced data ----
 # ============================================================================= /
@@ -519,35 +524,14 @@ zone.tz <- function(zone.shp) {
 #  Date-time manipulation ----
 # ============================================================================= /
 
-#### ménage de la date et heure  ----
+#### ménage de la date et heure
 # data <- raw.ll.data # arranger pour me donner un exemple, mais que ce soit aussi versatile
-# 
 
 date.time_manips <- function(data, date.col, time.col) {} 
+# ABANDON 30 déc 2025
 
 
-# {# modifier mes colonnes pour avoir le format ISO (manque encore le UTC à ajouter à la fin) # garder date.AAAA-MM-JJ"
-# ll.pre.2.data.2 <- raw.ll.data %>% dplyr::mutate(date.JJ.MM.AAAA_time.HH.MM.SS_tz = paste0(date.JJ.MM.AAAA," ", time.HH.MM.SS, " ", tz)) %>% 
-#   dplyr::select(!c(date.JJ.MM.AAAA, time.HH.MM.SS)) # supprimer ces colonnes en format character, recréer bientôt en POSIX
-# ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz <- gsub("00:00", "00:01", ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz) # sinon, les données 00:00:00 étaient effacées !
-# ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz <- gsub("24:00:", "00:00:", ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz)
-# ll.pre.2.data.2$date.time.tz.orig <- readr::parse_datetime(ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz, format = '%d/%m/%Y %H:%M:%S %Z', locale = readr::locale(tz = tz)) # pour convertir AM/PM en décimal (0-24h), élément %p voir documentation
-# ll.pre.2.data.3 <- data.frame(separate_wider_position(ll.pre.2.data.2, # date et time en deux colonnes (idem à ODYSSEY)
-#                                                       widths = c("date.AAAA.MM.JJ" = 11, "time.HH.MM.SS" = 8),
-#                                                       cols = date.time.tz.orig, cols_remove = F)) 
-# # ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz <- gsub("24:00:", "00:00:", ll.pre.2.data.2$date.JJ.MM.AAAA_time.HH.MM.SS_tz)
-# ll.pre.2.data.3$`date.AAAA-MM-JJ` = ymd(ll.pre.2.data.3$date.AAAA.MM.JJ, tz = tz)
-# ll.pre.2.data.3$date.time.UTC.0pre <- with_tz(ll.pre.2.data.3$date.time.tz.orig, tz = "UTC") # pour convertir AM/PM en décimal (0-24h), élément %p voir documentation
-# tz(ll.pre.2.data.3$date.time.UTC.0pre) # UTC
-# ll.pre.2.data.3$date.time.UTC.0pre.1 <- format_iso_8601(ll.pre.2.data.3$date.time.UTC.0pre)
-# ll.pre.2.data.3$date.time.UTC.0 <- gsub("[+]00:00", "Z",  ll.pre.2.data.3$date.time.UTC.0pre.1)
-# ll.pre.2.data.3$date.time.tz.orig <- gsub("00:00:01", "24:00:01", ll.pre.2.data.3$date.time.tz.orig) # rechanger les 00:00:01 dans date.time.tz.orig pour ne pas perdre des lignes (7 avril 2025)
-# # tel que codé actuellement, il peut y avoir un décalage de +/- une heure à cause que TZ prend l'heure basée sur Sys.timezone, qui dépend de l'heure d'été ou d'hiver
-# # ARRANGER UN JOUR (langage C++ pour plus de complications) # ou alors setter cette date manuellement (voir à chaque année la date de changement d'heure) # Sys.timezone(location = F) essayé, n'aide pas
-# # nom final (et retirer colonnes inutiles)
-# ll.clean <- ll.pre.2.data.3 %>% dplyr::select(!c(date.AAAA.MM.JJ,  "date.time.UTC.0pre", "date.time.UTC.0pre.1")) %>% 
-#   dplyr::select("scan.id", "raw.value.mm", "calibrated.value.cm", "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.tz.orig", date.time.UTC.0) # date et time sans "UTC.0" sont dans le fuseau horaire d'origine (tz trouvé en croisant les coordonnées "coords")
-# }
+
 
 # ============================================================================= /
 #  EN CHANTIER ----
