@@ -1,71 +1,73 @@
 # Script créé le 26 mars pour extraire la donnée raw de ll au moment de la mesure de bulleur
-# dans le but de calibrer
+# dans le but de calibrer les sondes Odyssey
 # À faire : tout modifier le script data_water.table_all en fonction de ceci
 
 # FONCTIONNE, 24 DÉC. 2025 (trouver et nettoyer moment mesure de bulleur)
 # traitement automatique et nettoyage des données de bulleur
-# i <-80 # example avec plusieurs l
-# l<-1
-bulleur.data <- list()
-for (l in 1:length(unique(cal.data$period.file.uid[which(grepl(files.uid.df[i,1], cal.data$file.uid))]))) { # si mm fichier.uid.i, coller les périodes ensemble (ainsi, retirer et remettre ne demande pas plus de manipulations et surtout ps des manipulations incividuelles)
+
+ll.offset.measurement.df <- data.frame(file.uid = NA, offset.measurement.bulleur.time = NA, bulleur.val.mm = NA, raw.value.mm = NA, cal.val.mm = NA) # pour stocker les données (aussi première colonne de cal.data)
+for (k in grep("_odyssey", raw.ll.files)) { # pour les fichiers odyssey référés apr leur ordre dans le dossier brut = effectuer les prochaines lignes
+  # remplacer pas un IF dans la fonction (encore, comme les autres)
+  # i<-80 
+  # k<-i # example fichier à plusieurs séquences tempporelles dans l'été
+  print(k)
+  ll.cal.pre.i
   
-  bulleur.data.j.pre <- unique(cal.data[which(grepl(files.uid.df[i,1], cal.data$file.uid)), c(which(grepl("period.file.uid", colnames(cal.data))), which(grepl("bulleur", colnames(cal.data))))])
-  
-  # extraire les chiffres des colonnes bulleur
-  bulleur.cols <- colnames(bulleur.data.j.pre) # logger serial no, en base R
-  numbers <- regexpr("[0-9]+", bulleur.cols)
-  nbulleur <- as.numeric(regmatches(bulleur.cols, numbers))
-  for (j in 1:length(unique(nbulleur))) {
-    bulleur.data.j <- bulleur.data.j.pre %>% dplyr::select(grep(j, bulleur.cols)) %>%  # sélect si contient j dans les noms de colonne
-      # j'obtiens les colonnes avec j, je crée un df aec juste ces colonnes
-      # j'ajoute une colonne avec le chiffre }
-      mutate(bulleur.no = rep(j, nrow(bulleur.data.j.pre)),
-             period.file.uid = bulleur.data.j.pre$period.file.uid)
-    colnames(bulleur.data.j) <- sub('[[:digit:]]+', '', colnames(bulleur.data.j)) # nom colonne sans chiffre
-    bulleur.data[[j]] <- bulleur.data.j
-  }
-  # rbind les lignes des j df
-  bulleur.data.appendd.l <- do.call(rbind, bulleur.data) %>% drop_na(., in.bulleur.prof.cm)
-}
-# bulleur.data.i <- do.call(rbind, bulleur.data.appendd.l) # row bind -> on colle deux df de structure identique (les ll.cal.pre.i) de différents i.l, associées à différents temps de la période de mesure de la sonde i
-
-# bulleur.data.appendd.l$in.bulleur.time.tz.orig <- gsub(":00", ":01", bulleur.data.appendd.l$in.bulleur.time.tz.orig) # sinon, les données 00:00:00 étaient effacées !
-
-tidy.bulleur.data.pre <- bulleur.data.appendd.l %>% mutate(date.JJ.MM.AAAA_time.HH.MM.SS_tz = paste0(in.bulleur.date.aaaammdd, " ", in.bulleur.time.tz.orig, " ", tz)) # tz original
-tidy.bulleur.data.pre$date.time.tz.orig <- readr::parse_datetime(tidy.bulleur.data.pre$date.JJ.MM.AAAA_time.HH.MM.SS_tz, format = '%Y-%m-%d %H:%M:%S %Z', locale = readr::locale(tz = tz)) # pour convertir AM/PM en décimal (0-24h), élément %p voir documentation
-
-# RENDU LÀ
-# POURQUOI CA CRÉE UNE LISTE INFINE ?
-
-# tidy.bulleur.data.pre$date.time.roundd <- round(tidy.bulleur.data.pre$date.time.tz.orig, units="hours")
-# tidy.bulleur.data.pre$date.time.roundd <- gsub("00:00", "00:01", tidy.bulleur.data.pre$date.time.roundd) # sinon, les données 00:00:00 étaient effacées !
-
-
-
-
-# PROCHAINE ÉTAPE: 
-# moment du bulleur -> tidy date -> comparer à données tiyd au mm moment -> extraire cal.value à ce moment là -> mettre dans cal. data (remplacer valeur NA de la case)
-
-
-
-ll.offset.measurement.df <- data.frame(file.uid = NA, offset.measurement.bulleur.time = NA) # pour stocker les fihcier.uid (aussi première colonne de cal.data)
-for (i in 1:length(tidy.WTD.data)) {
-  # x<-95
-  print(i)
-  tidy.WTD.data[[i]] # début de la loop pour les ODYSSEY (if() prochaine ligne)
-  if (any(grepl(SNH[1], tidy.WTD.data[[i]]$metadata))) {  # début de la loop pour les ODYSSEY
-    # if(i %in% c(6,11)) { # erreur aux sondes 6 et 11 de l'ancien ordre ?
-    #   ll.offset.measurement.df[i,1] <- gsub("file.uid : ", "", tidy.WTD.data[[i]]$metadata[10])
-    #   ll.offset.measurement.df[i,2] <- "NA"
-    # } else {
-    ll.offset.measurement.df[i,1] <- gsub("file.uid : ", "", tidy.WTD.data[[i]]$metadata[10])
-    # ll.offset.measurement.df[i,2] <- tidy.WTD.data[[i]]$data$raw.value.mm[tidy.WTD.data[[i]]$data$date.time.tz.orig == '2024-11-14 10:00:01'] }
-    # ll.offset.measurement.df[i,2] <- tidy.WTD.data[[i]]$data$raw.value.mm[tidy.WTD.data[[i]]$data$date.time.tz.orig == 'moment du bulleur trouvé automatiquement'] }
+  # recherche de lignes et nettoyage
+  # explications : pour chaque séquences valides de fichier-emplacement-année, aller chercher les lignes dans cal.data 
+  # et créer un tableur spécifique à la sonde (bulleur.data), et nettoyer les données
+  bulleur.data <- list()
+  for (l in 1:length(unique(cal.data$period.file.uid[which(grepl(files.uid.df[k,1], cal.data$file.uid))]))) { # si mm fichier.uid.i, coller les périodes ensemble (ainsi, retirer et remettre ne demande pas plus de manipulations et surtout ps des manipulations incividuelles)
+    print(i)
+    bulleur.data.j.pre <- unique(cal.data[which(grepl(files.uid.df[i,1], cal.data$file.uid)), c(which(grepl("period.file.uid", colnames(cal.data))), which(grepl("bulleur", colnames(cal.data))))])
     
-    # ICI, SENSÉ ÊTRE LE MOMENT OÙ J'AI UNE MESURE DE BULLEUR    
-    # SI J'EN AI PLSUIERUS, FAIRE UNE MOYENNE DU OFFSET **
-     # }
-}}
+    # extraire les chiffres des colonnes bulleur
+    bulleur.cols <- colnames(bulleur.data.j.pre) # logger serial no, en base R
+    numbers <- regexpr("[0-9]+", bulleur.cols)
+    nbulleur <- as.numeric(regmatches(bulleur.cols, numbers))
+    for (j in 1:length(unique(nbulleur))) {
+      bulleur.data.j <- bulleur.data.j.pre %>% dplyr::select(grep(j, bulleur.cols)) %>%  # sélect si contient j dans les noms de colonne
+        # j'obtiens les colonnes avec j, je crée un df aec juste ces colonnes
+        # j'ajoute une colonne avec le chiffre }
+        mutate(bulleur.no = rep(j, nrow(bulleur.data.j.pre)),
+               period.file.uid = bulleur.data.j.pre$period.file.uid)
+      colnames(bulleur.data.j) <- sub('[[:digit:]]+', '', colnames(bulleur.data.j)) # nom colonne sans chiffre
+      bulleur.data[[j]] <- bulleur.data.j
+    }
+    # rbind les lignes des j df
+    bulleur.data.appendd.l <- do.call(rbind, bulleur.data) %>% drop_na(., in.bulleur.prof.cm)
+  }
+  # préparation de la date-heure en prévision de la comparaison de date-heure entre tableaux
+  tidy.bulleur.data.pre.0 <- bulleur.data.appendd.l %>% mutate(date.JJ.MM.AAAA_time.HH.MM.SS_tz = paste0(in.bulleur.date.aaaammdd, " ", in.bulleur.time.tz.orig, " ", tz)) # tz original
+  tidy.bulleur.data.pre.0$date.time.tz.orig <- readr::parse_datetime(tidy.bulleur.data.pre.0$date.JJ.MM.AAAA_time.HH.MM.SS_tz, format = '%Y-%m-%d %H:%M:%S %Z', locale = readr::locale(tz = tz)) # pour convertir AM/PM en décimal (0-24h), élément %p voir documentation
+  tidy.bulleur.data.pre <- tidy.bulleur.data.pre.0 %>% mutate(date.time.roundd.pre = round_date(tidy.bulleur.data.pre.0$date.time.tz.orig, "hours"))
+  tidy.bulleur.data.pre$date.time.roundd <- gsub("00:00", "00:01", tidy.bulleur.data.pre$date.time.roundd.pre)
+  tidy.bulleur.data <- tidy.bulleur.data.pre %>% 
+    mutate(date.time.roundd = readr::parse_datetime(date.time.roundd, locale = readr::locale(tz = tz))) %>% # remise de date.time.roundd en classe POSIX
+    select(!c(date.JJ.MM.AAAA_time.HH.MM.SS_tz, date.time.tz.orig, date.time.roundd.pre))
+  rm(tidy.bulleur.data.pre, tidy.bulleur.data.pre.0)
+  # colonne date.time.UTC.0
+  tidy.bulleur.data$date.time.UTC.0pre <- with_tz(tidy.bulleur.data$date.time.roundd, tz = "UTC") # pour convertir AM/PM en décimal (0-24h), élément %p voir documentation
+  tidy.bulleur.data$date.time.UTC.0pre.1 <- format_iso_8601(tidy.bulleur.data$date.time.UTC.0pre)
+  tidy.bulleur.data$date.time.UTC.0 <- gsub("[+]00:00", "Z",  tidy.bulleur.data$date.time.UTC.0pre.1)
+  tidy.bulleur.data <- tidy.bulleur.data %>%
+    mutate(in.bulleur.prof.mm = in.bulleur.prof.cm * 10) %>% # données de bulleur en mm pour correspondre aux cal.val
+    mutate(in.bulleur.rel.to.surface.mm = in.bulleur.rel.to.surface.cm * 10) %>% # données de bulleur en mm pour correspondre aux cal.val
+    select(!c(date.time.UTC.0pre, date.time.UTC.0pre.1, date.time.roundd, in.bulleur.prof.cm, in.bulleur.rel.to.surface.cm))
+  # joindre par la colonne en commun "date.time.UTC.0"
+  tidy.bulleur.ll.data <- left_join(tidy.bulleur.data, ll.cal.pre.i)  # comparaions aux données (raw.val, en (UNITÉS?) de sonde (i) au même moment que chaque mesure (ligne) de tidy.bulleur.data // selon Wikipedia, il y aurait des mSiemens/mm qqpart
+  
+
+  # PROCHAINE ÉTAPE: 
+  
+  # ->   -> extraire cal.value à ce moment là -> mettre dans cal. data (remplacer valeur NA de la case)
+  
+  # À faire aussi : tout modifier le script data_water.table_all en fonction de ceci
+  
+  
+  
+
+}
 
 
 
@@ -73,6 +75,15 @@ for (i in 1:length(tidy.WTD.data)) {
 
 
 # NON ANCIEN INVALIDE
+#   
+#   
+#   
+# for (k in 1:length(tidy.WTD.data)) {
+#   # x<-95
+#   print(k)
+#   # tidy.WTD.data[[k]] # début de la loop pour les ODYSSEY (if() prochaine ligne)
+#   if (any(grepl("odyssey", tidy.WTD.data[[k]]$metadata))) {}
+#   
 # 
 # # for (l in 1:length(unique(cal.data$period.file.uid[which(grepl(file.uid.df[i,1], cal.data$file.uid))]))) { # si mm fichier.uid.i, coller les périodes ensemble (ainsi, retirer et remettre ne demande pas plus de manipulations et surtout ps des manipulations incividuelles)
 # #   cal.data$in.bulleur1.prof.cm <- as.numeric(cal.data$in.bulleur1.prof.cm)
