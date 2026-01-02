@@ -342,7 +342,7 @@ concatenate.ll <- function(file.to.concat) {
 # clean.to.calibrated_ll
 # données de ll calibrées par la fonction linéraire (ODYSSEY) ou la pression atmosphérique (HOBO)
 # y <- ll.cal.pre.i
-clean.to.calibrated_ll <- function(y) {
+# clean.to.calibrated_ll <- function(y) {
   # vecteur de longueur CDS à ajouter à la longueur du fil (protocole pour éviter l'erreur humaine)
   CDS <- data.frame(type = c("HOBO U20", "HOBO U20L", "ODYSSEY"), # Hobo seulement : mesure longueur du fil tel que dans protocole; à la limite de la boîte de sonde. Les constantes de longueur de boîte de sonde à la sonde à l'interface intérieur de la sonde sont ajoutées à cette étape-ci.
                     constante = c("12.93", "13.3", "0")) %>%
@@ -375,18 +375,20 @@ clean.to.calibrated_ll <- function(y) {
       b.verticalIntercept = y1 - (a.slope * x1) # mm - SU*?
     }
 
-    #### étape 2 : appliquer a et b pour trouver le offsets à appliquer aux données ----
-    # pour les lignes de measure_type == offset_measurement :
-    # avec les valeurs a.slope et b.offset, calculer la "longueur équivalente" (long_negative_cal.length_mm_y) de fil, avec la donnée de ll au moment de la mesure de bulleur = pre_prof_nappe_odyssey_mm_to_cm
-    # prof_nappe_odyssey_cm_plus.out.R = pre_prof_nappe_odyssey_mm_to_cm.R + out.long.tuyau.sol.cm # NOTER L'ADDITION DU OUT
-    # prof_nappe_bulleur_cm_plus.out.R = prof_nappe_bulleur_cm_+out.R + out.long.tuyau.sol.cm # NOTER L'ADDITION DU OUT
-    # offset_cm = prof_nappe_odyssey_cm_plus.out.R - prof_nappe_bulleur_cm_plus.out.R # Noter : SOUSTRACTION et ordre
-    # placer la valeur de offset_cm dans un dataframe de consigne de toutes les valeurs de offset obtenus + autres métadonnées importantes
-    long_negative_cal.length_mm <- (cal.probe.i$cal.value[cal.probe.i$measure_type=="offset_measurement"]*a.slope)+b.verticalIntercept
-    pre_prof_nappe_odyssey_mm_to_cm <- long_negative_cal.length_mm/10 #  sensé donner NA (mais actuellement remplis, à écraser avec calcul automatisé), on va remplir cette donnée avec les nouvelles valeurs -> longueur fictive em mm transformée en cm
-    prof_nappe_odyssey_cm_plus.out <- pre_prof_nappe_odyssey_mm_to_cm + cal.probe.i$out.long.tuyau.sol.cm[cal.probe.i$measure_type=="offset_measurement"]
-    prof_nappe_bulleur_cm_plus.out <- cal.probe.i$`in.bulleur1.rel.to.surface.cm`[cal.probe.i$measure_type=="offset_measurement"] + cal.probe.i$out.long.tuyau.sol.cm[cal.probe.i$measure_type=="offset_measurement"]
-    offset_cm <- prof_nappe_odyssey_cm_plus.out - prof_nappe_bulleur_cm_plus.out
+    
+      # ATTENTION, ICI TRAnsféré dans text calib temporairement : trouver le offset dans cette sous fonction
+    # #### étape 2 : appliquer a et b pour trouver le offsets à appliquer aux données ----
+    # # pour les lignes de measure_type == offset_measurement :
+    # # avec les valeurs a.slope et b.offset, calculer la "longueur équivalente" (long_negative_cal.length_mm_y) de fil, avec la donnée de ll au moment de la mesure de bulleur = pre_prof_nappe_odyssey_mm_to_cm
+    # # prof_nappe_odyssey_cm_plus.out.R = pre_prof_nappe_odyssey_mm_to_cm.R + out.long.tuyau.sol.cm # NOTER L'ADDITION DU OUT
+    # # prof_nappe_bulleur_cm_plus.out.R = prof_nappe_bulleur_cm_+out.R + out.long.tuyau.sol.cm # NOTER L'ADDITION DU OUT
+    # # offset_cm = prof_nappe_odyssey_cm_plus.out.R - prof_nappe_bulleur_cm_plus.out.R # Noter : SOUSTRACTION et ordre
+    # # placer la valeur de offset_cm dans un dataframe de consigne de toutes les valeurs de offset obtenus + autres métadonnées importantes
+    # long_negative_cal.length_mm <- (cal.probe.i$cal.value[cal.probe.i$measure_type=="offset_measurement"]*a.slope)+b.verticalIntercept
+    # pre_prof_nappe_odyssey_mm_to_cm <- long_negative_cal.length_mm/10 #  sensé donner NA (mais actuellement remplis, à écraser avec calcul automatisé), on va remplir cette donnée avec les nouvelles valeurs -> longueur fictive em mm transformée en cm
+    # prof_nappe_odyssey_cm_plus.out <- pre_prof_nappe_odyssey_mm_to_cm + cal.probe.i$out.long.tuyau.sol.cm[cal.probe.i$measure_type=="offset_measurement"]
+    # prof_nappe_bulleur_cm_plus.out <- cal.probe.i$`in.bulleur1.rel.to.surface.cm`[cal.probe.i$measure_type=="offset_measurement"] + cal.probe.i$out.long.tuyau.sol.cm[cal.probe.i$measure_type=="offset_measurement"]
+    # offset_cm <- prof_nappe_odyssey_cm_plus.out - prof_nappe_bulleur_cm_plus.out
 
     # encore pertinent ?
     # # Consigne du offset par date et par fichier.uid dans un format d'archivage (non-écrasable)
@@ -471,31 +473,91 @@ clean.to.calibrated_ll <- function(y) {
 # ============================================================================= /
 # clean.to.calibrated_ll
 # données de bulleur, emplacement des puits, nom de fichier, long. fil, etc.
-cal.data.path <- "connectivite/data/raw/level_logger_calibration_all.csv" # lien pour tester fonction, mais dans le code, il se réfère aux lignes précédantes
+# cal.data.path <- "connectivite/data/raw/level_logger_calibration_all.csv" # lien pour tester fonction, mais dans le code, il se réfère aux lignes précédantes
+# cal.data.path <- "connectivite/data/raw/level_logger_calibration_all copie.csv" # lien pour tester fonction, mais dans le code, il se réfère aux lignes précédantes
 raw.to.clean_cal.data <- function(cal.data.path) { # ne calibre pas encore les données
-  cal.data.pre <- read.csv(cal.data.path, sep = ";", dec = ",")
-  # options(digits = 2)
-  # class(cal.data.pre$in.bulleur1.prof.cm)
-  # cal.data.pre$in.bulleur1.prof.cm <- as.numeric(cal.data.pre$in.bulleur1.prof.cm)
-  # cal.data$in.bulleur1.prof.cm == -1*(cal.data$in.bulleur1.rel.to.surface.cm)
-  
-  cal.data.pre$out.R = round(cal.data.pre$pt.haut.cm - ((cal.data.pre$pt.bas1.cm+cal.data.pre$pt.bas2.cm+cal.data.pre$pt.bas3.cm)/3), digits = 1) # out = (pt haut - moyenne pt bas)
-  cal.data <- cal.data.pre %>% select("site.uid", "well.uid", "trmnt.uid", "lab.probe.id", "probe.uid", "probe.brand", 
-                                  "cal.length.cm", "cal.order", "cal.value", "comment", 
-                                  "day.begining.aaaa.mm.dd.hh.mm", "day.end.aaaa.mm.dd.hh.mm", "distance.m", "out.R", "out.long.tuyau.sol.cm", everything())
+  cal.data.pre <- read.csv(cal.data.path, sep = ";", dec = ",") %>% dplyr::filter(!measure_status == "rejected") %>% 
+    select(!contains("x.archive"))
+  cal.data.pre <- cal.data.pre %>% mutate(out.R = round(cal.data.pre$pt.haut.cm - ((cal.data.pre$pt.bas1.cm+cal.data.pre$pt.bas2.cm+cal.data.pre$pt.bas3.cm)/3), digits = 1)) # out = (pt haut - moyenne pt bas)
   # vérification de valeurs OUT
-  if(all(cal.data$out.R == round(cal.data$out.long.tuyau.sol.cm, digits = 1), na.rm =T))  { # si TOUS TRUE (fonction any()) = changer nom de out.R et supprimer la mesure entrée manuellement // si FALSE = avertissement
-    cal.data$out.long.tuyau.sol.cm <- cal.data$out.R
-    cal.data <- cal.data %>% select(!out.R)
-  } else { stop("Attention, le out entré dans cal.data (syn. level_logger_calibration_all.csv) n'est pas identique à la moyenne des points bas soustraite du point haut du puits.") } 
-  # création d'une colonne unique
+  if(all(cal.data.pre$out.R == round(cal.data.pre$out.long.tuyau.sol.cm, digits = 1), na.rm =T))  { # si TOUS TRUE (fonction any()) = changer nom de out.R et supprimer la mesure entrée manuellement // si FALSE = avertissement
+    cal.data.pre$out.long.tuyau.sol.cm <- cal.data.pre$out.R
+  } else { stop("Attention, le out entré dans cal.data.pre.1 (syn. level_logger_calibration_all.csv) n'est pas identique à la moyenne des points bas soustraite du point haut du puits.") } 
+  cal.data.pre <- cal.data.pre %>% select("site.uid", "well.uid", "trmnt.uid", "lab.probe.id", "probe.uid", "probe.brand", contains("cal."), "comment", 
+                                          "day.begining.aaaa.mm.dd.hh.mm", "day.end.aaaa.mm.dd.hh.mm", "distance.m", "out.R", "out.long.tuyau.sol.cm", !contains("pt.bas", ))
+  # création de colonnes à identifiant unique 
   #### À FAIRE  # exclure les lignes qui n'ont pas de day beggining / rejeter ces lignes et filtrer avec la fonction ( à écrire )
-  cal.data$period.file.uid <- paste0(cal.data$day.begining.aaaa.mm.dd.hh.mm, "--", cal.data$day.end.aaaa.mm.dd.hh.mm, ".",cal.data$file.uid)
+  cal.data.pre$period.file.uid <- paste0(cal.data.pre$day.begining.aaaa.mm.dd.hh.mm, "--", cal.data.pre$day.end.aaaa.mm.dd.hh.mm, ".",cal.data.pre$file.uid)
   # format POSIX begining et end
-  cal.data$day.begining.aaaa.mm.dd.hh.mm <- ymd_hm(cal.data$day.begining.aaaa.mm.dd.hh.mm, tz = tz)
-  cal.data$day.end.aaaa.mm.dd.hh.mm <- ymd_hm(cal.data$day.end.aaaa.mm.dd.hh.mm, tz = tz)
-    return(cal.data)}
+  cal.data.pre$day.begining.aaaa.mm.dd.hh.mm <- ymd_hm(cal.data.pre$day.begining.aaaa.mm.dd.hh.mm, tz = tz)
+  cal.data.pre$day.end.aaaa.mm.dd.hh.mm <- ymd_hm(cal.data.pre$day.end.aaaa.mm.dd.hh.mm, tz = tz)
+  cal.data.pre <- cal.data.pre %>% mutate(row.uid = rownames(cal.data.pre))
+    return(cal.data.pre)}
 
+# cal.data.addition
+# cal.data.addition <- function(cal.data.pre.1) {
+#   if(grepl("odyssey", raw.ll.files[i])) {
+#     for (k in grep("_odyssey", raw.ll.files)) { # pour les fichiers odyssey référés apr leur ordre dans le dossier brut = effectuer les prochaines lignes
+#       # remplacer pas un IF dans la fonction (encore, comme les autres)
+#       # i<-80 
+#       # k<-i # example fichier à plusieurs séquences tempporelles dans l'été
+#       # ll.cal.pre.i
+#       
+#       # recherche de lignes et nettoyage
+#       # explications : pour chaque séquences valides de fichier-emplacement-année, aller chercher les lignes dans cal.data 
+#       # et créer un tableur spécifique à la sonde (bulleur.data), et nettoyer les données
+#       bulleur.data <- list()
+#       for (l in 1:length(unique(cal.data.pre.1$period.file.uid[which(grepl(files.uid.df[k,1], cal.data.pre.1$file.uid))]))) { # si mm fichier.uid.i, coller les périodes ensemble (ainsi, retirer et remettre ne demande pas plus de manipulations et surtout ps des manipulations incividuelles)
+#         bulleur.data.j.pre <- unique(cal.data.pre.1[which(grepl(files.uid.df[i,1], cal.data.pre.1$file.uid)), c(which(grepl("period.file.uid", colnames(cal.data))), which(grepl("bulleur", colnames(cal.data))))])
+#         
+#         # extraire les chiffres des colonnes bulleur
+#         bulleur.cols <- colnames(bulleur.data.j.pre) # logger serial no, en base R
+#         numbers <- regexpr("[0-9]+", bulleur.cols)
+#         nbulleur <- as.numeric(regmatches(bulleur.cols, numbers))
+#         for (j in 1:length(unique(nbulleur))) {
+#           bulleur.data.j <- bulleur.data.j.pre %>% dplyr::select(grep(j, bulleur.cols)) %>%  # sélect si contient j dans les noms de colonne
+#             # j'obtiens les colonnes avec j, je crée un df aec juste ces colonnes
+#             # j'ajoute une colonne avec le chiffre }
+#             mutate(bulleur.no = rep(j, nrow(bulleur.data.j.pre)),
+#                    period.file.uid = bulleur.data.j.pre$period.file.uid)
+#           colnames(bulleur.data.j) <- sub('[[:digit:]]+', '', colnames(bulleur.data.j)) # nom colonne sans chiffre
+#           bulleur.data[[j]] <- bulleur.data.j
+#         }
+#         # rbind les lignes des j df
+#         bulleur.data.appendd.l <- do.call(rbind, bulleur.data) %>% drop_na(., in.bulleur.prof.cm)
+#       }
+#       # préparation de la date-heure en prévision de la comparaison de date-heure entre tableaux
+#       tidy.bulleur.data.pre.0 <- bulleur.data.appendd.l %>% mutate(date.JJ.MM.AAAA_time.HH.MM.SS_tz = paste0(in.bulleur.date.aaaammdd, " ", in.bulleur.time.tz.orig, " ", tz)) # tz original
+#       tidy.bulleur.data.pre.0$date.time.tz.orig <- readr::parse_datetime(tidy.bulleur.data.pre.0$date.JJ.MM.AAAA_time.HH.MM.SS_tz, format = '%Y-%m-%d %H:%M:%S %Z', locale = readr::locale(tz = tz)) # pour convertir AM/PM en décimal (0-24h), élément %p voir documentation
+#       tidy.bulleur.data.pre <- tidy.bulleur.data.pre.0 %>% mutate(date.time.roundd.pre = round_date(tidy.bulleur.data.pre.0$date.time.tz.orig, "hours"))
+#       tidy.bulleur.data.pre$date.time.roundd <- gsub("00:00", "00:01", tidy.bulleur.data.pre$date.time.roundd.pre)
+#       tidy.bulleur.data <- tidy.bulleur.data.pre %>% 
+#         mutate(date.time.roundd = readr::parse_datetime(date.time.roundd, locale = readr::locale(tz = tz))) %>% # remise de date.time.roundd en classe POSIX
+#         select(!c(date.JJ.MM.AAAA_time.HH.MM.SS_tz, date.time.tz.orig, date.time.roundd.pre))
+#       # rm(tidy.bulleur.data.pre, tidy.bulleur.data.pre.0)
+#       # colonne date.time.UTC.0
+#       tidy.bulleur.data$date.time.UTC.0pre <- with_tz(tidy.bulleur.data$date.time.roundd, tz = "UTC") # pour convertir AM/PM en décimal (0-24h), élément %p voir documentation
+#       tidy.bulleur.data$date.time.UTC.0pre.1 <- format_iso_8601(tidy.bulleur.data$date.time.UTC.0pre)
+#       tidy.bulleur.data$date.time.UTC.0 <- gsub("[+]00:00", "Z",  tidy.bulleur.data$date.time.UTC.0pre.1)
+#       tidy.bulleur.data <- tidy.bulleur.data %>%
+#         mutate(in.bulleur.prof.mm = in.bulleur.prof.cm * 10) %>% # données de bulleur en mm pour correspondre aux cal.val
+#         mutate(in.bulleur.rel.to.surface.mm = in.bulleur.rel.to.surface.cm * 10) %>% # données de bulleur en mm pour correspondre aux cal.val
+#         select(!c(date.time.UTC.0pre, date.time.UTC.0pre.1, date.time.roundd, in.bulleur.prof.cm, in.bulleur.rel.to.surface.cm))
+#       
+#       # joindre par la colonne en commun "date.time.UTC.0"
+#       tidy.bulleur.cal.data <- left_join(tidy.bulleur.data, cal.data.pre.1)  # comparaions aux données (raw.val, en (UNITÉS?) de sonde (i) au même moment que chaque mesure (ligne) de tidy.bulleur.data // selon Wikipedia, il y aurait des mSiemens/mm qqpart
+#       
+#       # PROBLÈME : JE SUIS DANS UN NOUVEAU TABLEUR, IL SERA DIFFICILE DE JOINDRE
+#       
+#       # cal.data <- full_join()
+#       # pour chaque ligne de tidy.bulleur.cal.data, remplacer ll.cal.pre.i pour les "k in grep("_odyssey", raw.ll.files))"
+#       
+#       # cal.data <- cal.data.pre.1 %>% mutate(calibrated.value.cm <-
+#       
+#       return(ll.cal.pre.i)  }  } }
+# #  dans data_water.table// ll.offset.measurement.df <- data.frame(file.uid = NA, offset.measurement.bulleur.time = NA, bulleur.val.mm = NA, raw.value.mm = NA, cal.val.mm = NA) # pour stocker les données (aussi première colonne de cal.data)
+
+  
 # ============================================================================= /
 #  Georeferenced data ----
 # ============================================================================= /
@@ -623,7 +685,7 @@ cat_lists <- function(list1, list2) {   # concatener le contenu de listes aux no
 # ============================================================================= /
 #  HOBO ----
 # ============================================================================= /
-## read_hobo ----
+## read_hobo
 
 # NONÀJOURread_hobo <- function(path){
 #   read.csv(path, sep = "\t") %>% 
@@ -640,7 +702,7 @@ cat_lists <- function(list1, list2) {   # concatener le contenu de listes aux no
 #   return(data)
 # }
 
-## read_hobo_header ----
+## read_hobo_header
 NONÀJOURread_hobo_header <- function(path){
   read.csv(path, sep = "\t") %>% 
     slice((1:5)) -> data
@@ -648,7 +710,7 @@ NONÀJOURread_hobo_header <- function(path){
   
 }
 
-## data.metadata.hobo ----
+## data.metadata.hobo
 # path <- "connectivite/data/raw/22224413_INK_20250721_hobo.csv"
 # data.metadata.hobo(path)
 # data.metadata <- function(path, SNH) {
@@ -662,7 +724,7 @@ NONÀJOURread_hobo_header <- function(path){
 #     # c'est chill, je n'ai pas réussi à arranger ça, mais vérifié √ pas de problème
 #     # enlever espaces inutiles
 #     
-#     ### création des subsets data & metadata ----
+#     ### création des subsets data & metadata
 #     raw.ll.files.1.metadata <-  raw.ll.files.0[c(1:2)] # inclus les anciens noms de colonnes, qui sont dans un format et un ordre bizzare
 #     raw.ll.files.1.data <- raw.ll.files.0[-c(1:2)]
 #     
@@ -673,8 +735,8 @@ NONÀJOURread_hobo_header <- function(path){
 
   
 
-## metadata.verif ---- 
-#### vérification du fichier level logger brut : logger.serial.no == nom du fichier, sinon arrêter TOUT ! ----
+## metadata.verif
+#### vérification du fichier level logger brut : logger.serial.no == nom du fichier, sinon arrêter TOUT 
 # x <- raw.ll.files.i
 
   metadata.verif.hobo <- function(x) {
@@ -707,7 +769,7 @@ NONÀJOURread_hobo_header <- function(path){
 #  ODYSSEY ----
 # ============================================================================= /
 
-## read_odyssey ----
+## read_odyssey 
 # comprend des sous-fonctions qui se trouvent ensuite, en ordre
 read_odyssey <- function(path){
   
@@ -717,11 +779,11 @@ read_odyssey <- function(path){
   return(tidy.WTD.data.i) # retourne la liste des objets nettoyés, composée de data + metadata
 }
 
-## data.metadata.odyssey ----
+## data.metadata.odyssey
 # séparer données et métadonnées
 # créé une pour odyssey + hobo
 
-## metadata.verif.hobo ----
+## metadata.verif.hobo
 # vérification : probe.uid dans les métadonnées == nom du fichier
 metadata.verif.odyssey <- function(x) {
   # trouver le probe.uid.i (== probe.uid, logger serial no) dans les metadata
@@ -741,7 +803,7 @@ metadata.verif.odyssey <- function(x) {
 }
 
 
-## data.tidying.odyssey ----
+## data.tidying.odyssey
 #
 
 
@@ -760,10 +822,10 @@ metadata.verif.odyssey <- function(x) {
 
 
 
-## read_odyssey ----
+## read_odyssey
 # (fonction qui met en action les fonctions précédantes)
 
-## read_odyssey_header ----
+## read_odyssey_header
 
 
 

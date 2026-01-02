@@ -37,7 +37,7 @@
 ##########################################################################-
 
 # fichiers "R data serialized" (RDS) à charger directement
-# tidy.WTD.data <-readRDS("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/clean/ll.clean.RDS") # issu du code ci-présent / non à jour **
+# tidy.WTD.data <-readRDS("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/clean/tidy.WTD.data.RDS") # issu du code ci-présent / non à jour **
 
 # .rs.restartR()
 # source("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/general.scripts/scripts/fonctions_generales.R")
@@ -61,10 +61,12 @@ setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
 
 # fichiers de consigne de données
 raw.ll.files <- list.files(path = "connectivite/data/raw", pattern = "_odyssey|_hobo", full.names = T) # equivalent à ll.pre (ancien) # mettre dans "pattern" tous les ID de SNH listés dans l'objet SNH
+ll.offset.measurement.df <- data.frame(file.uid = NA, offset.measurement.bulleur.time = NA, bulleur.val.mm = NA, raw.value.mm = NA, cal.val.mm = NA) # pour stocker les données (aussi première colonne de cal.data)
 tidy.WTD.data <- list() # équivalent à ll.clean (ancien)
 # odyssey_offset_archives <- data.frame(fichier.uid = NA, offset_cm_date = NA, a.slope_excel = NA,	b.verticalIntercept = NA) #, `prof_nappe_bulleur_cm_plus.out` = NA, pre_prof_nappe_odyssey_mm_to_cm = NA,	`prof_nappe_odyssey_cm_plus.out` = NA) # notes des offsets d'années précédantes
-for (i in 1:length(raw.ll.files)) {
-  # i<-44 32 9 10 11 12 13 14 15 16# 41362(27 mars 2025)
+# for (i in 1:length(raw.ll.files)) {
+if(grepl("odyssey", raw.ll.files[i])) {
+  # i<-80 k 32 9 10 11 12 13 14 15 16# 41362(27 mars 2025)
   print(i)
   raw.ll.files[i] # début de la loop pour les ODYSSEY (if() prochaine ligne)
   
@@ -136,8 +138,13 @@ for (i in 1:length(raw.ll.files)) {
     
   ##### cal.data ----
   cal.data <- raw.to.clean_cal.data("connectivite/data/raw/level_logger_calibration_all.csv") # import et nettoyage, bon format de date
-  ll.cal.pre.i <- concatenate.ll(ll.clean)
+  brand.i <- cal.data$probe.brand[which(grepl(files.uid.df[i,1], cal.data$file.uid))]
   
+  # ll.cal.pre.i <- cal.data.addition(ll.cal.pre.i)
+  
+
+  # RENDUE LÀ 2 JANVIER 2026
+  ll.cal.pre.i <- concatenate.ll(ll.clean)
   
      
     # ##### boucle de concaténation des données (fichier.uid ensemble, sinon autre calibration et graphique distinct) ----
@@ -170,8 +177,7 @@ for (i in 1:length(raw.ll.files)) {
 
   
     # ____Rendue là_____
-  brand.i <- cal.data$probe.brand[which(grepl(files.uid.df[i,1], cal.data$file.uid))]
-  tidy.WTD.data <- clean.to.calibrated_ll(ll.cal.pre.i)
+  # tidy.WTD.data <- clean.to.calibrated_ll(ll.cal.pre.i)
   
     
     # ### calcul de calibration  ----
