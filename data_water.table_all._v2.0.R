@@ -64,9 +64,9 @@ raw.ll.files <- list.files(path = "connectivite/data/raw", pattern = "_odyssey|_
 ll.offset.measurement.df <- data.frame(file.uid = NA, offset.measurement.bulleur.time = NA, bulleur.val.mm = NA, raw.value.mm = NA, cal.val.mm = NA) # pour stocker les données (aussi première colonne de cal.data)
 tidy.WTD.data <- list() # équivalent à ll.clean (ancien)
 # odyssey_offset_archives <- data.frame(fichier.uid = NA, offset_cm_date = NA, a.slope_excel = NA,	b.verticalIntercept = NA) #, `prof_nappe_bulleur_cm_plus.out` = NA, pre_prof_nappe_odyssey_mm_to_cm = NA,	`prof_nappe_odyssey_cm_plus.out` = NA) # notes des offsets d'années précédantes
-# for (i in 1:length(raw.ll.files)) {
-if(grepl("odyssey", raw.ll.files[i])) {
-  # i<-80 k 32 9 10 11 12 13 14 15 16# 41362(27 mars 2025)
+for (i in 1:length(raw.ll.files)) {
+# if(grepl("odyssey", raw.ll.files[i])) {
+  # i<-70 80 k 32 9 10 11 12 13 14 15 16# 41362(27 mars 2025)
   print(i)
   raw.ll.files[i] # début de la loop pour les ODYSSEY (if() prochaine ligne)
   
@@ -137,8 +137,9 @@ if(grepl("odyssey", raw.ll.files[i])) {
     # note : données de date en format xlsx ça lit TOUT CROCHE, transformé en csv fonctionne bien
     
   ##### cal.data ----
-  cal.data <- raw.to.clean_cal.data("connectivite/data/raw/level_logger_calibration_all.csv") # import et nettoyage, bon format de date
-  brand.i <- cal.data$probe.brand[which(grepl(files.uid.df[i,1], cal.data$file.uid))]
+  cal.data.pre <- raw.to.clean_cal.data("connectivite/data/raw/level_logger_calibration_all copie.csv") # import et nettoyage, bon format de date
+  # cal.data.pre <- raw.to.clean_cal.data("connectivite/data/raw/level_logger_calibration_all.csv") # import et nettoyage, bon format de date
+  brand.i <- cal.data.pre$probe.brand[which(grepl(files.uid.df[i,1], cal.data.pre$file.uid))]
   
   # ll.cal.pre.i <- cal.data.addition(ll.cal.pre.i)
   
