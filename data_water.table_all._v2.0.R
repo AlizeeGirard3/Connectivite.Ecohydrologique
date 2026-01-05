@@ -63,10 +63,11 @@ setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
 raw.ll.files <- list.files(path = "connectivite/data/raw", pattern = "_odyssey|_hobo", full.names = T) # equivalent à ll.pre (ancien) # mettre dans "pattern" tous les ID de SNH listés dans l'objet SNH
 ll.offset.measurement.df <- data.frame(file.uid = NA, offset.measurement.bulleur.time = NA, bulleur.val.mm = NA, raw.value.mm = NA, cal.val.mm = NA) # pour stocker les données (aussi première colonne de cal.data)
 tidy.WTD.data <- list() # équivalent à ll.clean (ancien)
+tidy.cal.bulleur.data.list <- list()
 # odyssey_offset_archives <- data.frame(fichier.uid = NA, offset_cm_date = NA, a.slope_excel = NA,	b.verticalIntercept = NA) #, `prof_nappe_bulleur_cm_plus.out` = NA, pre_prof_nappe_odyssey_mm_to_cm = NA,	`prof_nappe_odyssey_cm_plus.out` = NA) # notes des offsets d'années précédantes
 for (i in 1:length(raw.ll.files)) {
 # if(grepl("odyssey", raw.ll.files[i])) {
-  # i<-70 80 k 32 9 10 11 12 13 14 15 16# 41362(27 mars 2025)
+  # i<-92 80 k 32 9 10 11 12 13 14 15 16# 41362(27 mars 2025)
   print(i)
   raw.ll.files[i] # début de la loop pour les ODYSSEY (if() prochaine ligne)
   
@@ -144,8 +145,8 @@ for (i in 1:length(raw.ll.files)) {
   # ll.cal.pre.i <- cal.data.addition(ll.cal.pre.i)
   
 
-  # RENDUE LÀ 2 JANVIER 2026
   ll.cal.pre.i <- concatenate.ll(ll.clean)
+  # RENDUE LÀ 2 JANVIER 2026
   
      
     # ##### boucle de concaténation des données (fichier.uid ensemble, sinon autre calibration et graphique distinct) ----
@@ -577,10 +578,138 @@ for (i in 1:length(raw.ll.files)) {
   # # else {
   # #  stop("ERREUR : CODER ICI") # si nécessaire, ajouter 3e type de traitement de SNH
   # # }
+  
+  
+  
+  # RENDUE LÀ, TRANFÉRER DANS LES FONCTIONS (V3.0)
+  if(grepl("odyssey", raw.ll.files[i])) {
+    # for (i in grep("_odyssey", raw.ll.files)) { # pour les fichiers odyssey référés apr leur ordre dans le dossier brut = effectuer les prochaines lignes
+      # remplacer pas un IF dans la fonction (encore, comme les autres)
+      # i<-84 # exemple avec plusieurs mesures de bulleur 
+      # k<-i # example fichier à plusieurs séquences tempporelles dans l'été
+      
+      # recherche de lignes et nettoyage
+      # explications : pour chaque séquences valides de fichier-emplacement-année, aller chercher les lignes dans cal.data 
+      # et créer un tableur spécifique à la sonde (bulleur.data), et nettoyer les données
+      step <- c("cal", "bulleur")
+      cal.bulleur.list.appendd <- list()
+      # boucle si c'est un odyssey : sélectionner les lignes du fichier i
+      # fonctionne aussi si plusieurs périodes valides pour un fichier: toutes les coller ensemble (si plusieurs ligne dans la recherche : cal.data.pre$period.file.uid[which(grepl(files.uid.df[k,1], cal.data.pre$file.uid))])
+      
+      
+      # LIGNE if !=0 rows dans ligne ci-dessous sinon erreur dans ligne 702 !!!
+      odyssey.data.pre <- unique(cal.data.pre[which(grepl(files.uid.df[i,1], cal.data.pre$file.uid)),]) # actuellement, toutes colonnes conservées // c(which(grepl("period.file.uid", colnames(cal.data.pre))), grep("row.uid", colnames(cal.data.pre)), which(grepl("bulleur", colnames(cal.data.pre))))
+      
+      # # créer deux tableurs distincts, dans une liste : l'un oiyr les données de calibration, l'un pour les données de bulleur
+      odyssey.data.cal <- odyssey.data.pre %>% select(!contains("in.bulleur"))
+      odyssey.data.bulleur <- odyssey.data.pre %>% select(!contains("cal."))
+      odyssey.data.list <- list(odyssey.data.cal, odyssey.data.bulleur)
+      
+      # extraire les chiffres des colonnes bulleur/cal
+      # pour les colonnes contenant des chiffres sauf "pt.bas", 
+      # groupper par "in.bulleur" ou "cal."
+      # pour chque groupe
+      # faire ces étapes de :
+      # transformer les colonnes en lignes aux informations répétées (large ton long)
+      
+      for(j in 1:length(odyssey.data.list)) {
+        # j<-12
+        # pour chaque objet de la liste, trouver nom de colonnes extraire leur chiffre associé, le cas échéant, puis enlever le chiffre et refaire le df
+        odyssey.cols <- colnames(odyssey.data.list[[j]])
+        numbers <- regexpr("[0-9]+", odyssey.cols)
+        nstep <- as.numeric(regmatches(odyssey.cols, numbers))
+        odyssey.data <- list()
+        
+        for (k in unique(nstep)) {
+          # k<-1
+          remove <- paste(setdiff(unique(nstep), k), collapse = "|")
+          odyssey.data.j.k <- odyssey.data.list[[j]] %>% select(!matches(remove)) %>% 
+            # dplyr::select(!contains(remove, colnames(odyssey.data.list[[j]]))) %>%  # sélect si contient j dans les noms de colonne
+            # j'obtiens les colonnes de chiffre (step) k, je crée un df avec juste ces colonnes
+            # j'ajoute une colonne avec le chiffre }
+            # mutate_at(grep(j, odyssey.cols), rep(k, nrow(odyssey.data.pre))) %>% 
+            mutate(!!paste0(step[j],".no") := rep(k, nrow(odyssey.data.pre)),
+                   period.file.uid = odyssey.data.pre$period.file.uid,
+                   row.uid = odyssey.data.pre$row.uid)
+          # odyssey.data.j.k <- odyssey.data.j.k.pre %>% select_if(~ !any(is.na(.)))
+          colnames(odyssey.data.j.k) <- sub('[[:digit:]]+', '', colnames(odyssey.data.j.k)) # nom colonne sans chiffre
+          odyssey.data[[k]] <- odyssey.data.j.k
+        }
+        # rbind les lignes des j df
+        if(j == 1) {  cal.bulleur.list.appendd[[1]] <- do.call(rbind, odyssey.data) } else { 
+          cal.bulleur.list.appendd[[2]] <- do.call(rbind, odyssey.data) %>% drop_na(., in.bulleur.prof.cm)
+        }}
+      rm(odyssey.data.pre); rm(odyssey.data.bulleur); rm(odyssey.data.cal); rm(odyssey.data); rm(odyssey.data.j.k); rm(j); rm(k) # supprimer vieux objets (fait automatiquement dans une fonction)
+
+      # normal qu'il y ait des NA dans le df bulleur, les enlever (dépend du nombre de données de bulleur prises)
+      # préparation de la date-heure en prévision de la comparaison de date-heure entre tableaux
+      tidy.bulleur.data.pre.0 <- cal.bulleur.list.appendd[[2]] %>% mutate(date.JJ.MM.AAAA_time.HH.MM.SS_tz = paste0(in.bulleur.date.aaaammdd, " ", in.bulleur.time.tz.orig, " ", tz)) # tz original
+      tidy.bulleur.data.pre.0$date.time.tz.orig <- readr::parse_datetime(tidy.bulleur.data.pre.0$date.JJ.MM.AAAA_time.HH.MM.SS_tz, format = '%Y-%m-%d %H:%M:%S %Z', locale = readr::locale(tz = tz)) # pour convertir AM/PM en décimal (0-24h), élément %p voir documentation
+      tidy.bulleur.data.pre <- tidy.bulleur.data.pre.0 %>% mutate(date.time.roundd.pre = round_date(tidy.bulleur.data.pre.0$date.time.tz.orig, "hours"))
+      tidy.bulleur.data.pre$date.time.roundd <- gsub("00:00", "00:01", tidy.bulleur.data.pre$date.time.roundd.pre)
+      tidy.bulleur.data <- tidy.bulleur.data.pre %>%
+        mutate(date.time.roundd = readr::parse_datetime(date.time.roundd, locale = readr::locale(tz = tz))) %>% # remise de date.time.roundd en classe POSIX
+        select(!c(date.JJ.MM.AAAA_time.HH.MM.SS_tz, date.time.tz.orig, date.time.roundd.pre))
+      # rm(tidy.bulleur.data.pre, tidy.bulleur.data.pre.0)
+      # colonne date.time.UTC.0
+      tidy.bulleur.data$date.time.UTC.0pre <- with_tz(tidy.bulleur.data$date.time.roundd, tz = "UTC") # pour convertir AM/PM en décimal (0-24h), élément %p voir documentation
+      tidy.bulleur.data$date.time.UTC.0pre.1 <- format_iso_8601(tidy.bulleur.data$date.time.UTC.0pre)
+      tidy.bulleur.data$date.time.UTC.0 <- gsub("[+]00:00", "Z",  tidy.bulleur.data$date.time.UTC.0pre.1)
+      tidy.bulleur.data <- tidy.bulleur.data %>%
+        mutate(in.bulleur.prof.mm = in.bulleur.prof.cm * 10) %>% # données de bulleur en mm pour correspondre aux cal.val
+        mutate(in.bulleur.rel.to.surface.mm = in.bulleur.rel.to.surface.cm * 10) %>% # données de bulleur en mm pour correspondre aux cal.val
+        select(!c(date.time.UTC.0pre, date.time.UTC.0pre.1, date.time.roundd, in.bulleur.prof.cm, in.bulleur.rel.to.surface.cm))
+      # joindre par la colonne en commun "date.time.UTC.0"
+      tidy.cal.bulleur.data.pre.0 <- left_join(tidy.bulleur.data, ll.cal.pre.i)  # comparaions aux données (raw.val, en (UNITÉS?) de sonde (i) au même moment que chaque mesure (ligne) de tidy.bulleur.data // selon Wikipedia, il y aurait des mSiemens/mm qqpart
+      test <- full_join(tidy.bulleur.data, ll.cal.pre.i)  # comparaions aux données (raw.val, en (UNITÉS?) de sonde (i) au même moment que chaque mesure (ligne) de tidy.bulleur.data // selon Wikipedia, il y aurait des mSiemens/mm qqpart
+      tidy.cal.bulleur.data.pre <- full_join(tidy.cal.bulleur.data.pre.0, cal.bulleur.list.appendd[[1]], relationship = "many-to-many")
+      
+      # coller la valeur enregistrée (raw.value.mm) au moment du bulleur dans cal.value où cal.no == 3
+      tidy.cal.bulleur.data <- tidy.cal.bulleur.data.pre %>% #dplyr::filter() %>% 
+        mutate(cal.value = ifelse(cal.no == "3", paste(raw.value.mm), cal.value)) %>% mutate(cal.value = as.numeric(cal.value), 
+                                                                                             cal.neg.length_mm= as.numeric(cal.neg.length_mm))
+      rm(tidy.cal.bulleur.data.pre); rm(tidy.bulleur.data.pre.0); rm(tidy.bulleur.data.pre) # supprimer vieux objets (fait automatiquement dans une fonction)
+      # 
+      # 
+      ### calibration ----
+      # PRÉALABLE : utiliser la valeur NÉGATIVE de longueur de fil à la calibration
+      #### étape 1 : si y=ax+b, calcul des termes a et b  ----
+      # FORMULES
+      # a.slope = ( y2 - y1 ) / ( x2 - x1 ), soit la proportion de changement de y pour chaque changement de x
+      # où
+      # y = raw.value aux longueurs 1 et 2 du test de calibration (p. ex. 200 mm et 800 mm ou 1400 mm, pour STH)
+      # x2 = longueur fil test où "cal.order"=2, x1 = longueur fil test où "cal.order"=1
+      # et finalement
+      # b.verticalIntercept = y1 - a.slope * x1
+      {
+        CDS <- data.frame(type = c("HOBO U20", "HOBO U20L", "ODYSSEY"), # Hobo seulement : mesure longueur du fil tel que dans protocole; à la limite de la boîte de sonde. Les constantes de longueur de boîte de sonde à la sonde à l'interface intérieur de la sonde sont ajoutées à cette étape-ci.
+                          constante = c("12.93", "13.3", "0")) %>%
+          mutate_at('constante', as.numeric) # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque/modèle" (type) est traitée de façon différente
+        y2 = unique(tidy.cal.bulleur.data$cal.neg.length_mm[tidy.cal.bulleur.data$cal.no=="2"]) # en cm et au négatif
+        y1 = unique(tidy.cal.bulleur.data$cal.neg.length_mm[tidy.cal.bulleur.data$cal.no=="1"]) # en cm et au négatif
+        x2 = unique(tidy.cal.bulleur.data$cal.value[tidy.cal.bulleur.data$cal.no =="2"]) + CDS$constante[CDS$type == brand.i] # pour les ODYSSEY, valeur CDS = 0
+        x1 = unique(tidy.cal.bulleur.data$cal.value[tidy.cal.bulleur.data$cal.no =="1"])
+        a.slope = ( y2 - y1 ) / ( x2 - x1 ) # sans unité
+        b.verticalIntercept = y1 - (a.slope * x1) # mm - SU*?
+      }
+      # tidy.cal.bulleur.data.vérif <- tidy.cal.bulleur.data %>% mutate(cal.neg.length_mm.vérfi = ifelse(cal.no == "3", (tidy.cal.bulleur.data$cal.value[tidy.cal.bulleur.data$cal.no=="3"]*a.slope)+b.verticalIntercept, cal.neg.length_mm)) %>%
+      tidy.cal.bulleur.data <- tidy.cal.bulleur.data %>% mutate(cal.neg.length_mm = ifelse(cal.no == "3", (tidy.cal.bulleur.data$cal.value[tidy.cal.bulleur.data$cal.no=="3"]*a.slope)+b.verticalIntercept, cal.neg.length_mm)) %>%
+        mutate(prof_nappe_odyssey_cm_plus.out = cal.neg.length_mm/10 + tidy.cal.bulleur.data$out.long.tuyau.sol.cm,
+               prof_nappe_bulleur_cm_plus.out = `in.bulleur.rel.to.surface.mm`/10 + out.long.tuyau.sol.cm,
+               offset_cm = prof_nappe_odyssey_cm_plus.out - prof_nappe_bulleur_cm_plus.out,
+               mean_offset_cm = mean(tidy.cal.bulleur.data$offset_cm[tidy.cal.bulleur.data$cal.no == "3"])) # ok vérif : sum(tidy.cal.bulleur.data$offset_cm[tidy.cal.bulleur.data$cal.no == "3"])/length(which(tidy.cal.bulleur.data$cal.no == "3"))
+      tidy.cal.bulleur.data.list[[i]] <- tidy.cal.bulleur.data # ok vérifié avec les calculs manuels de mars 2025
+      ll.cal.pre.i$calibrated.value.cm = (((ll.cal.pre.i$raw.value.mm*a.slope) + b.verticalIntercept)/10) + unique(tidy.cal.bulleur.data$out.long.tuyau.sol.cm - tidy.cal.bulleur.data$mean_offset_cm)
+    }
+    
 }
 warnings()
 # vérifier que les erreurs sont tjrs la meme affaire inutile -> incomplete final line, tenté de régler le problème, mais sans succès; 
 # et different length (ça le dit quand le "cal" est vide, et ça met des NA, ce qui est parfait)
+# enregistrer le tableau des métadonnées de fichier
+if("tidy.cal.bulleur.data.list" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
+  stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
+} else { saveRDS(tidy.cal.bulleur.data.list, file = "connectivite/data/clean/tidy.cal.bulleur.data.list.RDS") }
 
 # enregistrer le tableau des métadonnées de fichier
 if("metadata_SNH_fichiers.csv" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)

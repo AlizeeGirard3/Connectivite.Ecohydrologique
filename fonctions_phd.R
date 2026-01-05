@@ -99,7 +99,7 @@ cat_lists <- function(list1, list2) {   # concatener le contenu de listes aux no
 
 ## data.metadata
 # path <- "connectivite/data/raw/22224413_INK_20250721_hobo.csv" # lien pour tester fonction, mais dans le code, il se réfère aux lignes précédantes
-# path <- "connectivite/data/raw/41387_STH_20241125_odyssey.CSV"
+# path <- "connectivite/data/raw/41361_STH_20241125_odyssey.CSV"
 # data.metadata(raw.ll.files[i])
 data.metadata <- function(path) { # type = odyssey vs  EST DANS MON PATH pas besoin de l'argument je vais lui dire
   if (grepl("odyssey", path)) { # début de la loop pour les ODYSSEY
@@ -292,6 +292,7 @@ raw.to.clean_ll <- function(file.i.raw.data) { # ne calibre pas encore les donn�
 concatenate.ll <- function(file.to.concat) {
   ll.cal.pre.i.l <- list()
   if (grepl("odyssey", raw.ll.files[i])) {
+    if (length(unique(cal.data.pre$period.file.uid[which(grepl(files.uid.df[i,1], cal.data.pre$file.uid))]))>0) { # pour contourner erreur si aucun fichier dans les lignes de cal.data (p. ex. si étiquettées "rejected", comme '41361_20241125')
     for (l in 1:length(unique(cal.data.pre$period.file.uid[which(grepl(files.uid.df[i,1], cal.data.pre$file.uid))]))) { print(l) # si mm fichier.uid.i, coller les périodes ensemble (ainsi, retirer et remettre ne demande pas plus de manipulations et surtout ps des manipulations individuelles)
       # l<-1
       cal.data.i.l <- unique(cal.data.pre[which(grepl(files.uid.df[i,1], cal.data.pre$file.uid)),
@@ -306,12 +307,12 @@ concatenate.ll <- function(file.to.concat) {
       ll.cal.pre.i.l[[l]] <- ll.clean.l
     }
     # coller toutes les données de la sonde i ensemble (différentes mesures temporelles, mm puits.trmnt.année) ----
-    ll.cal.pre.i <- do.call(rbind, ll.cal.pre.i.l)} # row bind -> on colle deux df de structure identique (les l nombre de ll.cal.pre.i.l) de différents k.l, associées à différents temps de la période de mesure de la sonde k 
+    ll.cal.pre.i <- do.call(rbind, ll.cal.pre.i.l)}} # row bind -> on colle deux df de structure identique (les l nombre de ll.cal.pre.i.l) de différents k.l, associées à différents temps de la période de mesure de la sonde k 
   if (grepl("hobo", raw.ll.files[i])) {
     ##### boucle de concaténation des données (fichier.uid ensemble, sinon autre calibration et graphique disctinct) ----
-    for (l in 1:length(unique(cal.data$period.file.uid[which(grepl(files.uid.df[i,1], cal.data$file.uid))]))) { # si mm fichier.uid.i, coller les périodes ensemble (ainsi, retirer et remettre ne demande pas plus de manipulations et surtout ps des manipulations incividuelles)
-      if (length(unique(cal.data$period.file.uid[which(grepl(files.uid.df[i,1], cal.data$file.uid))])) != 0) { print(l)
-        cal.data.i.l <- unique(cal.data[which(grepl(files.uid.df[i,1], cal.data$file.uid)),
+    for (l in 1:length(unique(cal.data.pre$period.file.uid[which(grepl(files.uid.df[i,1], cal.data.pre$file.uid))]))) { # si mm fichier.uid.i, coller les périodes ensemble (ainsi, retirer et remettre ne demande pas plus de manipulations et surtout ps des manipulations incividuelles)
+      if (length(unique(cal.data.pre$period.file.uid[which(grepl(files.uid.df[i,1], cal.data.pre$file.uid))])) != 0) { print(l)
+        cal.data.i.l <- unique(cal.data.pre[which(grepl(files.uid.df[i,1], cal.data.pre$file.uid)),
                                         c("file.uid", "site.uid", "well.uid", "trmnt.uid", 'lab.probe.id', 'probe.uid', 'probe.brand',
                                           "day.begining.aaaa.mm.dd.hh.mm", 'day.end.aaaa.mm.dd.hh.mm', "period.file.uid")])[l,] # cal.data.i.l = les infos dont j'ai besoin pour recouper selon la période l du fichier i
         period.file.uid.l <- cal.data.i.l$period.file.uid
@@ -321,7 +322,7 @@ concatenate.ll <- function(file.to.concat) {
           dplyr::filter(date.time.tz.orig <= cal.data.i.l$day.end.aaaa.mm.dd.hh.mm) %>% # <= date de mesure de NP plus petite ou égale à la date end dans cal.data.i.l 
           select("scan.id", "raw.value.kPa_pres.abs", "calibrated.value.cm",  "temperature_dC", "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.tz.orig", "date.time.UTC.0") # %>%  # date et time sans "UTC.0" sont dans le fuseau horaire d'origine (tz trouvé en croisant les coordonnées "coords")
         # répliquer les données cal.data.k.l à chaque ligne de ll.pre.0.data.4.l.pre
-        cal.data.i.l.all <- cal.data[cal.data$period.file.uid == period.file.uid.l,]
+        cal.data.i.l.all <- cal.data.pre[cal.data.pre$period.file.uid == period.file.uid.l,]
         rownames(cal.data.i.l.all) <- NULL
         cal.data.i.l.rep <- cbind(cal.data.i.l.all, rep(row.names(cal.data.i.l.all), each = nrow(ll.clean.l.pre)))
         colnames(cal.data.i.l.rep)

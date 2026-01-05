@@ -79,6 +79,28 @@ for (j in 1:length(ll.clean)) {
 [...]
 ```
 
+### Aperçu des offets - Sondes Odyssey
+```{r, echo = FALSE}
+#### bibliothèques à charger
+if (!require("dplyr")) install.packages("dplyr") # pour manipulation donnees (pipe, etc)
+if (!require("ggplot2")) install.packages("ggplot2")
+
+tidy.cal.bulleur.data.list <- readRDS("connectivite/data/clean/tidy.cal.bulleur.data.list.RDS")
+vérif <- do.call(rbind, tidy.cal.bulleur.data.list)
+vérif.1 <- vérif %>% dplyr::filter(!grepl("rejected", vérif$measure_status)) %>% 
+  dplyr::filter(cal.no == "3")
+vérif.1 = vérif.1[-which(is.na(vérif.1$offset_cm)),] # règle l'avertissement d'avoir retiré 22 lignes contenant des
+vérif.1$probe.uid <- as.character(vérif.1$probe.uid)
+
+ggplot(vérif.1, aes(x = probe.uid, y = offset_cm)) +
+  scale_y_continuous(breaks = seq(-160, 160, by = 20)) +
+  geom_segment(aes(x=probe.uid, xend=probe.uid, y=0, yend=offset_cm)) +
+  geom_point(size=1, color="red", fill=alpha("orange", 0.3), alpha=0.7, shape=21, stroke=2) +
+  theme(axis.text.x = element_text(angle = 90)) +
+  labs(title = "Offsets des sondes Odyssey, par identifiant unique de sonde (années confondues)")
+```
+
+
 ## Visualisation de la variation de la nappe phréatique et du positionnement du puits le long du transect
 
 ```{r, message = FALSE, include = FALSE}

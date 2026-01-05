@@ -2,12 +2,21 @@
 # dans le but de calibrer les sondes Odyssey
 # À faire : tout modifier le script data_water.table_all en fonction de ceci
 
+
+# CADUQUE -> MIS DANS data_water.table_all_V2.0 le 5 janvier
+
+
+
+
+
+
+
 # FONCTIONNE, 24 DÉC. 2025 (trouver et nettoyer moment mesure de bulleur)
 # traitement automatique et nettoyage des données de bulleur
 if(grepl("odyssey", raw.ll.files[i])) {
   for (i in grep("_odyssey", raw.ll.files)) { # pour les fichiers odyssey référés apr leur ordre dans le dossier brut = effectuer les prochaines lignes
     # remplacer pas un IF dans la fonction (encore, comme les autres)
-    # i<-70 
+    # i<-70 # exemple avec plusieurs mesures de bulleur 
     # k<-i # example fichier à plusieurs séquences tempporelles dans l'été
 
     # recherche de lignes et nettoyage
@@ -58,7 +67,7 @@ if(grepl("odyssey", raw.ll.files[i])) {
     if(j == 1) {  cal.bulleur.list.appendd[[1]] <- do.call(rbind, odyssey.data) } else { 
       cal.bulleur.list.appendd[[2]] <- do.call(rbind, odyssey.data) %>% drop_na(., in.bulleur.prof.cm)
     }}
-    rm(odyssey.data.pre); rm(odyssey.data.cal); rm(odyssey.data); rm(odyssey.data.j.k); rm(j); rm(k) # supprimer vieux objets (fait automatiquement dans une fonction)
+    rm(odyssey.data.pre); rm(odyssey.data.bulleur); rm(odyssey.data.cal); rm(odyssey.data); rm(odyssey.data.j.k); rm(j); rm(k) # supprimer vieux objets (fait automatiquement dans une fonction)
 
     
     # normal qu'il y ait des NA dans le df bulleur, les enlever (dépend du nombre de données de bulleur prises)
@@ -87,39 +96,40 @@ if(grepl("odyssey", raw.ll.files[i])) {
     tidy.cal.bulleur.data <- tidy.cal.bulleur.data %>% #dplyr::filter() %>% 
       mutate(cal.value = ifelse(cal.no == "3", paste(raw.value.mm), cal.value)) %>% mutate(cal.value = as.numeric(cal.value), 
                                                                                            cal.neg.length_mm= as.numeric(cal.neg.length_mm))
-    rm(tidy.cal.bulleur.data.pre); rm(tidy.bulleur.data.pre.0); rm(tidy.bulleur.data.pre) # supprimer vieux objets (fait automatiquement dans une fonction)
-    
+   
+    # rm(tidy.cal.bulleur.data.pre); rm(tidy.bulleur.data.pre.0); rm(tidy.bulleur.data.pre) # supprimer vieux objets (fait automatiquement dans une fonction)
+    # 
+    # 
+    # ### calibration ----
+    # # PRÉALABLE : utiliser la valeur NÉGATIVE de longueur de fil à la calibration
+    # #### étape 1 : si y=ax+b, calcul des termes a et b  ----
+    # # FORMULES
+    # # a.slope = ( y2 - y1 ) / ( x2 - x1 ), soit la proportion de changement de y pour chaque changement de x
+    # # où
+    # # y = raw.value aux longueurs 1 et 2 du test de calibration (p. ex. 200 mm et 800 mm ou 1400 mm, pour STH)
+    # # x2 = longueur fil test où "cal.order"=2, x1 = longueur fil test où "cal.order"=1
+    # # et finalement
+    # # b.verticalIntercept = y1 - a.slope * x1
+    # {
+    #   CDS <- data.frame(type = c("HOBO U20", "HOBO U20L", "ODYSSEY"), # Hobo seulement : mesure longueur du fil tel que dans protocole; à la limite de la boîte de sonde. Les constantes de longueur de boîte de sonde à la sonde à l'interface intérieur de la sonde sont ajoutées à cette étape-ci.
+    #                     constante = c("12.93", "13.3", "0")) %>%
+    #     mutate_at('constante', as.numeric) # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque/modèle" (type) est traitée de façon différente
+    #   y2 = unique(tidy.cal.bulleur.data$cal.neg.length_mm[tidy.cal.bulleur.data$cal.no=="2"]) # en cm et au négatif
+    #   y1 = unique(tidy.cal.bulleur.data$cal.neg.length_mm[tidy.cal.bulleur.data$cal.no=="1"]) # en cm et au négatif
+    #   x2 = unique(tidy.cal.bulleur.data$cal.value[tidy.cal.bulleur.data$cal.no =="2"]) + CDS$constante[CDS$type == brand.i] # pour les ODYSSEY, valeur CDS = 0
+    #   x1 = unique(tidy.cal.bulleur.data$cal.value[tidy.cal.bulleur.data$cal.no =="1"])
+    #   a.slope = ( y2 - y1 ) / ( x2 - x1 ) # sans unité
+    #   b.verticalIntercept = y1 - (a.slope * x1) # mm - SU*?
+    # }
+    # tidy.cal.bulleur.data <- tidy.cal.bulleur.data %>% mutate(cal.neg.length_mm = ifelse(cal.no == "3", (tidy.cal.bulleur.data$cal.value[tidy.cal.bulleur.data$cal.no=="3"]*a.slope)+b.verticalIntercept, cal.neg.length_mm)) %>%
+    #   mutate(prof_nappe_odyssey_cm_plus.out = cal.neg.length_mm/10 + tidy.cal.bulleur.data$out.long.tuyau.sol.cm,
+    #          prof_nappe_bulleur_cm_plus.out = `in.bulleur.rel.to.surface.mm`/10 + out.long.tuyau.sol.cm,
+    #          offset_cm = prof_nappe_odyssey_cm_plus.out - prof_nappe_bulleur_cm_plus.out)
 
-    ### calibration ----
-    # PRÉALABLE : utiliser la valeur NÉGATIVE de longueur de fil à la calibration
-    #### étape 1 : si y=ax+b, calcul des termes a et b  ----
-    # FORMULES
-    # a.slope = ( y2 - y1 ) / ( x2 - x1 ), soit la proportion de changement de y pour chaque changement de x
-    # où
-    # y = raw.value aux longueurs 1 et 2 du test de calibration (p. ex. 200 mm et 800 mm ou 1400 mm, pour STH)
-    # x2 = longueur fil test où "cal.order"=2, x1 = longueur fil test où "cal.order"=1
-    # et finalement
-    # b.verticalIntercept = y1 - a.slope * x1
-    {
-      CDS <- data.frame(type = c("HOBO U20", "HOBO U20L", "ODYSSEY"), # Hobo seulement : mesure longueur du fil tel que dans protocole; à la limite de la boîte de sonde. Les constantes de longueur de boîte de sonde à la sonde à l'interface intérieur de la sonde sont ajoutées à cette étape-ci.
-                        constante = c("12.93", "13.3", "0")) %>%
-        mutate_at('constante', as.numeric) # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque/modèle" (type) est traitée de façon différente
-      y2 = unique(tidy.cal.bulleur.data$cal.neg.length_mm[tidy.cal.bulleur.data$cal.no=="2"]) # en cm et au négatif
-      y1 = unique(tidy.cal.bulleur.data$cal.neg.length_mm[tidy.cal.bulleur.data$cal.no=="1"]) # en cm et au négatif
-      x2 = unique(tidy.cal.bulleur.data$cal.value[tidy.cal.bulleur.data$cal.no =="2"]) + CDS$constante[CDS$type == brand.i] # pour les ODYSSEY, valeur CDS = 0
-      x1 = unique(tidy.cal.bulleur.data$cal.value[tidy.cal.bulleur.data$cal.no =="1"])
-      a.slope = ( y2 - y1 ) / ( x2 - x1 ) # sans unité
-      b.verticalIntercept = y1 - (a.slope * x1) # mm - SU*?
-    }
-    tidy.cal.bulleur.data <- tidy.cal.bulleur.data %>% mutate(cal.neg.length_mm = ifelse(cal.no == "3", (tidy.cal.bulleur.data$cal.value[tidy.cal.bulleur.data$cal.no=="3"]*a.slope)+b.verticalIntercept, cal.neg.length_mm)) %>%
-      mutate(prof_nappe_odyssey_mm_to_cm = cal.neg.length_mm/10 + tidy.cal.bulleur.data$out.long.tuyau.sol.cm,
-             prof_nappe_bulleur_cm_plus.out = `in.bulleur.rel.to.surface.mm`/10 + out.long.tuyau.sol.cm,
-             offset_cm = prof_nappe_odyssey_cm_plus.out - prof_nappe_bulleur_cm_plus.out)
-      
 
-    # TOUT VÉRIFIER !!!
-    
-    
+    # TOUT VÉRIFIER !!! et finaliser en comptabilisant cette donnée:
+    #     ll.cal.pre.i$calibrated.value.cm = (((ll.cal.pre.i$raw.value.mm*a.slope) + b.verticalIntercept)/10) + cal.probe.i$out.long.tuyau.sol.cm[cal.probe.i$measure_type=="offset_measurement"] - offset_cm
+    # aussi : réfléchir à comment utiliser plusieurs données de bulleur pour calibrer
     
     
     
@@ -234,7 +244,7 @@ if(grepl("odyssey", raw.ll.files[i])) {
   
 
 }
-
+  tidy.cal.bulleur.data.list[[i]] <- tidy.cal.bulleur.data
 }
 
 
