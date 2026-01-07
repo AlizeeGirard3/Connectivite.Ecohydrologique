@@ -79,6 +79,28 @@ for (j in 1:length(ll.clean)) {
 [...]
 ```
 
+### Aperçu des offets - Sondes Odyssey
+```{r, echo = FALSE}
+#### bibliothèques à charger
+if (!require("dplyr")) install.packages("dplyr") # pour manipulation donnees (pipe, etc)
+if (!require("ggplot2")) install.packages("ggplot2")
+
+tidy.cal.bulleur.data.list <- readRDS("connectivite/data/clean/tidy.cal.bulleur.data.list.RDS")
+vérif <- do.call(rbind, tidy.cal.bulleur.data.list)
+vérif.1 <- vérif %>% dplyr::filter(!grepl("rejected", vérif$measure_status)) %>% 
+  dplyr::filter(cal.no == "3")
+vérif.1 = vérif.1[-which(is.na(vérif.1$offset_cm)),] # règle l'avertissement d'avoir retiré 22 lignes contenant des
+vérif.1$probe.uid <- as.character(vérif.1$probe.uid)
+
+ggplot(vérif.1, aes(x = probe.uid, y = offset_cm)) +
+  scale_y_continuous(breaks = seq(-160, 160, by = 20)) +
+  geom_segment(aes(x=probe.uid, xend=probe.uid, y=0, yend=offset_cm)) +
+  geom_point(size=1, color="red", fill=alpha("orange", 0.3), alpha=0.7, shape=21, stroke=2) +
+  theme(axis.text.x = element_text(angle = 90)) +
+  labs(title = "Offsets des sondes Odyssey,\npar identifiant unique de sonde\n(années confondues)")
+```
+
+
 ## Visualisation de la variation de la nappe phréatique et du positionnement du puits le long du transect
 
 ```{r, message = FALSE, include = FALSE}
@@ -92,24 +114,21 @@ if (!require("ggplot2")) install.packages("ggplot2")
 if (!require("gridExtra")) install.packages("gridExtra") # multiplot()
 if (!require("stringr")) install.packages("stringr") # str_to_title
 if (!require("grDevices")) install.packages("grDevices") # pdf()
-if (!require("knitr")) install.packages("knitr") # Integrating data from weathercan (ECCC/CCCS), Gouvernement du Canada
+# if (!require("knitr")) install.packages("knitr") # désuet / Integrating data from weathercan (ECCC/CCCS), Gouvernement du Canada
+if (!require("withr")) install.packages("withr") # T'o Québec icitte (date-time en français)
 ```
 
 ```{r, echo = FALSE}
 setwd("~/Documents/Doctorat/_R.&.Stats_PhD") # fonctions utiles et working directory
 tidy.WTD.data <- readRDS("connectivite/data/clean/tidy.WTD.data.RDS")
-SNH <- as.vector(c("_odyssey", "_hobo"), mode = "character") # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque" est traitée de façon différente
+Sys.setlocale("LC_ALL", "")
 for (i in 1:length(tidy.WTD.data)) {
   if (!is.null(tidy.WTD.data[[i]])) {
     # i<-5
     paste(i)
     tidy.WTD.data[[i]]
-
     # bouble pour les ODYSSEY
-    if (grepl(SNH[1], tidy.WTD.data[[i]]$metadata[11])) { #}
-      
-    # 3 déc. problème d'étiquette
-    # ICI S'ARRANGÉ POUR RÉFÉRER À UN NUMÉRO unique et non le probe uid qui revient année après année !'
+    if (grepl("odyssey", tidy.WTD.data[[i]]$metadata[11])) { #}
     # extraire no de sonde
     file.uid.i <- gsub(".*: ", "", tidy.WTD.data[[i]]$metadata[10])
     # extraire nom de transect/puits
@@ -135,17 +154,15 @@ for (i in 1:length(tidy.WTD.data)) {
     # graphiques de nappe phréatique
     graph.wt <- ll.cal %>% ggplot(mapping = aes(y = calibrated.value.cm, x = date.time.tz.orig)) + # ici HOBO je dois faire *-1 pour avoir la hauteur relative (nég si en dessous de surface)
       geom_line(group = 1) +
-      scale_x_datetime(
-        date_minor_breaks = "day", date_breaks = "2 weeks", date_labels = "%D:%H") +
+      scale_x_datetime(date_breaks = "2 weeks", date_labels = "%y/%b/%d") + 
       ggtitle(paste0(site.name, ", sonde no ", probe.serial.no.i, " à l'emplacement\n", well.uid, "\n",
                      "nombre de ligne du fichier : ", nrow(ll.cal))) +
       labs(y = "Hauteur de nappe phréatique (cm)\nrelative à la surface", x = "Date") +
       theme_bw() + theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 45, hjust = 1, vjust = 0.5))
     print(graph.wt) # imprimer dans R
 
-    }
-    
-    if (grepl(SNH[2], tidy.WTD.data[[i]]$metadata[4])) { #}
+    }  
+    if (grepl("hobo", tidy.WTD.data[[i]]$metadata[4])) { #}
       
       # 3 déc. problème d'étiquette
       # ICI S'ARRANGÉ POUR RÉFÉRER À UN NUMÉRO unique et non le probe uid qui revient année après année !'
@@ -171,8 +188,7 @@ for (i in 1:length(tidy.WTD.data)) {
       
       graph.wt <- ll.cal %>% ggplot(mapping = aes(y = calibrated.value.cm*-1, x = date.time.tz.orig)) + # ici HOBO je dois faire *-1 pour avoir la hauteur relative (nég si en dessous de surface)
         geom_line(group = 1) +
-        scale_x_datetime(
-          date_minor_breaks = "day", date_breaks = "2 weeks", date_labels = "%D:%H") +
+scale_x_datetime(date_breaks = "2 weeks", date_labels = "%Y/%M/%D") + 
         ggtitle(paste0(site.name, ", sonde no ", probe.serial.no.i, " à l'emplacement\n", well.uid, "\n",
                        "nombre de ligne du fichier : ", nrow(ll.cal))) +
         labs(y = "Hauteur de nappe phréatique (cm)\nrelative à la surface", x = "Date") +
