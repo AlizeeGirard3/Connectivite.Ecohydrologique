@@ -77,11 +77,17 @@ for (m in 1:length(tidy.WTD.data)) {
       print(n)
       bulleur.m.n <- bulleur.m[n,] # filtrer ll.bulleur (level_logger_calibration_all.csv) par le ligne "n" (vérification n au bulleur)
       tidy.WTD.data.m.n <- tidy.WTD.data.m$data[tidy.WTD.data.m$data$date.time.UTC.0 == # fitlrer les données du fichier SNH par la période (unique) de la ligne n = vérification au bulleur
-                                                  bulleur.m.n$date.time.UTC.0,]
+                                                  bulleur.m.n$in.bulleur.date.time.UTC.0,]
+      
+      
+      
+      
+      
+      # RENDUE LÀ : METTRE AU MON ENDROIT DANS LE DF ! plus de une valeur par probe.uid !
       water.table.verif.n[n, 1:4] <- data.frame("probe.uid" = sonde.m, # créer le dataframe de vérification pour les lignes "n" de la SNH "m"
                                                 "file.extraction.date" = date.m,
-                                                "probe.measure.cm" = tidy.WTD.data.m.n$calibrated.value.mm/10,
-                                                "bulleur.mesure.cm" = bulleur.m.n$in.bulleur.1.cm)
+                                                "probe.measure.cm" = tidy.WTD.data.m.n$calibrated.value.cm,
+                                                "bulleur.mesure.cm" = bulleur.m.n$in.bulleur.rel.to.surface.mm/10)
     } 
     water.table.verif[nrow(water.table.verif) + 1:nrow(water.table.verif.n), 1:4] <- water.table.verif.n # inscrire les données dans le dataframe final, à la dernière ligne
   } else if (nrow(ll.clean[[m]]$data) == 0)  {
