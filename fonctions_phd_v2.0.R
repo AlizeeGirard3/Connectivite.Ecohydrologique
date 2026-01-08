@@ -3,16 +3,17 @@
 # Fait par :      Alizée Girard
 # Affiliation :   ULaval
 # Date création : 2025-10-28
+# Date mise à jour : 2026-01-08
 # Pourquoi : 
 # Pour charger les fonctions utiles à traiter données de SHN
 # NOTES : 
-#   SNH : sondes de niveau hydrostatique
+# SNH : sondes de niveau hydrostatique
 
 # La fonction s'applique à un fichier brut, traite, corrige et nettoye, et produit un fichier de données aux composantes identiques, peu importe le type de sonde.
-# Produit un dataframe rectangulaire. Les métadonnées sont à part (ou créer liste avec données + métadonnées).
-#   Merci à Francis Lessard pour ses idées.
-# référer aux fonctions en copiant-collant seulement la ligne suivante
-# source("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/connectivite/scripts/fonctions_phd.R")
+# Produit un dataframe rectangulaire. Les métadonnées sont à part (liste avec données + métadonnées + données de vérification).
+# Merci à Francis Lessard pour ses idées.
+# référer aux fonctions en sourçant ce script (ligne suivante)
+# source("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/connectivite/scripts/fonctions_phd_v2.0.R")
 
 # ============================================================================= /
 #  Libraries ----
@@ -72,6 +73,21 @@ cat_lists <- function(list1, list2) {   # concatener le contenu de listes aux no
     set_names(keys)  
 }
 
+# select.raw.ll.files
+# vector.to.filter <- raw.ll.files.pre
+select.raw.ll.files <- function(vector.to.filter) { # ne calibre pas encore les données
+  cal.data.0 <- read.csv("connectivite/data/raw/level_logger_calibration_all.csv", sep = ";", dec = ",") 
+  filter.out <- cal.data.0$file.uid[grep("rejected", cal.data.0$measure_status)]
+  str_split <- str_split(filter.out, "_")
+  filter.out.df <- data.frame(do.call(rbind, str_split)) # colnames = c("probe.uid", "extr.date"))
+  exclude.lines <- vector()
+  for(exclude in 1:nrow(filter.out.df)) {
+    exclude.lines[exclude] <- which(grepl(filter.out.df[exclude,1], vector.to.filter) & grepl(filter.out.df[exclude,2], vector.to.filter))
+  }
+  raw.ll.files <- vector.to.filter[-exclude.lines]
+  return(raw.ll.files)
+}
+
 # ============================================================================= /
 #  Data download and overwrite ----
 # ============================================================================= /
@@ -98,8 +114,7 @@ cat_lists <- function(list1, list2) {   # concatener le contenu de listes aux no
 # ============================================================================= /
 
 ## data.metadata
-# path <- "connectivite/data/raw/22224413_INK_20250721_hobo.csv" # lien pour tester fonction, mais dans le code, il se réfère aux lignes précédantes
-# path <- "connectivite/data/raw/41361_STH_20241125_odyssey.CSV"
+# path <- "connectivite/data/raw/22224403_INK_20251202_hobo.csv"
 # data.metadata(raw.ll.files[i])
 data.metadata <- function(path) { # type = odyssey vs  EST DANS MON PATH pas besoin de l'argument je vais lui dire
   if (grepl("odyssey", path)) { # début de la loop pour les ODYSSEY
@@ -124,10 +139,7 @@ data.metadata <- function(path) { # type = odyssey vs  EST DANS MON PATH pas bes
     return(list(raw.ll.files.data, raw.ll.files.metadata)) }}
 
 ## metadata
-#### vérification du fichier level logger brut : logger.serial.no == nom du fichier, sinon arrêter TOUT !
 # x <- raw.ll.files.i.init
-# i <- 86 # odyssey
-# i <- 12 # hobo
 metadata <- function(x) {
   if (grepl("odyssey", raw.ll.files[i])) {
     texte <- x[[2]][4] # logger serial no, en base R
@@ -261,14 +273,15 @@ raw.to.clean_ll <- function(file.i.raw.data) { # ne calibre pas encore les donn�
     return(ll.clean)}}
 
 # concatenate.ll
-# boucle de concaténation des données (fichier.uid ensemble, sinon autre calibration et graphique distinct) ----
+{ # explications boucle de concaténation
+# boucle de concaténation des données (fichier.uid ensemble, sinon autre calibration et graphique distinct)
 # raison de l'étape : si sonde retirée et remise, sans écraser les données contenues (continuation des mesures), retirer la période 
 # de données invalides (quelques heures, période de rééquilibrage) et recoller les lignes ensemble pour former le fichier d'heures valide
 # explications de cette loop
 # mm fichier.uid (loop extrait séquentiellement toutes les lignes de chaque # de SNH, qui peuvent être uniques ou multiples pour un SNH donné);
 # la loop teste si toutes les lignes de ce # de SNH ont le même fichier.uid (i), dans quel cas, si les périodes sont différentes, 
-# la boucle coupe le fichier pour chaque période différente (l), et ensuite réassemble le fichier avec seules les périodes à conserver 
-# ----
+# la boucle coupe le fichier pour chaque période différente (l), et ensuite réassemble le fichier avec seules les périodes à conserver
+  }
 # file.to.concat <- ll.clean
 concatenate.ll <- function(file.to.concat) {
   ll.cal.pre.i.l <- list()
@@ -289,6 +302,8 @@ concatenate.ll <- function(file.to.concat) {
       }
       # coller toutes les données de la sonde i ensemble (différentes mesures temporelles, mm puits.trmnt.année) ----
       ll.cal.pre.i <- do.call(rbind, ll.cal.pre.i.l)
+    } else { # si aucune données, produire ll.cal.pre.i quand même, structure pareille à ll.clean
+      ll.cal.pre.i <- ll.clean
     }
     return(ll.cal.pre.i) 
     } # row bind -> on colle deux df de structure identique (les l nombre de ll.cal.pre.i.l) de différents k.l, associées à différents temps de la période de mesure de la sonde k 
@@ -329,6 +344,11 @@ concatenate.ll <- function(file.to.concat) {
         ll.cal.pre.i.l[[l]] <- ll.clean.l
       }
       ll.cal.pre.i <- do.call(rbind, ll.cal.pre.i.l) # row bind -> on colle deux df de structure identique (les ll.cal.pre.i) de différents i.l, associées à différents temps de la période de mesure de la sonde i
+    } 
+    else { # si aucune données, produire ll.cal.pre.i quand même, structure pareille à ll.clean
+      ll.clean$long.fil.cm <- 0
+      ll.clean$out.long.tuyau.sol.cm <- 0
+      ll.cal.pre.i <- ll.clean
     }
   return(ll.cal.pre.i) 
 }
@@ -378,7 +398,8 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
         }
         if(j == 1) {  cal.bulleur.list.appendd[[1]] <- do.call(rbind, odyssey.data) } else { # rbind les lignes des j df
           cal.bulleur.list.appendd[[2]] <- do.call(rbind, odyssey.data) %>% drop_na(., in.bulleur.prof.cm)
-        }} 
+        }
+        } 
       rm(odyssey.data.pre); rm(odyssey.data.bulleur); rm(odyssey.data.cal); rm(odyssey.data); rm(odyssey.data.j.k); rm(j); rm(k) # supprimer vieux objets (fait automatiquement dans une fonction)
       # préparation de la date-heure en prévision de la comparaison de date-heure entre tableaux
       tidy.bulleur.data.pre.0 <- cal.bulleur.list.appendd[[2]] %>% mutate(date.JJ.MM.AAAA_time.HH.MM.SS_tz = paste0(in.bulleur.date.aaaammdd, " ", in.bulleur.time.tz.orig, " ", tz)) # tz original /       # normal qu'il y ait des NA dans le df bulleur, les enlever (dépend du nombre de données de bulleur prises)
@@ -433,18 +454,19 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
                                                                 "lab.probe.id", "probe.uid", "probe.brand", "long.fil.cm", "comment", "day.begining.aaaa.mm.dd.hh.mm", "day.end.aaaa.mm.dd.hh.mm", 
                                                                 "distance.m", "out.long.tuyau.sol.cm", "bulleur.no",  "in.bulleur.prof.mm", "in.bulleur.rel.to.surface.mm", 
                                                                 "in.bulleur.date.time.UTC.0" = "date.time.UTC.0", "in.bulleur.date.aaaammdd", "in.bulleur.time.tz.orig", "in.bulleur.obs", 
-                                                                "period.file.uid", "row.uid", "scan.id", "raw.value.mm", "calibrated.value.cm", "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.tz.orig",
+                                                                "period.file.uid", "row.uid", "scan.id", raw.value = "raw.value.mm", "calibrated.value.cm", "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.tz.orig",
                                                                 "cal.neg.length_mm", "cal.value", "cal.no", "prof_nappe_odyssey_cm_plus.out", "prof_nappe_bulleur_cm_plus.out", "offset_cm", "mean_offset_cm")
       file.to.calibrate$calibrated.value.cm = (((file.to.calibrate$raw.value.mm*a.slope) + b.verticalIntercept)/10) + unique(tidy.cal.bulleur.data$out.long.tuyau.sol.cm - tidy.cal.bulleur.data$mean_offset_cm)
       file.to.calibrate <- file.to.calibrate %>% rename(raw.value = raw.value.mm)
-    }
-    else(tidy.cal.bulleur.data <- data.frame(NA)) # si cal.data rejetée, tidy.cal.bulleur.data = NA pour débugger
+      file.to.calibrate$file.uid <- rep(files.uid.df$file.uid[i], times = nrow(file.to.calibrate))
+    } else {
+      tidy.cal.bulleur.data <- data.frame(NA) # si cal.data rejetée, tidy.cal.bulleur.data = NA pour débugger
+      file.to.calibrate <- file.to.calibrate %>% rename(raw.value = raw.value.mm) %>% 
+        mutate(file.uid = rep(files.uid.df$file.uid[i], times = nrow(file.to.calibrate)))
+}
     ll.cal <- file.to.calibrate # ceci est donc le format final, à intégrer dans la liste tidy.WTD.data
     ### création de la liste dans la liste [[i]]  ----
     tidy.WTD.data.i <- list("data" = ll.cal, "metadata" = raw.ll.files.i[[2]], "verif.data" = tidy.cal.bulleur.data)
-    # tidy.WTD.data[[i]] <- list("data" = ll.cal, "metadata" = raw.ll.files.i[[2]], "verif.data" = tidy.cal.bulleur.data)
-    
-    # return(tidy.WTD.data.i)
     } # le fichier du level logger correspondant à la position i; [1] : data (dataframe), [2] : metadata (character string)
   if (grepl("hobo", raw.ll.files[i])) {
     # Référence : Jutras et Bourgault, 2024, Version 2.0, section 7 (/Users/Aliz/Documents/Doctorat/_Connectivité/Protocoles (dossiers copiés du serveur A'24)/Leveloggers & Hauteur nappe phréatique/_HOBO_Protocole de mesure de nappe_2024-11-01_NE PAS DIFFUSER.docx)
@@ -471,7 +493,7 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
     cal.meteoStat.data <- left_join(file.to.calibrate, meteoStat.data, by = join_by(date.time.UTC.0)) %>%
       select("scan.id", "date.time.UTC.0","raw.value.kPa_pres.abs", "temperature_dC", "calibrated.value.cm",
              `date.AAAA-MM-JJ`, "time.HH.MM.SS", `date.time.tz.orig`, "date.time.ms", pressure.kPa.ms, everything()) # enlever les nombreuses colonnes qui n'ont pas rapport dans ces démarches
-    # À faire : VÉRIFIER SI TOUT EST OK NIVEAU TIME ZONES...
+{    # À faire : VÉRIFIER SI TOUT EST OK NIVEAU TIME ZONES...
     ##### inscrire le time zone (tz) dans la colonne time (équivalent à "date.time.tz.orig.pre") ----
     # json_data <- fromJSON(file ="connectivite/data/raw/full.json") # time zone inscrite dans ce fichier
     # trouver ma station
@@ -481,7 +503,7 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
     # à faire
     # REMETTRE FICHIERS BRNTC dans dossier principal
     # SI MESSAGE D'ERREUR contient les caractères suivants, UTILISER LES DONNÉES DE LA STATION MÉTÉO LOCALE
-    
+}     # À FAIRE
     
     # Jutras&Bourgault V2.0, 2024; étape b)	Calculer la hauteur d’eau au-dessus de la sonde par la soustraction de la pression atmosphérique, convertie en cm d’eau, à la pression mesurée par la sonde
     # Jutras&Bourgault V2.0, 2024; étape b.i)	La conversion de kPa en cm d’eau est : 1 kPa = 10,1972 cm d’eau
@@ -502,14 +524,15 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
     ll.cal <- cal.meteoStat.data %>%  # ceci est donc le format final, à intégrer dans la liste ll.clean
       select(scan.id, raw.value = raw.value.kPa_pres.abs, calibrated.value.cm, `date.AAAA-MM-JJ`, time.HH.MM.SS, date.time.tz.orig, # retirer des colonnes intermédiaires et mm format que ll.clean[[i]]$data
              date.time.UTC.0)
+    ll.cal$file.uid <- rep(files.uid.df$file.uid[i], times = nrow(ll.cal))
     
     # élaboration des verif.data : données de bulleur vs sonde
     step <- c("cal", "bulleur") # utilisé pour créer des colonnes dans la "boucle large-to-long maison"
     cal.bulleur.list.appendd <- list()
     if(nrow(unique(cal.data[which(grepl(files.uid.df[i,1], cal.data$file.uid)),])) > 0) {
-      # if(FALSE %in% (!file.to.calibrate$calibrated.value.cm %in% rep("NA", times = length(file.to.calibrate$calibrated.value.cm)))) { # si TRUE = STOP et warning (les données ont été calibrées avec le programme-mère, vérifier que j'obtiens les mêmes) // si FALSE = continuer la boucle (donc rien, donc IF statement)
-      #   stop(paste0("Attention, la colonne calibrated.value n'est pas vide. Sonde problématique : i = ", paste(i), "; ", ll.pre[i]))
-      # } # créer une autre colonne, le cas échéant (à faire)
+      if(FALSE %in% (!file.to.calibrate$calibrated.value.cm %in% rep("NA", times = length(file.to.calibrate$calibrated.value.cm)))) { # si TRUE = STOP et warning (les données ont été calibrées avec le programme-mère, vérifier que j'obtiens les mêmes) // si FALSE = continuer la boucle (donc rien, donc IF statement)
+        stop(paste0("Attention, la colonne calibrated.value n'est pas vide. Sonde : i = ", paste(i), "; ", ll.pre[i]))
+      } # créer une autre colonne, le cas échéant (à faire)
       odyssey.data.pre <- unique(cal.data[which(grepl(files.uid.df[i,1], cal.data$file.uid)),]) # plusieurs périodes valides pour un fichier: toutes les coller ensemble (si plusieurs ligne dans la recherche : cal.data$period.file.uid[which(grepl(files.uid.df[k,1], cal.data$file.uid))]) toutes colonnes conservées
       # créer deux tableurs distincts, dans une liste : l'un pour les données de calibration, l'un pour les données de bulleur
       odyssey.data.cal <- odyssey.data.pre %>% select(!contains("in.bulleur"))
@@ -519,7 +542,7 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
         # extraire les chiffres des colonnes bulleur/cal
         # pour les colonnes contenant des chiffres sauf "pt.bas", 
         # groupper par "in.bulleur" ou "cal."
-        # pour chque groupe
+        # pour chaque groupe
         # faire ces étapes de :
         # transformer les colonnes en lignes aux informations répétées (large ton long)
       } # explications de la boucle large-to-long
@@ -537,7 +560,8 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
           colnames(odyssey.data.j.k) <- sub('[[:digit:]]+', '', colnames(odyssey.data.j.k)) # nom colonne sans chiffre
           odyssey.data[[k]] <- odyssey.data.j.k
         }
-        if(j == 1) {  cal.bulleur.list.appendd[[1]] <- do.call(rbind, odyssey.data) } else { # rbind les lignes des j df
+        if(j == 1) {  cal.bulleur.list.appendd[[1]] <- do.call(rbind, odyssey.data) 
+        } else { # rbind les lignes des j df
           cal.bulleur.list.appendd[[2]] <- do.call(rbind, odyssey.data) %>% drop_na(., in.bulleur.prof.cm)
         }} 
       rm(odyssey.data.pre); rm(odyssey.data.bulleur); rm(odyssey.data.cal); rm(odyssey.data); rm(odyssey.data.j.k); rm(j); rm(k) # supprimer vieux objets (fait automatiquement dans une fonction)
@@ -569,8 +593,12 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
                                                                 "in.bulleur.date.time.UTC.0" = "date.time.UTC.0", "in.bulleur.date.aaaammdd", "in.bulleur.time.tz.orig", "in.bulleur.obs", 
                                                                 "period.file.uid", "row.uid", "scan.id", raw.value = "raw.value.kPa_pres.abs", "calibrated.value.cm", "date.AAAA-MM-JJ", "time.HH.MM.SS", 
                                                                 "date.time.tz.orig","cal.neg.length_mm", "cal.value", "cal.no", "prof_nappe_odyssey_cm_plus.out", "prof_nappe_bulleur_cm_plus.out", 
-                                                                "offset_cm", "mean_offset_cm")    }
-    else (tidy.cal.bulleur.data <- data.frame(NA)) # si cal.data rejetée, tidy.cal.bulleur.data = NA pour débugger
+                                                                "offset_cm", "mean_offset_cm")    
+      } else {
+          tidy.cal.bulleur.data <- data.frame(NA) # si cal.data rejetée, tidy.cal.bulleur.data = NA pour débugger
+          file.to.calibrate <- file.to.calibrate %>% rename(raw.value = raw.value.kPa_pres.abs) %>% 
+            mutate(file.uid = rep(files.uid.df$file.uid[i], times = nrow(file.to.calibrate)))
+        }
     ### création de la liste dans la liste [[i]]  ----
     tidy.WTD.data.i <- list("data" = ll.cal, "metadata" = raw.ll.files.i[[2]], "verif.data" = tidy.cal.bulleur.data) 
   } # le fichier du level logger correspondant à la position i; [1] : data (dataframe), [2] : metadata (character string)
@@ -584,7 +612,8 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
 # données de bulleur, emplacement des puits, nom de fichier, long. fil, etc.
 # cal.data.path <- "connectivite/data/raw/level_logger_calibration_all.csv" # lien pour tester fonction, mais dans le code, il se réfère aux lignes précédantes
 raw.to.clean_cal.data <- function(cal.data.path) { # ne calibre pas encore les données
-  cal.data.0 <- read.csv(cal.data.path, sep = ";", dec = ",") %>% dplyr::filter(!measure_status == "rejected") %>% 
+  cal.data.0 <- read.csv(cal.data.path, sep = ";", dec = ",") %>% 
+    dplyr::filter(!measure_status == "rejected") %>% 
     select(!contains("x.archive"))
   cal.data.1 <- cal.data.0 %>% mutate(out.R = round(cal.data.0$pt.haut.cm - ((cal.data.0$pt.bas1.cm+cal.data.0$pt.bas2.cm+cal.data.0$pt.bas3.cm)/3), digits = 1)) # out = (pt haut - moyenne pt bas)
   # vérification de valeurs OUT
@@ -644,281 +673,4 @@ date.time_manips <- function(data, date.col, time.col) {}
 # ============================================================================= /
 #  EN CHANTIER ----
 # ============================================================================= /
-setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
-
-# read_hobo <- function(path){
-#   read.csv(path, sep = "\t") %>% 
-#     slice(-(1:5)) %>% # enlever métadonnées, traitées à part
-#     separate(1, into = c("scan_no", "date", "hour", "raw", "calibrated"), sep = ",") %>% # ligne 1 = nom des colonnes
-#     # nettoyer données dates et heure
-#     mutate(date = gsub("\\s+", "", date)) %>% # "\\s+" = enlever les espaces
-#     mutate(hour = gsub("\\s+", "", hour)) %>% 
-#     mutate(hour = gsub(":", "/", hour)) %>% 
-#     mutate(date = paste0(date, "/", hour)) %>% 
-#     mutate(date = as.POSIXct(date, format = "%d/%m/%Y/%H/%M/%OS")) %>% # combiner date et heure
-#     dplyr::select(-hour) -> tidy.data # enelver vielle colonne heure inutile
-#   
-#   return(tidy.data)
-# }
-
-
-# tests
-# # read_hobo <- function(path){
-# read.csv("connectivite/data/raw//10279777_INK_20250106_hobo.csv", sep = "\t") %>%  # 
-# # read.csv("connectivite/data/raw//20573974_INK_20250106_hobo.csv", sep = "\t") %>%  # 
-# # read.csv("connectivite/data/raw//10279769_INK_20250106_hobo.csv", sep = "\t") %>%  # 
-#   #,"Date Heure, GMT-04:00","Pres. abs., kPa (LGR S/N: 10279777, SEN S/N: 10279777)","Temp., °C (LGR S/N: 10279777, SEN S/N: 10279777)","Coupleur détaché (LGR S/N: 10279777)","Coupleur attaché (LGR S/N: 10279777)","Hôte connecté (LGR S/N: 10279777)","Arrêté (LGR S/N: 10279777)","Fin de fichier (LGR S/N: 10279777)"  # slice(-(1)) %>% # enlever métadonnées, traitées à part (slice) 
-#   slice(-1) %>% # ligne 1 = nom des colonnes
-#   separate(1, into = c("scan_no", "date.hour", , "raw","notes.1","notes.2","notes.3","notes.4","notes.5", "notes.6"), sep = ",") %>% 
-#   tail() #head()
-#   # nettoyer données dates et heure
-#   mutate(date = gsub("\\s+", "", date)) %>% # "\\s+" = enlever les espaces
-#   mutate(hour = gsub("\\s+", "", hour)) %>% 
-#   mutate(hour = gsub(":", "/", hour)) %>% 
-#   mutate(date = paste0(date, "/", hour)) %>% 
-#   mutate(date = as.POSIXct(date, format = "%d/%m/%Y/%H/%M/%OS")) %>% # combiner date et heure
-#   dplyr::select(-hour) -> data # enelver vielle colonne heure inutile
-#   return(data)
-# # }
-# head(data)
-
-# UTILISATION DANS DATA_WATER.TABLE_ALL
-SNH <- as.vector(c("_odyssey", "_hobo"), mode = "character") # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque" est traitée de façon différente
-# # raw.ll.files <- list.files(path = "connectivite/data/raw/", pattern = "_odyssey|_hobo", full.names = T) # equivalent à ll.clean (ancien)
-# for (i in 1:length(raw.files)) {
-#   i <- 2
-#   # ajouter condition : si hobo vs odyssey <- dans une fonction ?
-#   if (grepl(SNH[1], raw.ll.files[i])) {
-#     NULL
-#     # data.i -> tidy.WTD.data[[i]]
-#   }
-#   else if (grepl(SNH[2], raw.ll.files[i]))
-#   data.i <- read_hobo(raw.ll.files[i])
-#   data.i <- tidy.WTD.data[[i]] # ne fonctionne pas
-# }
-# head(data.i)
-
-cat_lists <- function(list1, list2) {   # concatener le contenu de listes aux noms identiques
-  keys <- unique(c(names(list1), names(list2)))
-  map2(list1[keys], list2[keys], c) %>% 
-    set_names(keys)  
-}
-
-
-
-
-# lapply(raw.files, read_hobo) -> tidy.WTD.data # ne fonctionne pas
-
-# x <- raw.files[[1]]
-# purrr::map(raw.files, # gérer des données en liste, renvoyer une liste (équivalent à lapply dans base R)
-#            function(x){
-#              read_hobo(x) %>% 
-#                mutate(file = x) %>% # ajouter une colonne avec le nom de fichier
-#            }) -> data
-# 
-# purrr::map_dfr(files,  # gérer des données en liste, renvoyer un dataframe aux lignes concatennées (lapply ne fait pas ça)
-#                function(x){
-#                  read_hobo(x) %>% 
-#                    mutate(file = x) %>% 
-#                    mutate(hour = hour(date))
-#                }) -> data
-# data %>% 
-#   filter(hour == 20) # filtre à traver l'ENSEMBLE DES DONNÉES !
-
-
-
-
-# ============================================================================= /
-#  HOBO ----
-# ============================================================================= /
-## read_hobo
-
-# NONÀJOURread_hobo <- function(path){
-#   read.csv(path, sep = "\t") %>% 
-#     slice(-(1:5)) %>% # enlever métadonnées, traitées à part
-#     separate(1, into = c("scan_no", "date", "hour", "raw", "calibrated"), sep = ",") %>% # ligne 1 = nom des colonnes
-#     # nettoyer données dates et heure
-#     mutate(date = gsub("\\s+", "", date)) %>% # "\\s+" = enlever les espaces
-#     mutate(hour = gsub("\\s+", "", hour)) %>% 
-#     mutate(hour = gsub(":", "/", hour)) %>% 
-#     mutate(date = paste0(date, "/", hour)) %>% 
-#     mutate(date = as.POSIXct(date, format = "%d/%m/%Y/%H/%M/%OS")) %>% # combiner date et heure
-#     dplyr::select(-hour) -> data # enelver vielle colonne heure inutile
-#   
-#   return(data)
-# }
-
-## read_hobo_header
-NONÀJOURread_hobo_header <- function(path){
-  read.csv(path, sep = "\t") %>% 
-    slice((1:5)) -> data
-  return(data)
-  
-}
-
-## data.metadata.hobo
-# path <- "connectivite/data/raw/22224413_INK_20250721_hobo.csv"
-# data.metadata.hobo(path)
-# data.metadata <- function(path, SNH) {
-#   
-#   grepl(SNH[2], raw.ll.files[i])
-#   if (grepl(SNH[2], raw.ll.files[i])) {
-#     raw.ll.files.0 <- readLines(path) # lire en format texte
-#     # Warning message:
-#     #   In readLines(paste0("connectivite/data/raw/", ll.pre[i])) :
-#     #   incomplete final line found on 'connectivite/data/raw/[...].csv'
-#     # c'est chill, je n'ai pas réussi à arranger ça, mais vérifié √ pas de problème
-#     # enlever espaces inutiles
-#     
-#     ### création des subsets data & metadata
-#     raw.ll.files.1.metadata <-  raw.ll.files.0[c(1:2)] # inclus les anciens noms de colonnes, qui sont dans un format et un ordre bizzare
-#     raw.ll.files.1.data <- raw.ll.files.0[-c(1:2)]
-#     
-#     raw.ll.files.i <- list(raw.ll.files.1.data, raw.ll.files.1.metadata)
-#     return(raw.ll.files.i)}  
-# }  
-# metadata.verif.hobo(raw.ll.files.i)
-
-
-
-## metadata.verif
-#### vérification du fichier level logger brut : logger.serial.no == nom du fichier, sinon arrêter TOUT 
-# x <- raw.ll.files.i
-
-metadata.verif.hobo <- function(x) {
-  texte <- as.data.frame(str_match(x[[2]], "(?s)LGR S/N: \\s*(.*?)\\s*,")) # extraire tout ce qui se trouve
-  # entre "LGR S/N: " et la "," directement subséquente, sans savoir s'il y a des sauts de ligne et peu importe les 
-  # espaces dans l'énoncé.
-  probe.uid.i <- as.numeric(texte[2,2])
-  # no du level logger dans le nom du fichier brut (.csv), correspond à l'item "k" de la présente boucle
-  texte <- raw.ll.files[i]
-  nombres <- gregexpr("[0-9]+", texte)
-  resultat <- regmatches(texte, nombres)
-  fichier <- as.numeric(unlist(resultat)[1])
-  # test logger.serial.no == nom du fichier
-  if(!(probe.uid.i %in% fichier)) { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc "else" statement)
-    stop(paste0("Attention, le nom du fichier ne correspond pas au numéro de série du level logger. Fichier problématique : i = ", paste(i), "; ", raw.ll.files.i[i]))
-  }
-  # si problème : aller changer manuellement en utilisant le no de série (unique) inscrit dans le fichier et PAS son nom 
-  # ** 1. créer copie -> archive; 2. s'assurer de changer partout ** : QGIS, fichier, onglet, data_site.id
-}
-
-
-
-
-
-
-
-
-
-# ============================================================================= /
-#  ODYSSEY ----
-# ============================================================================= /
-
-## read_odyssey 
-# comprend des sous-fonctions qui se trouvent ensuite, en ordre
-read_odyssey <- function(path){
-  
-  data.metadata.odyssey(path) # sous fonction, ci-dessous  √ OK 20102025
-  file.name.verif(raw.ll.files.i) # objet raw.ll.files.i créé dans fonction précédante √ OK 20102025
-  # [...]
-  return(tidy.WTD.data.i) # retourne la liste des objets nettoyés, composée de data + metadata
-}
-
-## data.metadata.odyssey
-# séparer données et métadonnées
-# créé une pour odyssey + hobo
-
-## metadata.verif.hobo
-# vérification : probe.uid dans les métadonnées == nom du fichier
-metadata.verif.odyssey <- function(x) {
-  # trouver le probe.uid.i (== probe.uid, logger serial no) dans les metadata
-  texte <- x[[2]][4] # logger serial no, en base R
-  numbers <- gregexpr("[0-9]+", texte)
-  result <- regmatches(texte, numbers)
-  probe.uid.i <- as.numeric(unlist(result))
-  # no du level logger dans le nom du fichier brut (.csv), correspond à l'item "i" de la présente boucle
-  texte <- raw.ll.files[i]
-  numbers <- gregexpr("[0-9]+", texte)
-  result <- regmatches(texte, numbers)
-  fichier <- as.numeric(unlist(result))
-  # test logger.serial.no == nom du fichier
-  if(!(probe.uid.i %in% fichier)) { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc "else" statement)
-    stop(paste0("Attention, le nom du fichier ne correspond pas au numéro de série du level logger. Fichier problématique : i = ", paste(i), "; ", raw.ll.files[i]))
-  }
-}
-
-
-## data.tidying.odyssey
-#
-
-
-
-# ____Rendue là_____
-
-
-# tests
-
-
-
-
-
-
-
-
-
-
-## read_odyssey
-# (fonction qui met en action les fonctions précédantes)
-
-## read_odyssey_header
-
-
-
-# ============================================================================= /
-#  Calibration data ----
-# ============================================================================= /
-# ARCHIVE # # données de bulleur, emplacement des puits, nom de fichier, long. fil, etc.
-# cal.data <- function(cal.data.path) {
-#   cal.data <- read.csv(cal.data.path, sep = ";", dec = ",") %>%
-#     mutate_at("probe.uid", as.character)
-#   cal.data$out.R = round(cal.data$pt.haut.cm - ((cal.data$pt.bas1.cm+cal.data$pt.bas2.cm+cal.data$pt.bas3.cm)/3), digits = 1) # out = (pt haut - moyenne pt bas)
-#   cal.data$long_negative_cal.length_mm_y <- cal.data$cal.length.cm*-10 # longueur de fil nécessaire : en mm et au négatif / les NA seront calculé prochainement / 
-#   cal.data <- cal.data %>% dplyr::select("fichier.uid","measure_type", "measure_status", "site.uid", "well.uid", "trmnt.uid", "lab.probe.id", "probe.uid", "probe.brand", 
-#                                          "cal.length.cm", "cal.order", "long_negative_cal.length_mm_y", "cal.value", "comment", 
-#                                          "day.begining.aaaa.mm.dd.hh.mm", "day.end.aaaa.mm.dd.hh.mm", "distance.m", "out.R", "out.long.tuyau.sol.cm", everything()) #, -"caduque.long.fil.cm")
-#   cal.data$period.fichier.uid <- paste0(cal.data$day.begining.aaaa.mm.dd.hh.mm, "--", cal.data$day.end.aaaa.mm.dd.hh.mm, ".",cal.data$fichier.uid)
-#   
-#   # vérifier si moyenne des valeurs OUT du puits concordent ou si doivent être mises à jour
-#   round(cal.data$out.long.tuyau.sol.cm, digits = 1)
-#   if(all(cal.data$out.R == round(cal.data$out.long.tuyau.sol.cm, digits = 1), na.rm = T))  { # si TOUS TRUE (fonction any()) = changer nom de out.R et supprimer la mesure entrée manuellement // si FALSE = avertissement
-#     cal.data$out.long.tuyau.sol.cm <- cal.data$out.R
-#     cal.data <- cal.data %>% dplyr::select(!out.R) # out.R DISPARAÎT ! NE PLUS LA CHERCHER !
-#   } else { stop("Attention, le out entré dans cal.data (syn. level_logger_calibration_all.csv) n'est pas identique à la moyenne des points bas soustraite du point haut du puits.") }
-#   # format POSIX begining et end
-#   cal.data$day.begining.aaaa.mm.dd.hh.mm <- ymd_hm(cal.data$day.begining.aaaa.mm.dd.hh.mm, tz = tz)
-#   cal.data$day.end.aaaa.mm.dd.hh.mm <- ymd_hm(cal.data$day.end.aaaa.mm.dd.hh.mm, tz = tz)
-#   
-#   return(cal.data)
-# }  
-
-
-
-
-# ============================================================================= /
-#  À appliquer sur tidy.WTD.data ----
-# ============================================================================= /
-# x <- raw.files[[1]]
-# purrr::map(tidy.WTD.data, # gérer des données en liste, renvoyer une liste (équivalent à lapply dans base R)
-#            function(x){
-#              mutate(file.name = x) %>% # ajouter une colonne avec le nom de fichier
-#            }) -> data
-# 
-# purrr::map_dfr(tidy.WTD.data,  # gérer des données en liste, renvoyer un dataframe aux lignes concatennées (lapply ne fait pas ça)
-#                function(x){
-#                  read_hobo(x) %>% # ajuster; seulement si je 
-#                    mutate(file.name = x) %>% # ajouter une colonne avec le nom de fichier
-#                }) -> data
-# data %>% 
-#   filter(hour == 20) # filtre à travers l'ENSEMBLE DES DONNÉES !
-# # il faudra surement enlever les métadonnées...
+# voir version archivée : "fonction_phd.r"
