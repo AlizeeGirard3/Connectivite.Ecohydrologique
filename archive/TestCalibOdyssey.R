@@ -2,6 +2,14 @@
 # dans le but de calibrer
 # À faire : tout modifier le script data_water.table_all en fonction de ceci
 
+
+
+# ARCHIVE, INSÉRÉ DANS DATA.WATER.TABLE.ALL (JANVIER 2026)
+
+
+
+
+
 # FONCTIONNE, 24 DÉC. 2025 (trouver et nettoyer moment mesure de bulleur)
 # traitement automatique et nettoyage des données de bulleur
 # i <-80 # example avec plusieurs l

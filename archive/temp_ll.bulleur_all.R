@@ -36,10 +36,30 @@ setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
 # retrait de colonnes inutiles de tidy.cal.cata
 tidy.cal.data <- tidy.cal.data %>% 
   select(!c(27:39)) %>% distinct() # enlever les données temporaires associées à la calibration des sondes Odyssey
-## boucle de vérification au bulleur pour chaque SNH (de ll.clean)
-# fichiers de consigne de données
+
+# fichier de consigne de données
 water.table.verif <- data.frame()
-for (m in 1:length(tidy.WTD.data)) {
+# boucle de vérification au bulleur pour chaque mesure de bulleur (tidy.cal.data)
+if (nrow(tidy.WTD.data[[m]]$data) != 0) { # si le fichier SNH n'est pas vide
+  for (tidy.cal.data.line in 1:nrow(tidy.cal.data)) {
+    print(tidy.cal.data.line)
+    tidy.cal.data.line <- tidy.cal.data[tidy.cal.data.line,] # filtrer ll.bulleur (level_logger_calibration_all.csv) par le ligne "n" (vérification n au bulleur)
+    tidy.WTD.data.m.n <- tidy.WTD.data.m$data[tidy.WTD.data.m$data$date.time.UTC.0 == # fitlrer les données du fichier SNH par la période (unique) de la ligne n = vérification au bulleur
+                                                tidy.cal.data.line$in.bulleur.date.time.UTC.0,]
+    water.table.verif[tidy.cal.data.line, 1:4] <- tibble("probe.uid" = sonde.m, # créer le dataframe de vérification pour les lignes "n" de la SNH "m"
+                                                         "file.extraction.date" = date.m,
+                                                         "probe.measure.cm" = tidy.WTD.data.m.n$calibrated.value.cm,
+                                                         "bulleur.mesure.cm" = tidy.cal.data.line$in.bulleur.rel.to.surface.mm/10)
+  } 
+  # 
+  # water.table.verif[nrow(water.table.verif) + 1:nrow(water.table.verif.n), 1:4] <- water.table.verif.n # inscrire les données dans le dataframe final, à la dernière ligne
+} else if (nrow(tidy.WTD.data[[m]]$data) == 0)  {
+    water.table.verif[nrow(water.table.verif) + 1, 1:4] <- data.frame("probe.uid" = sonde.m, # si ll.clean[[j]]$data est vide, mettre NA dans le dataframe
+                                                                      "file.extraction.date" = date.m,
+                                                                      "probe.measure.cm" = NA,
+                                                                      "bulleur.mesure.cm" = NA)
+    } 
+
   # m<-97
   print(m)
   tidy.WTD.data.m <- tidy.WTD.data[[m]]
@@ -69,28 +89,30 @@ for (m in 1:length(tidy.WTD.data)) {
     date.numbers <- gregexpr("[0-9]+", date.line)
     date.m <- unlist(regmatches(date.line, date.numbers))
   }
-  # création du dataframe pour chaque vérification au bulleur pour chaque SNH
+  # fichiers de consigne de données
+  water.table.verif <- data.frame()
+  
+  
+  # PROBLÈME DE BOUCLE !!
+  
+  
+  
+  # boucle de vérification au bulleur pour chaque mesure de bulleur (tidy.cal.data)
   if (nrow(tidy.WTD.data[[m]]$data) != 0) { # si le fichier SNH n'est pas vide
-    water.table.verif.n <- data.frame()
-    bulleur.m <- unique(tidy.cal.data[tidy.cal.data$file.uid == file.uid.m,]) # filtrer ll.bulleur par no de sonde "m"
-    for (n in 1:nrow(bulleur.m)) {
-      print(n)
-      bulleur.m.n <- bulleur.m[n,] # filtrer ll.bulleur (level_logger_calibration_all.csv) par le ligne "n" (vérification n au bulleur)
+    for (tidy.cal.data.line in 1:nrow(tidy.cal.data)) {
+      print(tidy.cal.data.line)
+      tidy.cal.data.line <- tidy.cal.data[tidy.cal.data.line,] # filtrer ll.bulleur (level_logger_calibration_all.csv) par le ligne "n" (vérification n au bulleur)
       tidy.WTD.data.m.n <- tidy.WTD.data.m$data[tidy.WTD.data.m$data$date.time.UTC.0 == # fitlrer les données du fichier SNH par la période (unique) de la ligne n = vérification au bulleur
-                                                  bulleur.m.n$in.bulleur.date.time.UTC.0,]
-      
-      
-      
-      
-      
-      # RENDUE LÀ : METTRE AU MON ENDROIT DANS LE DF ! plus de une valeur par probe.uid !
-      water.table.verif.n[n, 1:4] <- data.frame("probe.uid" = sonde.m, # créer le dataframe de vérification pour les lignes "n" de la SNH "m"
-                                                "file.extraction.date" = date.m,
-                                                "probe.measure.cm" = tidy.WTD.data.m.n$calibrated.value.cm,
-                                                "bulleur.mesure.cm" = bulleur.m.n$in.bulleur.rel.to.surface.mm/10)
+                                                  tidy.cal.data.line$in.bulleur.date.time.UTC.0,]
+      water.table.verif[n, 1:4] <- tibble("probe.uid" = sonde.m, # créer le dataframe de vérification pour les lignes "n" de la SNH "m"
+                                            "file.extraction.date" = date.m,
+                                            "probe.measure.cm" = tidy.WTD.data.m.n$calibrated.value.cm,
+                                            "bulleur.mesure.cm" = tidy.cal.data.line$in.bulleur.rel.to.surface.mm/10)
     } 
-    water.table.verif[nrow(water.table.verif) + 1:nrow(water.table.verif.n), 1:4] <- water.table.verif.n # inscrire les données dans le dataframe final, à la dernière ligne
-  } else if (nrow(ll.clean[[m]]$data) == 0)  {
+    }
+    # 
+    # water.table.verif[nrow(water.table.verif) + 1:nrow(water.table.verif.n), 1:4] <- water.table.verif.n # inscrire les données dans le dataframe final, à la dernière ligne
+  } else if (nrow(tidy.WTD.data[[m]]$data) == 0)  {
     water.table.verif[nrow(water.table.verif) + 1, 1:4] <- data.frame("probe.uid" = sonde.m, # si ll.clean[[j]]$data est vide, mettre NA dans le dataframe
                                                                       "file.extraction.date" = date.m,
                                                                       "probe.measure.cm" = NA,

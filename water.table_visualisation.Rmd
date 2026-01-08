@@ -30,8 +30,9 @@ Sometimes you may want to use another directory as the working directory. The us
 ```{r eval=FALSE, message=FALSE, include=FALSE}
 setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
 # Libraries
-if (!require("knitr")) install.packages("knitr") # Integrating data from weathercan (ECCC/CCCS), Gouvernement du Canada
-if (!require("kableExtra")) install.packages("kableExtra") # Integrating data from weathercan (ECCC/CCCS), Gouvernement du Canada
+# 2 lignes suivantes : archives
+# if (!require("knitr")) install.packages("knitr") # Integrating data from weathercan (ECCC/CCCS), Gouvernement du Canada
+# if (!require("kableExtra")) install.packages("kableExtra") # Integrating data from weathercan (ECCC/CCCS), Gouvernement du Canada
 
 # import
 ll.clean <- readRDS("connectivite/data/clean/tidy.WTD.data.RDS")
@@ -162,9 +163,6 @@ for (i in 1:length(tidy.WTD.data)) {
 
     }  
     if (grepl("hobo", tidy.WTD.data[[i]]$metadata[4])) { #}
-      
-      # 3 déc. problème d'étiquette
-      # ICI S'ARRANGÉ POUR RÉFÉRER À UN NUMÉRO unique et non le probe uid qui revient année après année !'
       # extraire no de sonde
       file.uid.i <- gsub(".*: ", "", tidy.WTD.data[[i]]$metadata[3])
       # extraire nom de transect/puits
@@ -187,7 +185,7 @@ for (i in 1:length(tidy.WTD.data)) {
       
       graph.wt <- ll.cal %>% ggplot(mapping = aes(y = calibrated.value.cm*-1, x = date.time.tz.orig)) + # ici HOBO je dois faire *-1 pour avoir la hauteur relative (nég si en dessous de surface)
         geom_line(group = 1) +
-scale_x_datetime(date_breaks = "2 weeks", date_labels = "%Y/%M/%D") + 
+        scale_x_datetime(date_breaks = "2 weeks", date_labels = "%y/%b/%d") + 
         ggtitle(paste0(site.name, ", sonde no ", probe.serial.no.i, " à l'emplacement\n", well.uid, "\n",
                        "nombre de ligne du fichier : ", nrow(ll.cal))) +
         labs(y = "Hauteur de nappe phréatique (cm)\nrelative à la surface", x = "Date") +

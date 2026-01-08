@@ -51,7 +51,7 @@ tidy.WTD.data <- list()
 s = Sys.time() # compte le temps d'exécution
 ##### boucle pour transformer les fichiers bruts
 for (i in 1:length(raw.ll.files)) {
-  # i<-30
+  # i<-1
   print(i)
   raw.ll.files[i]
   
@@ -74,8 +74,7 @@ for (i in 1:length(raw.ll.files)) {
   # rm(tz)
 }
 Sys.time()-s # temps d'exécution de la boucle
-warnings()
-# vérifier que les erreurs sont tjrs la meme affaire inutile -> incomplete final line, tenté de régler le problème, mais sans succès; 
+# warnings() # vérifier que les erreurs sont tjrs la meme affaire inutile -> incomplete final line, tenté de régler le problème, mais sans succès; 
 
 # format R des tidy.WTD.data (une liste)
 if("tidy.WTD.data.RDS" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
@@ -89,9 +88,8 @@ tidy.WTD.data.df <- do.call(rbind, extracted.list_data) # bind_rows identique à
 if("tidy.WTD.data.df.RDS" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
 } else { saveRDS(tidy.WTD.data.df, file = "connectivite/data/clean/tidy.WTD.data.df.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
-# à faire : coder vérif bulleur pour les hobo
 
-# format xlsx des cal.data aux dates formatées (colonnes originales, formaté "wide")
+# format xlsx des cal.data aux dates formatées (colonnes originales, formaté "long")
 if("cal.data.xlsx" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
 } else { openxlsx::write.xlsx(cal.data, file = "connectivite/data/clean/cal.data.xlsx", sep = ";", dec = ",", keepNA = TRUE, na.string = "NA") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
