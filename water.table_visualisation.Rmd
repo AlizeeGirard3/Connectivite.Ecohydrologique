@@ -86,10 +86,8 @@ for (j in 1:length(ll.clean)) {
 if (!require("dplyr")) install.packages("dplyr") # pour manipulation donnees (pipe, etc)
 if (!require("ggplot2")) install.packages("ggplot2")
 
-tidy.cal.bulleur.data.list <- readRDS("connectivite/data/clean/tidy.cal.bulleur.data.list.RDS")
-vérif <- do.call(rbind, tidy.cal.bulleur.data.list)
-vérif.1 <- vérif %>% dplyr::filter(!grepl("rejected", vérif$measure_status)) %>% 
-  dplyr::filter(cal.no == "3")
+tidy.cal.data <- readRDS("connectivite/data/clean/tidy.cal.data.RDS")
+vérif.1 <- tidy.cal.data%>% dplyr::filter(cal.no == "3")
 vérif.1 = vérif.1[-which(is.na(vérif.1$offset_cm)),] # règle l'avertissement d'avoir retiré 22 lignes contenant des
 vérif.1$probe.uid <- as.character(vérif.1$probe.uid)
 
