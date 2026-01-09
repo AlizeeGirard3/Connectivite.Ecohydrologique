@@ -38,7 +38,8 @@
 # tidy.WTD.data <-readRDS("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/clean/tidy.WTD.data.RDS") # issu du code ci-présent / non à jour **
 
 # .rs.restartR()
-source("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/connectivite/scripts/fonctions_phd_v2.0.R")
+# source("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/connectivite/scripts/fonctions_phd_v2.0.R")
+source("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/connectivite/scripts/fonctions_phd_v3.0.R") # en élaboration
 setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
 
 # Librairies ----
@@ -51,7 +52,7 @@ tidy.WTD.data <- list()
 s = Sys.time() # compte le temps d'exécution
 ##### boucle pour transformer les fichiers bruts
 for (i in 1:length(raw.ll.files)) {
-  # i<-1
+  # i<-71
   print(i)
   raw.ll.files[i]
   
@@ -62,11 +63,13 @@ for (i in 1:length(raw.ll.files)) {
   
   #### ménage de la date et heure
   tz <- zone.tz("~Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectitite_PhD_Mergin_26nov24/Ecotone.restauration.zone.pt.shp")
-  ll.clean <- raw.to.clean_ll(raw.ll.files.i[[1]])  # NOTES : début = installation du puits + 48h de rabattement de la NP / ou non, si puits intallé d'avance, dans quel cas inscrire début officiel - 24h) # fin = heure de retrait // note : données de date en format xlsx ça lit TOUT CROCHE, transformé en csv fonctionne bien
+  files.uid.df$tz_orig[i] <- tz
   
-  ##### cal.data
-  cal.data <- raw.to.clean_cal.data("connectivite/data/raw/level_logger_calibration_all.csv") # import et nettoyage, bon format de date
-  brand.i <- ifelse(length(cal.data$probe.brand[which(grepl(files.uid.df[i,1], cal.data$file.uid))])==0,"other", cal.data$probe.brand[which(grepl(files.uid.df[i,1], cal.data$file.uid))])
+  ##### cal.bulleur.list.appendd (liste des cal.data, séparées en bulleur et en données de calibration Odyssey. Si autre marque, la l'élément [[2]] donne juste des NA)
+  cal.bulleur.list.appendd <- raw.to.clean_cal.data("connectivite/data/raw/level_logger_calibration_all.csv", tz) # import et nettoyage, bon format de date
+  
+  # level.logger propre, à calibrer
+  ll.clean <- raw.to.clean_ll(raw.ll.files.i[[1]])  # NOTES : début = installation du puits + 48h de rabattement de la NP / ou non, si puits intallé d'avance, dans quel cas inscrire début officiel - 24h) # fin = heure de retrait // note : données de date en format xlsx ça lit TOUT CROCHE, transformé en csv fonctionne bien
   
   #### calibration des sondes
   ll.cal.pre.i <- concatenate.ll(ll.clean)
@@ -89,11 +92,6 @@ if("tidy.WTD.data.df.RDS" %in% list.files("connectivite/data/clean"))  { # si TR
   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
 } else { saveRDS(tidy.WTD.data.df, file = "connectivite/data/clean/tidy.WTD.data.df.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
 
-# format xlsx des cal.data aux dates formatées (colonnes originales, formaté "long")
-if("cal.data.xlsx" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
-  stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
-} else { openxlsx::write.xlsx(cal.data, file = "connectivite/data/clean/cal.data.xlsx", sep = ";", dec = ",", keepNA = TRUE, na.string = "NA") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
-
 # format tidy des cal.data (formaté en wide-to-long)
 extracted.list_verif.data <- lapply(tidy.WTD.data, `[[`, 3) # tidy.WTD.cata[[3]] -> verif.data
 tidy.cal.data <- do.call(dplyr::bind_rows, extracted.list_verif.data)
@@ -102,3 +100,10 @@ tidy.cal.data <- tidy.cal.data %>% dplyr::filter(is.na(tidy.cal.data) %>% rowSum
 if("tidy.cal.data.RDS" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
 } else { saveRDS(tidy.cal.data, file = "connectivite/data/clean/tidy.cal.data.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
+
+
+# archive, à présent ce fichier n'est plus produit
+# # format xlsx des cal.data aux dates formatées (colonnes originales, formaté "long")
+# if("cal.data.xlsx" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
+#   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
+# } else { openxlsx::write.xlsx(cal.data, file = "connectivite/data/clean/cal.data.xlsx", sep = ";", dec = ",", keepNA = TRUE, na.string = "NA") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
