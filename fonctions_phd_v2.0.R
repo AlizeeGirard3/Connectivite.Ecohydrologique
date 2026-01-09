@@ -434,7 +434,7 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
         # b.verticalIntercept = y1 - a.slope * x1
         y2 = unique(tidy.cal.bulleur.data.pre.1$cal.neg.length_mm[tidy.cal.bulleur.data.pre.1$cal.no=="2"]) # en cm et au négatif
         y1 = unique(tidy.cal.bulleur.data.pre.1$cal.neg.length_mm[tidy.cal.bulleur.data.pre.1$cal.no=="1"]) # en cm et au négatif
-        x2 = unique(tidy.cal.bulleur.data.pre.1$cal.value[tidy.cal.bulleur.data.pre.1$cal.no =="2"]) + CDS$constante[CDS$type == brand.i] # pour les ODYSSEY, valeur CDS = 0
+        x2 = unique(tidy.cal.bulleur.data.pre.1$cal.value[tidy.cal.bulleur.data.pre.1$cal.no =="2"])
         x1 = unique(tidy.cal.bulleur.data.pre.1$cal.value[tidy.cal.bulleur.data.pre.1$cal.no =="1"])
         a.slope = ( y2 - y1 ) / ( x2 - x1 ) # sans unité
         b.verticalIntercept = y1 - (a.slope * x1) # unité : ??
