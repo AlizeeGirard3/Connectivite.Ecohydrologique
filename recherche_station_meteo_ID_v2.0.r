@@ -160,7 +160,7 @@ data.availability.test <- stations() %>%
   dplyr::filter(prov == "NB") %>%
   # dplyr::filter(end == 2025) %>%
   dplyr::filter(station_name == "TRACADIE") # %>% 
-  # dplyr::filter(end == 1988) #-> il ne comprend pas que end = NA N'EST PAS 1988 !!
+# dplyr::filter(end == 1988) #-> il ne comprend pas que end = NA N'EST PAS 1988 !!
 
 
 # C. Téléchargement des données disponibles en ligne  ----
@@ -193,5 +193,9 @@ stations <- stations_search(coords = c(zones$latitude[zones$site == site.name][1
 (stations_search_results <- stations_search(name = "MIRAMICHI RCS"))
 library(dplyr)
 (stations_filter_results <- dplyr::filter(stations(), station_id == 10808))
+
+
+
+
 
 
