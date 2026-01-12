@@ -45,14 +45,14 @@ setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
 # Librairies ----
 # -> packages dans le code sourcé
 
-# toutes manips, des données brutes aux données calibrées et propres (tidy)
+# Données brutes aux données calibrées et propres (tidy) ----
 raw.ll.files.pre <- list.files(path = "connectivite/data/raw", pattern = "_odyssey|_hobo", full.names = T) # equivalent à ll.pre (ancien) # mettre dans "pattern" tous les ID de SNH listés dans l'objet SNH
 raw.ll.files <- select.raw.ll.files(raw.ll.files.pre)
 tidy.WTD.data <- list()
 s = Sys.time() # compte le temps d'exécution
 ##### boucle pour transformer les fichiers bruts
 for (i in 1:length(raw.ll.files)) {
-  # i<-71
+  # i<-34
   print(i)
   raw.ll.files[i]
   
@@ -70,7 +70,7 @@ for (i in 1:length(raw.ll.files)) {
   
   # level.logger propre, à calibrer
   ll.clean <- raw.to.clean_ll(raw.ll.files.i[[1]])  # NOTES : début = installation du puits + 48h de rabattement de la NP / ou non, si puits intallé d'avance, dans quel cas inscrire début officiel - 24h) # fin = heure de retrait // note : données de date en format xlsx ça lit TOUT CROCHE, transformé en csv fonctionne bien
-  
+
   #### calibration des sondes
   ll.cal.pre.i <- concatenate.ll(ll.clean)
   tidy.WTD.data[[i]] <- clean.to.calibrated_ll(ll.cal.pre.i)
