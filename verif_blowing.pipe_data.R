@@ -8,7 +8,7 @@
 # Affiliation :   ULaval
 # Date création initiale : 2026-01-07
 # Date mise à jour : 
-# Pourquoi : Vérifications : quelle erreur moyenne pour les bulleurs ? Seulement pour les Hobo, pour les Odyssey on utilise la valeur pour calibrer
+# Pourquoi : # Suivis de l'examination des données
 # Idée : avec l'erreur moyenne de bulleur, ajuster ou donner une fourchette d'erreur pour les Odyssey...
 # NOTES : 
 
@@ -28,6 +28,11 @@ if (!require("ggplot2")) install.packages("ggplot2")
 # install.packages('https://cran.r-project.org/src/contrib/Archive/hrbrthemes/hrbrthemes_0.1.0.tar.gz', type='source', repos=NULL)
 if (!require("viridis")) install.packages("viridis")
 
+# Dossier directeur et sourçage ----
+# .rs.restartR()
+# source("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/connectivite/scripts/fonctions_phd_v2.0.R")
+setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
+
 # Fichiers à charger directement ----
 # cal.data <- read.xlsx("connectivite/data/clean/cal.data.xlsx", sep = ";")
 tidy.cal.data <- readRDS("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/clean/tidy.cal.data.RDS") # issu du code "data_water.table_all_v3.0"
@@ -36,15 +41,23 @@ tidy.WTD.data <- readRDS("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/
 extracted.list_data <- lapply(tidy.WTD.data, `[[`, 4) # tidy.WTD.cata[[1]] -> data
 tidy.WTD.data.df.9janv <- do.call(rbind, extracted.list_data) # bind_rows identique à rbind, mais ne donne pas de message d'erreur
 
-# .rs.restartR()
-# source("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/connectivite/scripts/fonctions_phd_v2.0.R")
-setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
-
 # retrait de colonnes inutiles de tidy.cal.cata
-tidy.cal.data <- tidy.cal.data %>% 
-  select(!c(29:38)) %>% distinct() # enlever les données temporaires associées à la calibration des sondes Odyssey
+tidy.cal.data <- tidy.cal.data %>%
+  group_by(probe.brand) %>% 
+  
+  
+  # RENDUE LÀ : DANS TIDY.CAL.DATA ENLEVER CAL.NO !! ET RÉENREGISTRER
+  
+  
+  
+  
+  # mutate(cal.no = ifelse(probe.brand != "ODYSSEY", "NA", cal.no))
+  # dplyr::filter
+  # distinct()
+  # select(!c(29:38)) %>% distinct() # enlever les données temporaires associées à la calibration des sondes Odyssey
 
-# # fichiers de consigne de données
+# Tableau compilation ----
+# fichiers de consigne de données
 water.table.verif <- data.frame()
 # extraction des métadonnées
 for (tidy.cal.data.line in 1:nrow(tidy.cal.data)) {
@@ -78,43 +91,119 @@ for (tidy.cal.data.line in 1:nrow(tidy.cal.data)) {
                                                         "well.uid" = tidy.cal.data.line.df$well.uid,
                                                         "bulleur.no" = tidy.cal.data.line.df$bulleur.no, 
                                                         "donnée.aberrente" = NA,
-                                                        "offset.hobo" = NA,
+                                                        "offset" = "NA",#ifelse(),
                                                         "measure.status" = NA)
+  
 }
 
-water.table.verif$donnée.aberrente[water.table.verif$probe.uid == 22063159 & water.table.verif$bulleur.no == 1] <- "aberrent"
-water.table.verif$measure.status[water.table.verif$probe.uid == 22063159 & water.table.verif$bulleur.no == 1] <- "rejected"
-# la mesure de bulleur 1 est rejetée, les autres sont ok (erreur de lecture probable)
+# ODYSSEY ----
+# tous les offsets
+tidy.cal.data <- readRDS("connectivite/data/clean/tidy.cal.data.RDS")
+vérif.1 <- tidy.cal.data %>% 
+  dplyr::filter(cal.no == "3",
+                probe.brand == "ODYSSEY")
+vérif.1 <- vérif.1[-which(is.na(vérif.1$offset_cm)),] # règle l'avertissement d'avoir retiré 22 lignes contenant des
+vérif.1$probe.uid <- as.character(vérif.1$probe.uid)
 
-water.table.verif$donnée.aberrente[water.table.verif$probe.uid == 22220787] <- "aberrent"
+### Graphique de tous les offsets ----
+# Violin boxplot); code original tiré de The R graph gallery, 2025, https://r-graph-gallery.com/violin_and_boxplot_ggplot2.html
+sample_size = vérif.1 %>% group_by(probe.uid) %>% summarize(num = n())
+
+vérif.1 %>%
+  group_by(probe.uid) %>%
+  left_join(sample_size) %>%
+  mutate(myaxis = paste0(as.character(probe.uid), "\n", "n=", num)) %>%
+  ggplot(aes(x = myaxis, y = offset_cm, fill = as.character(probe.uid))) +
+  geom_violin(width = 1.4, show.legend = FALSE, drop = FALSE) +
+  geom_boxplot(width = 0.1, color = "grey", alpha = 0.2, show.legend = FALSE) +
+  scale_fill_viridis(discrete = TRUE) +
+  theme_bw() +
+  # theme(legend.position = "none",
+        # plot.title = element_text(size=11)) +
+  theme(legend.position = "none", 
+        plot.title = element_text(hjust = 0.5), 
+        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  # theme.Aliz() + # crée plein de warnings incompréhensibles
+  labs(title = "Offsets des sondes Odyssey,\npar identifiant unique de sonde\n(années confondues)") + 
+  xlab("")
+
+vérif.1$offset_cm
+
+
+#### 42564_20241125 ----
+water.table.verif$donnée.aberrente[water.table.verif$probe.uid == 42564 & water.table.verif$file.extraction.date == "20241125"] <- "aberrent"
+# 42564_20241125
+
+#### 42565_20251203 ----
+
+
+
+
+# HOBO ----
+# fichiers/sondes en cours de résolution (résulus ci-dessous)
+# 22063159_20251210
+water.table.verif$donnée.aberrente[water.table.verif$probe.uid == 22063159 & water.table.verif$file.extraction.date == "20251210" & water.table.verif$bulleur.no == 1] <- "aberrent"
+# water.table.verif$measure.status[water.table.verif$probe.uid == 22063159 & water.table.verif$bulleur.no == 1] <- "rejected"
+# water.table.verif$measure.status[water.table.verif$probe.uid == 22063159 & water.table.verif$bulleur.no == 1] <- "accept.if.resolved"
+# # ne sais pas pourquoi/quoi faire encore // la mesure de bulleur 1 est à rejeter ?? les autres sont ok (erreur de lecture probable)
+
+#### 22220787_20251128 ----
+water.table.verif$donnée.aberrente[water.table.verif$probe.uid == 22220787 & water.table.verif$file.extraction.date == "20251128"] <- "aberrent"
+# je suggère d'ajouter le offset moyen (à faire quand tout est décidé sur le traitement de ces données)
 water.table.verif$offset.hobo[water.table.verif$well.uid == "STH.D2.m1m.2025.bis"] <- mean(water.table.verif$abs.diff.well.uid.cm[water.table.verif$well.uid == "STH.D2.m1m.2025.bis"])
-# grosse différence, mais constante; j'ajuste avec un offset correspondant à la moyenne de la différence
 
-water.table.verif$measure.status[water.table.verif$probe.uid == 22063159 & water.table.verif$bulleur.no == 1] <- "accept.if.resolved"
-# ne sais pas pourquoi/quoi faire encore
-
-water.table.verif$donnée.aberrente[water.table.verif$probe.uid == 22224413] <- "aberrent"
+#### 22224413_20251202 ----
+water.table.verif$donnée.aberrente[water.table.verif$probe.uid == 22224413 & water.table.verif$file.extraction.date == "20251202"] <- "aberrent"
 # test 1 -> heure où on n'a pas atteint la nappe...
 tidy.WTD.data.df.9janv %>%
   dplyr::filter(file.uid == "22224413_20251202" & date.time.UTC.0 == "2025-09-17T17:00:01Z") %>% 
   select(calibrated.value.cm)
+
+#### 22224413_20251202 ----
 # bulleur sur le terrain à heure filtrée = + de 119 cm de profondeur (incluant le out)...
 # MAIS... résultat probe (calibrated.value.cm (négatif)) = 83.09174
 # ça ne fonctionne pas : le out est de 68 cm et le fil (total de range détectable de WTD) = 119 cm; la sonde aurait détecté la nappe SOUS ELLE MÊME
 # test 2 -> heure où on n'a pas atteint la nappe...
-tbrnk <- tidy.WTD.data.df.9janv %>%
+tidy.WTD.data.df.9janv %>%
   dplyr::filter(file.uid == "22224413_20251202" & date.time.UTC.0 == "2025-10-07T16:00:01Z") %>% 
   select(calibrated.value.cm)
 # bulleur sur le terrain à heure filtrée = + de 119 cm de profondeur (incluant le out)...
 # MAIS... résultat probe (calibrated.value.cm (négatif)) = 84.32559
-water.table.verif$measure.status[water.table.verif$probe.uid == 22224413] <- "accept.if.resolved"
+water.table.verif$measure.status[water.table.verif$probe.uid == 22224413 & water.table.verif$file.extraction.date == "20251202"] <- "accept.if.resolved"
 # ne sais pas pourquoi/quoi faire encore
 
+#### 20853328_20250106 ----
+water.table.verif$donnée.aberrente[water.table.verif$probe.uid == 22224407 & water.table.verif$file.extraction.date == "20250106"] <- "aberrent"
 
-# AUTRES VÉRIFICATIONS À FAIRE (rerouler le script avant):
-water.table.verif$donnée.aberrente[water.table.verif$probe.uid == 22224407] <- "aberrent"
-water.table.verif$donnée.aberrente[water.table.verif$probe.uid == 20853328] <- "aberrent"
-water.table.verif$donnée.aberrente[water.table.verif$probe.uid == 22195241] <- "aberrent"
+#### 20853328_20250106 ----
+water.table.verif$donnée.aberrente[water.table.verif$probe.uid == 20853328 & water.table.verif$file.extraction.date == "20250106"] <- "aberrent"
+tidy.WTD.data.df.9janv %>%
+  dplyr::filter(file.uid == "20853328_20250106", 
+                date.time.tz.orig > "2024-07-07 10:00:01",
+                date.time.tz.orig < "2024-07-07 19:00:01")
+# 1      84   103.241            70.53139      2024-07-07      12:00:01 2024-07-07 12:00:01 2024-07-07T15:00:01Z          183.63                    93       20.09861
+# 2      85   103.202            71.13303      2024-07-07      13:00:01 2024-07-07 13:00:01 2024-07-07T16:00:01Z          183.63                    93       19.49697
+# 3      86   103.233            70.81691      2024-07-07      14:00:01 2024-07-07 14:00:01 2024-07-07T17:00:01Z 
+# donnée bulleur n'est pas un glitch, c'est stable avant et après; revérifier donnée originale papier (JLG) ou éliminer la donnée
+
+# AUTRES VÉRIFICATIONS À FAIRE (12 janv)
+
+#### 22195241_20251202 ----
+# différence absolue pour 2 bulleurs à PRO : 13.48299623, 20.97851203
+water.table.verif$donnée.aberrente[water.table.verif$probe.uid == 22195241 & water.table.verif$file.extraction.date == "20251202"] <- "aberrent"
+tidy.WTD.data.df.9janv %>%
+  dplyr::filter(file.uid == "22195241_20251202", 
+                date.time.tz.orig > "2025-10-07	09:00:01",
+                date.time.tz.orig < "2025-10-07	17:00:01")
+# aussi, étrange date.AAAA-MM-JJ a une heure erronnée tjrs associée... : "2025-10-07 01:00:00"
+tidy.WTD.data.df.9janv %>%
+  dplyr::filter(file.uid == "22195241_20251202", 
+                date.time.tz.orig > "2025-11-11 05:00:01",
+                date.time.tz.orig < "2025-11-12 09:00:01")
+# mais la courbe est relativement stable, avec un potentiel signal (bas-haut aux 3 heures -> marée ?! mais non, ce serait haut - bas aux 6 heures)
+# par contre dépend de station météo... alors vérifier si fiable avec les sondes barométriques
+
+
 water.table.verif$donnée.aberrente[water.table.verif$probe.uid == 22220781] <- "aberrent"
 water.table.verif$donnée.aberrente[water.table.verif$probe.uid == 22224386] <- "aberrent"
 water.table.verif$donnée.aberrente[water.table.verif$probe.uid == 22224396] <- "aberrent"
@@ -124,11 +213,25 @@ water.table.verif$donnée.aberrente[water.table.verif$probe.uid == 10279769] <- 
 water.table.verif$donnée.aberrente[water.table.verif$probe.uid == 22063138] <- "aberrent"
 water.table.verif$donnée.aberrente[water.table.verif$probe.uid == 22224412] <- "aberrent"
 
+
+
 # enregistrer cette table de données (métadonnées vérifications 2025)
 
 
 
 
+# ============================================================================= /
+#  ZONE DES PROBLÈMES RÉSOLU ----
+# ============================================================================= /
+## 22220787_20251128 ----
+# water.table.verif$donnée.aberrente[water.table.verif$probe.uid == 22220787] <- "aberrent"
+# water.table.verif$offset.hobo[water.table.verif$well.uid == "STH.D2.m1m.2025.bis"] <- mean(water.table.verif$abs.diff.well.uid.cm[water.table.verif$well.uid == "STH.D2.m1m.2025.bis"])
+# grosse différence, mais constante; j'ajuste avec un offset correspondant à la moyenne de la différence
+
+
+# ============================================================================= /
+#  CHANTIER ----
+# ============================================================================= /
 
 # autres colonnes : quelconque stat -> erreur-type...
 
@@ -179,7 +282,7 @@ water.table.verif.plot.probe <- water.table.verif %>%
 # }
 # autres colonnes : quelconque stat -> erreur-type...
 
-# # summaire par WELL.UID ----
+#### # summaire par WELL.UID ----
 
 # 
 # # VISUALISATION
@@ -205,14 +308,14 @@ water.table.verif.plot.probe <- water.table.verif %>%
 
 
 
-# summaire par PROBE.UID ----
+#### summaire par PROBE.UID ----
 # water.table.verif.summrzd.probe <- water.table.verif %>% 
 #   group_by(probe.uid) %>% 
 #   summarise(mean.diff.probe.uid = mean(abs.diff.well.uid.cm), # absolute value
 #             sd.diff.probe.uid = sd(abs.diff.well.uid.cm)) # absolute value
 
 
-# VISUALISATION ----
+#### VISUALISATION ----
 # graph (violin boxplot); code original tiré de The R graph gallery, 2025, https://r-graph-gallery.com/violin_and_boxplot_ggplot2.html
 
 
@@ -239,4 +342,14 @@ water.table.verif.plot.probe <- water.table.verif %>%
 # vérifier comment on présente typiquement ces données
 # -> à quoi servent-elles ? suite avec Laurence
 
+
+
+
+
+# ggplot(vérif.1, aes(x = probe.uid, y = offset_cm)) +
+#   scale_y_continuous(breaks = seq(-160, 160, by = 20)) +
+#   geom_segment(aes(x=probe.uid, xend=probe.uid, y=0, yend=offset_cm)) +
+#   geom_point(size=1, color="red", fill=alpha("orange", 0.3), alpha=0.7, shape=21, stroke=2) +
+#   theme_bw() + theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+#   labs(title = "Offsets des sondes Odyssey,\npar identifiant unique de sonde\n(années confondues)")
 
