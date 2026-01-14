@@ -123,7 +123,7 @@ data.metadata <- function(path) { # type = odyssey vs  EST DANS MON PATH pas bes
     raw.ll.files.i <- list(raw.ll.files.2.data, raw.ll.files.2.metadata)
     return(list(raw.ll.files.2.data, raw.ll.files.2.metadata))
   }
-  if (grepl("hobo", path)) { # début de la loop pour les ODYSSEY
+  if (grepl("hobo|barometric.station", path)) { # début de la loop pour les ODYSSEY
     # k <- i
     raw.ll.files.init <- readLines(path) # lire en format texte
     # ** tz orig mentionnée dans la colonne ll.pre.0.metadata[2], coder pour l'obtenir au besoin
@@ -154,7 +154,7 @@ metadata <- function(x) {
     raw.ll.files.i.init[[2]][10:13] <- c(paste0("file.uid : ", unlist(result)[1], "_", unlist(result)[2]), paste0('file.name : ', "`", raw.ll.files[i], "`"), 
                                          paste0("probe.uid : ", probe.uid.i), paste0("date d'extraction des données : ", as.numeric(unlist(result)[2])))
     return(raw.ll.files.i.init)}
-  if (grepl("hobo", raw.ll.files[i])) {
+  if (grepl("hobo|barometric.station", raw.ll.files[i])) {
     texte <- as.data.frame(str_match(x[[2]], "(?s)LGR S/N: \\s*(.*?)\\s*,")) # extraire tout ce qui se trouve
     # entre "LGR S/N: " et la "," directement subséquente, sans savoir s'il y a des sauts de ligne et peu importe les espaces dans l'énoncé.
     probe.uid.i <- as.numeric(texte[2,2])
@@ -293,6 +293,8 @@ raw.to.clean_ll <- function(file.i.raw.data) { # ne calibre pas encore les donn�
   # la boucle coupe le fichier pour chaque période différente (l), et ensuite réassemble le fichier avec seules les périodes à conserver
 }
 # file.to.concat <- ll.clean
+# file.to.concat <- baro.clean.list[[i]]
+
 concatenate.ll <- function(file.to.concat) {
   ll.cal.pre.i.l <- list()
   if (grepl("odyssey", raw.ll.files[i])) {
@@ -589,53 +591,53 @@ raw.to.clean_cal.data <- function(cal.data.path, time.zone) { # ne calibre pas e
 
 # theme.Aliz
 # https://rfortherestofus.com/2025/04/ggplot2-theme
-theme.Aliz <- function() {
-  # Set base theme and font family =============================================
-  theme_minimal(
-    base_family = "Libre Franklin"
-  ) +
-    # Overwrite base theme defaults ============================================
-  theme(
-    # Text elements ==========================================================
-    plot.title = element_text(
-      size = 18,
-      face = "bold",
-      color = "#333333",
-      margin = margin(b = 10)
-    ),
-    plot.subtitle = element_text(
-      size = 14,
-      color = "#999999",
-      margin = margin(b = 10)
-    ),
-    plot.caption = element_text(
-      size = 13,
-      color = "#777777",
-      margin = margin(t = 15),
-      hjust = 0
-    ),
-    axis.text = element_text(
-      size = 11,
-      color = "#333333"
-    ),
-    plot.title.position = "plot",
-    plot.caption.position = "plot",
-    # Line elements ==========================================================
-    panel.grid.minor = element_blank(),
-    panel.grid.major = element_line(
-      linetype = "dashed",
-      linewidth = 0.15,
-      color = "#999999"
-    ),
-    panel.grid.major.x = element_blank(),
-    axis.ticks.x = element_line(
-      linetype = "solid",
-      linewidth = 0.25,
-      color = "#999999"
-      ),
-    axis.ticks.length.x = unit(4, units = "pt")
-  )
-}
+# theme.Aliz <- function() {
+#   # Set base theme and font family ============================================= #
+#   theme_minimal(
+#     base_family = "Libre Franklin"
+#   ) +
+#     # Overwrite base theme defaults ============================================ #
+#   theme(
+#     # Text elements ========================================================== #
+#     plot.title = element_text(
+#       size = 18,
+#       face = "bold",
+#       color = "#333333",
+#       margin = margin(b = 10)
+#     ),
+#     plot.subtitle = element_text(
+#       size = 14,
+#       color = "#999999",
+#       margin = margin(b = 10)
+#     ),
+#     plot.caption = element_text(
+#       size = 13,
+#       color = "#777777",
+#       margin = margin(t = 15),
+#       hjust = 0
+#     ),
+#     axis.text = element_text(
+#       size = 11,
+#       color = "#333333"
+#     ),
+#     plot.title.position = "plot",
+#     plot.caption.position = "plot",
+#     # Line elements ========================================================== #
+#     panel.grid.minor = element_blank(),
+#     panel.grid.major = element_line(
+#       linetype = "dashed",
+#       linewidth = 0.15,
+#       color = "#999999"
+#     ),
+#     panel.grid.major.x = element_blank(),
+#     axis.ticks.x = element_line(
+#       linetype = "solid",
+#       linewidth = 0.25,
+#       color = "#999999"
+#       ),
+#     axis.ticks.length.x = unit(4, units = "pt")
+#   )
+# }
 
 # ============================================================================= /
 #  Georeferenced data ----

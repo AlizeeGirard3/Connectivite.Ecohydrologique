@@ -6,9 +6,9 @@
 ##########################################################################-
 # Fait par :      Alizée Girard
 # Affiliation :   ULaval
-# Date création initiale : 2024-12-09
-# Date mise à jour : 2026-01-08
-# Pourquoi : pour l'ensemble du traitement des données de nappe phréatique 
+# Date création initiale : 2026-01-14
+# Date mise à jour : 
+# Pourquoi : données barmétriques -> incorporer dans WT all
 # Structure :
 # —— connectivite
 #         |—— archive
@@ -25,13 +25,13 @@
 
 # LEXIQUE :
 { 
-# SNH : sonde de niveau hydrostatique / synonymes : LL : level logger; sonde, probe
-# ll : level logger; sonde de niveau hydrostatique / synonymes : sonde, probe, SNH
-# NP : Nappe phréatique / synonymes : water table
-# tz : time zone, syn. fuseau horaire
-# cal.data, syn. connectivite/data/raw/level_logger_calibration_all.csv
-# patron universel d'appellation des fichiers de SNH : probe.uid_site.uid_datedextraction_probe.brand.csv
-  }
+  # SNH : sonde de niveau hydrostatique / synonymes : LL : level logger; sonde, probe
+  # ll : level logger; sonde de niveau hydrostatique / synonymes : sonde, probe, SNH
+  # NP : Nappe phréatique / synonymes : water table
+  # tz : time zone, syn. fuseau horaire
+  # cal.data, syn. connectivite/data/raw/level_logger_calibration_all.csv
+  # patron universel d'appellation des fichiers de SNH : probe.uid_site.uid_datedextraction_probe.brand.csv
+}
 ##########################################################################-
 
 # fichiers "R data serialized" (RDS) à charger directement
@@ -52,7 +52,7 @@ tidy.WTD.data <- list()
 s = Sys.time() # compte le temps d'exécution
 ##### boucle pour transformer les fichiers bruts
 for (i in 1:length(raw.ll.files)) {
-  # i<-1
+  # i<-16
   print(i)
   raw.ll.files[i]
   
@@ -70,8 +70,32 @@ for (i in 1:length(raw.ll.files)) {
   
   # level.logger propre, à calibrer
   ll.clean <- raw.to.clean_ll(raw.ll.files.i[[1]])  # NOTES : début = installation du puits + 48h de rabattement de la NP / ou non, si puits intallé d'avance, dans quel cas inscrire début officiel - 24h) # fin = heure de retrait // note : données de date en format xlsx ça lit TOUT CROCHE, transformé en csv fonctionne bien
-
+  
   #### calibration des sondes
+  # site.name.pre <- gsub("\\\"", '', raw.ll.files.i[[2]])[1] # extraire nom de site fichier origine
+  # site.name <- sub("Titre de tracé : ","",site.name.pre)
+  raw.baro.files <- list.files(path = "connectivite/data/raw", pattern = "barometric.station", full.names = T) # equivalent à ll.pre (ancien) # mettre dans "pattern" tous les ID de SNH listés dans l'objet SNH
+  raw.baro.files.init.list <- list()
+  baro.clean.list <- list()
+  for(i in 1:length(raw.baro.files)) {
+      raw.baro.files.init.list[[i]] <- data.metadata(raw.baro.files[i]) # lire en format texte
+      baro.clean.list[[i]] <- raw.to.clean_ll(raw.baro.files.init.list[[i]][[1]])
+      file.to.concat(baro.clean.list[[i]])
+      
+  } 
+  extracted.list_data <- lapply(baro.clean.list, `[[`, 1) # tidy.WTD.data[[3]] -> verif.data
+  barometry.data <- do.call(rbind, extracted.list_data)
+  # ca tournerait en rond si je fais ça dans le boucle
+  # idée : tout faire les étapes (pas mal codé), mettre colonnes de UID, concat en un df, puis calibrer via la boucle en créant une autre colonne de "calibrated.baro"
+  
+  
+  ll.clean <- raw.to.clean_ll(raw.ll.files.i[[1]])  # NOTES : début = installation du puits + 48h de rabattement de la NP / ou non, si puits intallé d'avance, dans quel cas inscrire début officiel - 24h) # fin = heure de retrait // note : données de date en format xlsx ça lit TOUT CROCHE, transformé en csv fonctionne bien
+  
+  
+  ll.clean.baro <- left_join()
+  
+  
+  
   ll.cal.pre.i <- concatenate.ll(ll.clean)
   tidy.WTD.data[[i]] <- clean.to.calibrated_ll(ll.cal.pre.i)
   # rm(tz)

@@ -19,11 +19,11 @@ tidy.cal.data <- readRDS("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/
 
 # CHERCHER QUELS PARAMÈTRES APPLIQUER, COMPARER AVANT APRÈS
 # tidy.WTD.data.df.smooth <- smooth(tidy.WTD.data.df)
-
-
+# https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/smooth
 
 # test 2 : smoother avec la fonction Savitzky-Golay
 # tidy.WTD.data.df.savgol <- 
+# https://www.youtube.com/watch?v=caJAeMTZbgM
 
 
 # test 3 : smoother avec les deux fonctions (smooth, Savitzky-Golay)

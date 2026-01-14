@@ -77,6 +77,9 @@ ggplot(vérif.1, aes(x = probe.uid, y = offset_cm)) +
   theme_bw() + theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
   labs(title = "Offsets des sondes Odyssey,\npar identifiant unique de sonde\n(années confondues)")
 
+# coord_cartesian() pour zoomer sur une fenetre dans le graph, sans enlever les données **
+# theme(xmin, xmax, ymin, ymax)
+ 
 ## Visualisation de la variation de la nappe phréatique et du positionnement du puits le long du transect
 for (i in 1:length(tidy.WTD.data)) {
   if (!is.null(tidy.WTD.data[[i]])) {
