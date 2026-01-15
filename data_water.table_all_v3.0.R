@@ -52,22 +52,23 @@ tidy.WTD.data <- list()
 s = Sys.time() # compte le temps d'exécution
 ##### boucle pour transformer les fichiers bruts
 for (i in 1:length(raw.ll.files)) {
-  # i<-1
+  # i<-2
   print(i)
   raw.ll.files[i]
-  
+
   #### lecture et séparation des données et métadonnées
   raw.ll.files.i.init <- data.metadata(raw.ll.files[i]) # objet temporaire pour ajouter des lignes
   raw.ll.files.i <- metadata(raw.ll.files.i.init)
-  files.uid.df <- files.uid(raw.ll.files.i.init); rm(raw.ll.files.i.init)
   
+  files.uid.df <- files.uid(raw.ll.files.i.init); rm(raw.ll.files.i.init)
+
   #### ménage de la date et heure
   tz <- zone.tz("~Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectitite_PhD_Mergin_26nov24/Ecotone.restauration.zone.pt.shp")
   files.uid.df$tz_orig[i] <- tz
-  
+
   ##### cal.bulleur.list.appendd (liste des cal.data, séparées en bulleur et en données de calibration Odyssey. Si autre marque, la l'élément [[2]] donne juste des NA)
   cal.bulleur.list.appendd <- raw.to.clean_cal.data("connectivite/data/raw/level_logger_calibration_all.csv", tz) # import et nettoyage, bon format de date
-  
+
   # level.logger propre, à calibrer
   ll.clean <- raw.to.clean_ll(raw.ll.files.i[[1]])  # NOTES : début = installation du puits + 48h de rabattement de la NP / ou non, si puits intallé d'avance, dans quel cas inscrire début officiel - 24h) # fin = heure de retrait // note : données de date en format xlsx ça lit TOUT CROCHE, transformé en csv fonctionne bien
 
@@ -85,7 +86,7 @@ if("tidy.WTD.data.RDS" %in% list.files("connectivite/data/clean"))  { # si TRUE 
 } else { saveRDS(tidy.WTD.data, file = "connectivite/data/clean/tidy.WTD.data.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
 
 # format tableur des tidy.WTD.data
-extracted.list_data <- lapply(tidy.WTD.data, `[[`, 1) # tidy.WTD.cata[[1]] -> data
+extracted.list_data <- lapply(tidy.WTD.data, `[[`, 1) # tidy.WTD.data[[1]] -> data
 tidy.WTD.data.df <- do.call(rbind, extracted.list_data) # bind_rows identique à rbind, mais ne donne pas de message d'erreur
 # format RDS des tidy.cal.data (formaté en wide-to-long)
 if("tidy.WTD.data.df.RDS" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
@@ -94,8 +95,7 @@ if("tidy.WTD.data.df.RDS" %in% list.files("connectivite/data/clean"))  { # si TR
 
 # format tidy des cal.data (formaté en wide-to-long)
 extracted.list_verif.data <- lapply(tidy.WTD.data, `[[`, 3) # tidy.WTD.data[[3]] -> verif.data
-tidy.cal.data <- do.call(dplyr::bind_rows, extracted.list_verif.data)
-tidy.cal.data <- tidy.cal.data %>% dplyr::filter(is.na(tidy.cal.data) %>% rowSums() != length(tidy.cal.data)) # enlever les lignes complètement composées de NA (tous les hobo en date du 7 janvier)
+tidy.cal.data <- do.call(rbind, extracted.list_verif.data)    #   / archive (ligne suivante) : # tidy.cal.data <- tidy.cal.data %>% dplyr::filter(is.na(tidy.cal.data) %>% rowSums() != length(tidy.cal.data)) # enlever les lignes complètement composées de NA (tous les hobo en date du 7 janvier)
 # format RDS des tidy.cal.data (formaté en wide-to-long)
 if("tidy.cal.data.RDS" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")

@@ -23,6 +23,7 @@ if (!require("tidyverse")) install.packages("tidyverse") # méta package // goss
 if (!require("ggplot2")) install.packages("ggplot2")
 
 # Fichiers à charger directement ----
+setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
 # tidy.cal.data <- readRDS("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/clean/tidy.cal.data.RDS") # issu du code "data_water.table_all_v3.0"
 tidy.WTD.data.df <- readRDS("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/clean/tidy.WTD.data.df.RDS") # issu du code "data_water.table_all_v3.0"
 # tidy.WTD.data <- readRDS("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/clean/tidy.WTD.data.RDS") # issu du code "data_water.table_all_v3.0"

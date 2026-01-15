@@ -27,6 +27,7 @@ Sometimes you may want to use another directory as the working directory. The us
 
 \newpage
 
+# Aperçu de la répartition des données tidy.WTD.data.df
 ```{r eval=FALSE, message=FALSE, include=FALSE}
 setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
 # Libraries
@@ -66,21 +67,20 @@ for (j in 1:length(ll.clean)) {
 }
 ```
 
-## Aperçu du code de calibration - Sonde Odyssey
+# Aperçu du code de calibration - Sonde Odyssey
 
 ```         
 # Sondes ODYSSEY
 [...]
 ```
-
-### Aperçu du code de calibration - Sonde HOBO
+# Aperçu du code de calibration - Sonde HOBO
 
 ```         
 # Sondes HOBO
 [...]
 ```
 
-### Aperçu des offets - Sondes Odyssey
+# Aperçu des offets - Sondes Odyssey
 ```{r, message = FALSE, echo = FALSE}
 #### bibliothèques à charger
 if (!require("dplyr")) install.packages("dplyr") # pour manipulation donnees (pipe, etc)
@@ -100,7 +100,7 @@ ggplot(vérif.1, aes(x = probe.uid, y = offset_cm)) +
 ```
 
 
-## Visualisation de la variation de la nappe phréatique et du positionnement du puits le long du transect
+# Visualisation de la variation de la nappe phréatique et du positionnement du puits le long du transect
 
 ```{r, message = FALSE, include = FALSE}
 # sys.source("general.scripts/fonctions.R") # envir = knitr::knit_global())
