@@ -13,6 +13,7 @@
 # Ressources
 # https://r-graph-gallery.com/279-plotting-time-series-with-ggplot2.html
 # https://r-graph-gallery.com/line-chart-dual-Y-axis-ggplot2.html
+# https://finchstudio.io/blog/ggplot-dual-y-axes/
 ###########################################################################-
 
 setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
