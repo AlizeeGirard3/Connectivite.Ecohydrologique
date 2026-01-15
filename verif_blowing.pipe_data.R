@@ -43,16 +43,8 @@ tidy.WTD.data.df.9janv <- do.call(rbind, extracted.list_data) # bind_rows identi
 
 # retrait de colonnes inutiles de tidy.cal.cata
 tidy.cal.data <- tidy.cal.data %>%
-  group_by(probe.brand)# %>% 
-  
-  
-  # RENDUE LÀ : DANS TIDY.CAL.DATA ENLEVER CAL.NO !! ET RÉENREGISTRER (disctinct possible ensuite)
-  
-  
-  
-  # mutate(cal.no = ifelse(probe.brand != "ODYSSEY", "NA", cal.no))
-  # dplyr::filter
-  # distinct()
+  group_by(probe.brand) %>% 
+  distinct()
   # select(!c(29:38)) %>% distinct() # enlever les données temporaires associées à la calibration des sondes Odyssey
 
 # Tableau compilation ----
@@ -60,7 +52,7 @@ tidy.cal.data <- tidy.cal.data %>%
 water.table.verif <- data.frame()
 # extraction des métadonnées
 for (tidy.cal.data.line in 1:nrow(tidy.cal.data)) {
-  # tidy.cal.data.line <- 161
+  # tidy.cal.data.line <- 2
   print(tidy.cal.data.line)
   
   # extraction données de tidy.cal.data pour la ligne "tidy.cal.data.line"
@@ -87,7 +79,7 @@ for (tidy.cal.data.line in 1:nrow(tidy.cal.data)) {
                                                         "probe.measure.cm" = -1*(ifelse(length(tidy.WTD.data.match.cal.line$calibrated.value.cm) == 0, NA, tidy.WTD.data.match.cal.line$calibrated.value.cm)),
                                                         "bulleur.rel.to.surf.cm" = tidy.cal.data.line.df$bulleur.rel.to.surface.mm/10, 
                                                         "abs.diff.well.uid.cm" = abs(ifelse(length(tidy.WTD.data.match.cal.line$calibrated.value.cm) == 0, NA, (-1*tidy.WTD.data.match.cal.line$calibrated.value.cm)) - tidy.cal.data.line.df$bulleur.rel.to.surface.mm/10), # absolute value
-                                                        "9janv.fil.moins.Heau.idBULLEUR" = (ifelse(length(long.fil.cm) == 0, NA, long.fil.cm) - tidy.cal.data.line.df$out.long.tuyau.sol.cm - ifelse(length(hauteur.eau.cm) == 0, NA, hauteur.eau.cm)),
+                                                        "9janv.fil.moins.Heau.idBULLEUR" = (ifelse(length(long.fil.cm) == 0, NA, long.fil.cm) - tidy.cal.data.line.df$out.mean.cm - ifelse(length(hauteur.eau.cm) == 0, NA, hauteur.eau.cm)),
                                                         # SI BULLEUR - OUT, ALORS FIL MOINS OUT AUSSI !!
                                                         "well.uid" = tidy.cal.data.line.df$well.uid,
                                                         "bulleur.no" = tidy.cal.data.line.df$bulleur.no, 
