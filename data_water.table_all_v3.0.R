@@ -14,6 +14,7 @@
 #         |—— archive
 #         |—— data
 #                     |—— raw
+#                     |—— extracted_raw    <- raw feuilles numériques terrain (plusieurs onglets pour un site), extrait en un df par onglet, tous site confondu (script "data_sites_all")
 #                     |—— clean
 #         |—— output
 #                     |—— data
@@ -46,8 +47,8 @@ setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
 # -> packages dans le code sourcé "fonctions_phd_v3.0.R"
 
 # Données brutes aux données calibrées et propres (tidy) ----
-raw.ll.files.pre <- list.files(path = "connectivite/data/raw", pattern = "_odyssey|_hobo", full.names = T) # equivalent à ll.pre (ancien) # mettre dans "pattern" tous les ID de SNH listés dans l'objet SNH
-raw.ll.files <- select.raw.ll.files(raw.ll.files.pre)
+raw.ll.files.pre <- list.files(path = "connectivite/data/raw", pattern = "_odyssey|_hobo", full.names = T) # mettre dans "pattern" tous les ID de SNH listés dans l'objet SNH
+raw.ll.files <- filter.raw.file(object.to.filter = raw.ll.files.pre, path.filtering.object = "connectivite/data/raw/level_logger_calibration_all.csv") # script "fonctions_phd_v3.0.R"
 tidy.WTD.data <- list()
 s = Sys.time() # compte le temps d'exécution
 ##### boucle pour transformer les fichiers bruts

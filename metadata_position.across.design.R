@@ -14,6 +14,7 @@
 #         |—— archive
 #         |—— data
 #                     |—— raw
+#                     |—— extracted_raw    <- raw feuilles numériques terrain (plusieurs onglets pour un site), extrait en un df par onglet, tous site confondu (script "data_sites_all")
 #                     |—— clean
 #         |—— output
 #                     |—— data
@@ -44,7 +45,7 @@ setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
 # Elevation x Well position along transect ----
 # données tidy où ajouter
 
-# j'aurai besoin des données d'élévation
+# j'aurai besoin des données d'élévation -> en cours = nettoyage de ces données
 
 #
 

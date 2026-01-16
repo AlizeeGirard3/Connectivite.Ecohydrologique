@@ -59,7 +59,7 @@ read_excel_sheets <- function(filename, tibble = FALSE) {  # for tidyverse tibbl
   # lapply = applique la fonction suivante décrite à tous les éléments contenus dans l'objet "sheets" et crée une liste avec le résultat
   lapply(x, as.data.frame) # fait en un dataframe
   names(x) <- sheets
-  x
+  return(x)
 }
 
 cat_lists <- function(list1, list2) {   # concatener le contenu de listes aux noms identiques
@@ -69,18 +69,25 @@ cat_lists <- function(list1, list2) {   # concatener le contenu de listes aux no
 }
 
 # select.raw.ll.files
-# vector.to.filter <- raw.ll.files.pre
-select.raw.ll.files <- function(vector.to.filter) { # ne calibre pas encore les données
-  cal.data.0 <- read.csv("connectivite/data/raw/level_logger_calibration_all.csv", sep = ";", dec = ",") 
-  filter.out <- cal.data.0$file.uid[grep("rejected", cal.data.0$measure_status)]
-  str_split <- str_split(filter.out, "_")
-  filter.out.df <- data.frame(do.call(rbind, str_split)) # colnames = c("probe.uid", "extr.date"))
-  exclude.lines <- vector()
-  for(exclude in 1:nrow(filter.out.df)) {
-    exclude.lines[exclude] <- which(grepl(filter.out.df[exclude,1], vector.to.filter) & grepl(filter.out.df[exclude,2], vector.to.filter))
+# object.to.filter <- raw.ll.files.pre
+# path.filtering.object <- "connectivite/data/raw/level_logger_calibration_all.csv"
+# object.to.filter <- ele.profiles
+filter.raw.file <- function(object.to.filter, path.filtering.object = NULL) { # ne calibre pas encore les données
+  if(is.null(path.filtering.object)) {
+    object.to.filter.flitrd <- object.to.filter %>% 
+      dplyr::filter(!grepl("rejected", object.to.filter$measure.status))
+  } else {
+    filtering.object <- read.csv(path.filtering.object, , sep = ";", dec = ",")
+    filter.out <- filtering.object$file.uid[grep("rejected", filtering.object$measure_status)]
+    str_split <- str_split(filter.out, "_")
+    filter.out.df <- data.frame(do.call(rbind, str_split)) # colnames = c("probe.uid", "extr.date"))
+    exclude.lines <- vector()
+    for(exclude in 1:nrow(filter.out.df)) {
+      exclude.lines[exclude] <- which(grepl(filter.out.df[exclude,1], object.to.filter) & grepl(filter.out.df[exclude,2], object.to.filter))
+    }
+    object.to.filter.flitrd <- object.to.filter[-exclude.lines]
   }
-  raw.ll.files <- vector.to.filter[-exclude.lines]
-  return(raw.ll.files)
+  return(object.to.filter.flitrd)
 }
 
 # ============================================================================= /
@@ -682,6 +689,18 @@ zone.tz <- function(zone.shp) {
     return(tz)
   }
 }
+
+# # zone.site
+# ABANDON
+# # trouver le nom de site à partir de pt GPS (rayon 500m à 5 km) # attention à la distance si j'ajoute GPB à mes sites !
+# # zone.shp <- "~Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectitite_PhD_Mergin_26nov24/Ecotone.restauration.zone.pt.shp"
+# # site.uid <- trmnt.uid.i.site.uid.pre
+# zone.site <- function(site.uid) {
+#   zones <- read_sf("~Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectitite_PhD_Mergin_26nov24/Ecotone.restauration.zone.pt.shp") %>% as.data.frame(zones) # ouvrir données du shapefile pour accéder les zones
+#   site.name <- zones$site[zones$site.uid == site.uid]
+#   return(site.name)
+# }
+
 
 # ============================================================================= /
 #  Date-time manipulation ----
