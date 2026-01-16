@@ -40,7 +40,7 @@ setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
 # Import du fichier de données récent
 tidy.WTD.data <- readRDS("connectivite/data/clean/tidy.WTD.data.RDS")
 
-### Aperçu des offets - Sondes Odyssey
+## Aperçu des offets - Sondes Odyssey ----
 for (j in 1:length(tidy.WTD.data)) {
   print(j)
   # j<-14
@@ -81,7 +81,7 @@ ggplot(vérif.1, aes(x = probe.uid, y = offset_cm)) +
 # coord_cartesian() pour zoomer sur une fenetre dans le graph, sans enlever les données **
 # theme(xmin, xmax, ymin, ymax)
  
-## Visualisation de la variation de la nappe phréatique et du positionnement du puits le long du transect
+## Visualisation de la variation de la nappe phréatique et du positionnement du puits le long du transect ----
 for (i in 1:length(tidy.WTD.data)) {
   if (!is.null(tidy.WTD.data[[i]])) {
     # i<-5

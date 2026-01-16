@@ -35,15 +35,15 @@
 ##########################################################################-
 
 # fichiers "R data serialized" (RDS) à charger directement
-# tidy.WTD.data <-readRDS("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/clean/tidy.WTD.data.RDS") # issu du code ci-présent / non à jour **
+# tidy.WTD.data <-readRDS("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/clean/tidy.WTD.data.RDS") # issu du code ci-présent
+# tidy.WTD.data.df et tidy.cal.data systématiquement produits avec dernière version de tidy.WTD.data, par concaténation des sous-listes
 
 # .rs.restartR()
-# source("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/connectivite/scripts/fonctions_phd_v2.0.R")
-source("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/connectivite/scripts/fonctions_phd_v3.0.R") # en élaboration
+source("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/connectivite/scripts/fonctions_phd_v3.0.R")
 setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
 
 # Librairies ----
-# -> packages dans le code sourcé
+# -> packages dans le code sourcé "fonctions_phd_v3.0.R"
 
 # Données brutes aux données calibrées et propres (tidy) ----
 raw.ll.files.pre <- list.files(path = "connectivite/data/raw", pattern = "_odyssey|_hobo", full.names = T) # equivalent à ll.pre (ancien) # mettre dans "pattern" tous les ID de SNH listés dans l'objet SNH

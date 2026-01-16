@@ -105,6 +105,15 @@ select.raw.ll.files <- function(vector.to.filter) { # ne calibre pas encore les 
 
 
 # ============================================================================= /
+#  Metadata manipulations ----
+# ============================================================================= /
+
+#### ajout des métadonnées de puits sous forme de colonne à la valeur répété (rep = nrow)
+well.metatata <- function() {} 
+# initialisation 16 janvier 2026
+
+
+# ============================================================================= /
 #  Logger serial data import and cleaning ----
 # ============================================================================= /
 

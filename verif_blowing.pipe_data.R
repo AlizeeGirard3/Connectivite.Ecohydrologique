@@ -30,11 +30,9 @@ if (!require("viridis")) install.packages("viridis")
 
 # Dossier directeur et sourçage ----
 # .rs.restartR()
-# source("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/connectivite/scripts/fonctions_phd_v2.0.R")
 setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
 
 # Fichiers à charger directement ----
-# cal.data <- read.xlsx("connectivite/data/clean/cal.data.xlsx", sep = ";")
 tidy.cal.data <- readRDS("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/clean/tidy.cal.data.RDS") # issu du code "data_water.table_all_v3.0"
 # tidy.WTD.data.df <- readRDS("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/clean/tidy.WTD.data.df.RDS") # issu du code "data_water.table_all_v3.0"
 tidy.WTD.data <- readRDS("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/clean/tidy.WTD.data.RDS") # issu du code "data_water.table_all_v3.0"
@@ -44,8 +42,8 @@ tidy.WTD.data.df.9janv <- do.call(rbind, extracted.list_data) # bind_rows identi
 # retrait de colonnes inutiles de tidy.cal.cata
 tidy.cal.data <- tidy.cal.data %>%
   group_by(probe.brand) %>% 
-  distinct()
-  # select(!c(29:38)) %>% distinct() # enlever les données temporaires associées à la calibration des sondes Odyssey
+  distinct() # %>%
+  # select(!c(29:38)) # enlever les données temporaires associées à la calibration des sondes Odyssey
 
 # Tableau compilation ----
 # fichiers de consigne de données
