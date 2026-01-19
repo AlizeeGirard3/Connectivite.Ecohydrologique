@@ -72,10 +72,11 @@ cat_lists <- function(list1, list2) {   # concatener le contenu de listes aux no
 # object.to.filter <- raw.ll.files.pre
 # path.filtering.object <- "connectivite/data/raw/level_logger_calibration_all.csv"
 # object.to.filter <- ele.profiles
-filter.raw.file <- function(object.to.filter, path.filtering.object = NULL) { # ne calibre pas encore les données
+filter.raw.file <- function(object.to.filter, path.filtering.object = NULL) {
   if(is.null(path.filtering.object)) {
-    object.to.filter.flitrd <- object.to.filter %>% 
-      dplyr::filter(!grepl("rejected", object.to.filter$measure.status))
+    object.to.filter.filtrd <- object.to.filter %>% 
+      dplyr::filter(!grepl("rejected", object.to.filter$measure.status), 
+                    !if_all(everything(), is.na))
   } else {
     filtering.object <- read.csv(path.filtering.object, , sep = ";", dec = ",")
     filter.out <- filtering.object$file.uid[grep("rejected", filtering.object$measure_status)]
@@ -85,9 +86,57 @@ filter.raw.file <- function(object.to.filter, path.filtering.object = NULL) { # 
     for(exclude in 1:nrow(filter.out.df)) {
       exclude.lines[exclude] <- which(grepl(filter.out.df[exclude,1], object.to.filter) & grepl(filter.out.df[exclude,2], object.to.filter))
     }
-    object.to.filter.flitrd <- object.to.filter[-exclude.lines]
+    object.to.filter.filtrd <- object.to.filter[-exclude.lines]
   }
-  return(object.to.filter.flitrd)
+  return(object.to.filter.filtrd)
+}
+
+# uid.to.columns
+# ele.profiles <- readRDS(file = "c~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/clean/elevation.profiles.RDS")
+# file <- ele.profiles
+# vegetation_lower.str <- read.xlsx("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/extracted_raw/vegetation_lower.str.xlsx")
+# file <- vegetation_lower.str
+{
+  col.sequence <- list() # idée : nom des colonnes à mettre dans col.sequence... y référer dans la boucle
+  col.sequence$trmnt.uid.aaaa <- c("site.uid", "chapter", "type", "year", "no")
+  col.sequence$trmnt.uid <- c("site.uid", "chapter", "type")
+  col.sequence$trmnt.uid.orient.NO.aaaa <- c("site.uid", "chapter", "type", "orientation", "s", "year")
+  col.sequence$perm.plot.uid.NO.aaaa <- c("site.uid", "chapter", "type", "perm.plot.replicate", "perm.plot.type", "year")
+  col.sequence$perm.plot.uid.NO.quadrat.aaaa <- c("site.uid", "chapter", "type", "perm.plot.replicate", "perm.plot.type", "quadrat.letter", "year")
+  col.sequence$tr.uid.rel.dist.aaaa <- c("site.uid", "chapter", "type", "relative.distance", "year")
+  col.sequence$trmnt.uid.rel.dist.quadrat.aaaa <- c("site.uid", "chapter", "type", "relative.distance", "quadrat", "year")
+  col.sequence$trmnt.uid.ch3.position.aaaa <- c("site.uid", "chapter", "type", "well.no", "year")
+  # peat.samples_LOI_LAB.UID.1 et peat.samples_LOI_LAB.UID.2 exclure aussi
+
+  # cas spécifique de cal.data : retirer colonne probe.uid et la remettre après les manips
+  # col.sequence$well.uid <- de well.uid, remove "trmnt.uid" puis, si ch2 colonnes : c("relative.distance", "year", "bis.ia")
+  #                                                        ch3 colonnes : c("well.no", "year")
+  #                                                        ch1 colonnes : c("year")
+  # après que toutes les colonnes .uid (sauf probe.uid et site.uid) aient été subdivisées, n'est conserver qu'une seule de chacune
+}
+uid.to.columns <- function(file) {
+  file.site.uid <- file$site.uid # exclure le site.uid
+  file <- file %>% select(!site.uid)
+  cols <- grep("uid", colnames(file)) # colonnes avec uid à séparer en plusieurs colonnes
+  cols.list <- list()
+  for(col in seq_along(cols)) {
+    # col <- 2
+    col.no <- cols[col]
+    file.2 <- file %>% 
+      separate(colnames(file)[col.no], into = c(col.sequence[[match(colnames(file)[col.no], names(col.sequence))]]), sep = "\\.")
+    file.2$type <- str_replace(file.2$type, "C", "control")
+    # intention de la boucle suivante : ne conserver qu'une copie des colonnes qui sont assurément dans file.2[col==1] 
+    if(col == 1) { cols.to.drop <- colnames(file.2) } else {
+      file.2 <- file.2 %>% select(!all_of(cols.to.drop)) # rendu à la 2e itération, ne conserver qu'une copie des colonnes qui sont assurément dans file.2[col==1]
+      }
+    cols.list[[col]] <- file.2
+  }
+  # cols.bind <- lapply(cbind, cols.list) 
+  # cols.bind <- !duplicated(cols.bind)
+  
+  cols.df <- cols.list %>% 
+    reduce(left_join)
+  return(cols.df)
 }
 
 # ============================================================================= /
@@ -109,7 +158,6 @@ filter.raw.file <- function(object.to.filter, path.filtering.object = NULL) { # 
 #   aggr.meteoStat.site <- bind_rows(meteoStat.site.year[[1]], meteoStat.site.year[[2]]) # ajouter 3e année et + (2026, +) ou coder différemment
 #   write.csv(aggr.meteoStat.site,  paste0("connectivite/data/raw/meteoStat.data.", station_id.phd$phd.site.name[n], ".csv"))
 # }
-
 
 # ============================================================================= /
 #  Metadata manipulations ----

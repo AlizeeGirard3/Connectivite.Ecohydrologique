@@ -39,6 +39,8 @@ setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
 
 # Import du fichier de données récent
 tidy.WTD.data <- readRDS("connectivite/data/clean/tidy.WTD.data.RDS")
+tidy.cal.data <-readRDS("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/clean/tidy.cal.data.RDS")
+ele.profiles <- readRDS("connectivite/data/clean/elevation.profiles.RDS")
 
 ## Aperçu des offets - Sondes Odyssey ----
 for (j in 1:length(tidy.WTD.data)) {
@@ -91,16 +93,24 @@ for (i in 1:length(tidy.WTD.data)) {
     if (grepl("odyssey", tidy.WTD.data[[i]]$metadata[11])) { #}
       # extraire no de sonde
       file.uid.i <- gsub(".*: ", "", tidy.WTD.data[[i]]$metadata[10])
-      # extraire nom de transect/puits
+      # extraire nom de puits
       cal.data <- read.csv("connectivite/data/raw/level_logger_calibration_all.csv", sep = ";")
       colnames(cal.data)
       well.uid <- cal.data %>% dplyr::filter(file.uid==file.uid.i) %>% distinct(well.uid)
+      # extraire nom de transect d'élévation
+      trmnt.uid.aaaa <- cal.data %>% 
+        dplyr::filter(file.uid==file.uid.i) %>% 
+        mutate(trmnt.uid.aaaa = paste0(trmnt.uid, ".", str_extract(file.uid.i, "(?<=_).{4}"))) %>% 
+        select(trmnt.uid.aaaa)
+      # trmnt.uid <- cal.data %>% 
+      #   dplyr::filter(file.uid==file.uid.i) %>% 
+      #   select(trmnt.uid)
       
+      # extraire numéro de sonde
       texte <- tidy.WTD.data[[i]]$metadata[4]
       numbers <- gregexpr("[0-9]+", texte)
       result <- regmatches(texte, numbers)
       (probe.serial.no.i <- as.numeric(unlist(result)[1]))
-      
       # extraire nom de site
       site.name.pre <- sub("SiteName","",tidy.WTD.data[[i]]$metadata[1])
       site.name.pre.1 <- gsub(",", "", site.name.pre) # ici ce serait ST-HENRI, ça me gosse
@@ -121,6 +131,19 @@ for (i in 1:length(tidy.WTD.data)) {
         theme_bw() + theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 45, hjust = 1, vjust = 0.5))
       print(graph.wt) # imprimer dans R
       
+      # graphiques de profil d'élévation
+      # graph.WTD.ele <- wrap_plots(GRAPH)
+      # d'abord créer le graph, puis l'arranger de la mm largeur et mettre une flèche à l'endroit du puits
+      # sélectionner les données à afficher
+      ele.profiles.sbset <- ele.profiles %>% 
+        dplyr::filter("trmnt.uid.aaaa" == trmnt.uid.aaaa)
+      GRAPH <- ggplot(ele.profiles, aes(distance.m, elevation.m)) +
+        geom_line() +
+        ggtitle(paste0("Transect et année :", trmnt.uid.aaaa)) +
+        theme_bw() +
+        theme(plot.title = element_text(hjust = 0.5))
+      GRAPH
+
     }  
     if (grepl("hobo", tidy.WTD.data[[i]]$metadata[4])) { #}
       # extraire no de sonde
