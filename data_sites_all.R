@@ -25,7 +25,6 @@
 ##########################################################################-
 
 # .rs.restartR()
-source("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/scripts/fonctions_phd_v3.0.R") # read_excel_all_sheets et autres
 # setwd("/Users/Aliz/Library/CloudStorage/OneDrive-UniversitéLaval/_FIELD.LAB WORK 2025/Laboratoire/LOI")
 setwd("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite")
 

@@ -100,11 +100,11 @@ filter.raw.file <- function(object.to.filter, path.filtering.object = NULL) {
   col.sequence <- list() # idée : nom des colonnes à mettre dans col.sequence... y référer dans la boucle
   col.sequence$trmnt.uid.aaaa <- c("site.uid", "chapter", "type", "year", "no")
   col.sequence$trmnt.uid <- c("site.uid", "chapter", "type")
-  col.sequence$trmnt.uid.orient.NO.aaaa <- c("site.uid", "chapter", "type", "orientation", "s", "year")
-  col.sequence$perm.plot.uid.NO.aaaa <- c("site.uid", "chapter", "type", "perm.plot.replicate", "perm.plot.type", "year")
+  col.sequence$trmnt.uid.orient.NO.aaaa <- c("site.uid", "chapter", "type", "orientation", "transect.replicate", "year")
+  # col.sequence$perm.plot.uid.NO.aaaa <- c("site.uid", "chapter", "type", "perm.plot.replicate", "perm.plot.type", "year")
   col.sequence$perm.plot.uid.NO.quadrat.aaaa <- c("site.uid", "chapter", "type", "perm.plot.replicate", "perm.plot.type", "quadrat.letter", "year")
-  col.sequence$tr.uid.rel.dist.aaaa <- c("site.uid", "chapter", "type", "relative.distance", "year")
-  col.sequence$trmnt.uid.rel.dist.quadrat.aaaa <- c("site.uid", "chapter", "type", "relative.distance", "quadrat", "year")
+  col.sequence$trmnt.uid.rel.dist.aaaa <- c("site.uid", "chapter", "type", "relative.distance", "year")
+  col.sequence$trmnt.uid.rel.dist.quadrat.aaaa <- c("site.uid", "chapter", "type", "relative.distance", "quadrat.letter", "year")
   col.sequence$trmnt.uid.ch3.position.aaaa <- c("site.uid", "chapter", "type", "well.no", "year")
   # peat.samples_LOI_LAB.UID.1 et peat.samples_LOI_LAB.UID.2 exclure aussi
 
@@ -115,27 +115,28 @@ filter.raw.file <- function(object.to.filter, path.filtering.object = NULL) {
   # après que toutes les colonnes .uid (sauf probe.uid et site.uid) aient été subdivisées, n'est conserver qu'une seule de chacune
 }
 uid.to.columns <- function(file) {
-  file.site.uid <- file$site.uid # exclure le site.uid
-  file <- file %>% select(!site.uid)
+  file <- file %>% select(!site.uid) %>% 
+    mutate(ID = as.character(sample(unique(abs(rnorm(n = nrow(file))))))) # créer une colonne d'ID unique pas lequel joindre après la boucle
   cols <- grep("uid", colnames(file)) # colonnes avec uid à séparer en plusieurs colonnes
   cols.list <- list()
   for(col in seq_along(cols)) {
-    # col <- 2
+    # col <- 3
     col.no <- cols[col]
     file.2 <- file %>% 
-      separate(colnames(file)[col.no], into = c(col.sequence[[match(colnames(file)[col.no], names(col.sequence))]]), sep = "\\.")
+      separate_wider_delim(colnames(file)[col.no], delim = ".", names = c(col.sequence[[match(colnames(file)[col.no], names(col.sequence))]]), cols_remove = F) # , too_few = "debug", too_many = "debug")
     file.2$type <- str_replace(file.2$type, "C", "control")
     # intention de la boucle suivante : ne conserver qu'une copie des colonnes qui sont assurément dans file.2[col==1] 
-    if(col == 1) { cols.to.drop <- colnames(file.2) } else {
-      file.2 <- file.2 %>% select(!all_of(cols.to.drop)) # rendu à la 2e itération, ne conserver qu'une copie des colonnes qui sont assurément dans file.2[col==1]
-      }
+    # if(col == 1) { cols.to.drop <- colnames(file.2) } else {
+    #   file.2 <- file.2[, -c(cols.to.drop %in% colnames(file.2))] # rendu à la 2e itération, ne conserver qu'une copie des colonnes qui sont assurément dans file.2[col==1]
+    #   }
     cols.list[[col]] <- file.2
   }
   # cols.bind <- lapply(cbind, cols.list) 
   # cols.bind <- !duplicated(cols.bind)
-  
-  cols.df <- cols.list %>% 
-    reduce(left_join)
+  cols.df <- cols.list %>%
+    reduce(full_join) %>%
+    select(!c("ID"))
+  # cols.df <- purrr::list_rbind(cols.list)
   return(cols.df)
 }
 
