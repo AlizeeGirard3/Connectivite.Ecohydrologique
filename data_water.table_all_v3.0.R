@@ -68,7 +68,7 @@ for (i in 1:length(raw.ll.files)) {
   files.uid.df$tz_orig[i] <- tz
 
   ##### cal.bulleur.list.appendd (liste des cal.data, séparées en bulleur et en données de calibration Odyssey. Si autre marque, la l'élément [[2]] donne juste des NA)
-  cal.bulleur.list.appendd <- raw.to.clean_cal.data("connectivite/data/raw/level_logger_calibration_all.csv", tz) # import et nettoyage, bon format de date
+  cal.bulleur.list.appendd <- raw.to.clean_cal.data(time.zone = tz) # import et nettoyage, bon format de date
 
   # level.logger propre, à calibrer
   ll.clean <- raw.to.clean_ll(raw.ll.files.i[[1]])  # NOTES : début = installation du puits + 48h de rabattement de la NP / ou non, si puits intallé d'avance, dans quel cas inscrire début officiel - 24h) # fin = heure de retrait // note : données de date en format xlsx ça lit TOUT CROCHE, transformé en csv fonctionne bien

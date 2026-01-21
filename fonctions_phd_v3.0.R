@@ -73,37 +73,44 @@ cat_lists <- function(list1, list2) {   # concatener le contenu de listes aux no
 # path.filtering.object <- "connectivite/data/raw/level_logger_calibration_all.csv"
 # object.to.filter <- ele.profiles
 # object.to.filter <- env.data.n
-filter.raw.file <- function(object.to.filter, path.filtering.object = NULL) {
-  if(is.null(path.filtering.object)) {
+filter.raw.file <- function(object.to.filter = NULL, path.filtering.object = NULL) {
+  if(c(is.null(path.filtering.object) & !is.null(object.to.filter))) { # fournir juste un objet à filtrer, sans cal data path
     object.to.filter.filtrd <- object.to.filter %>% 
       dplyr::filter(!grepl("rejected", object.to.filter$measure.status), 
                     !if_all(everything(), is.na))
-  } else {
+  } 
+  if(c(!is.null(path.filtering.object) & !is.null(object.to.filter))) { # fournir l'objet à filtrer par les informations fournies dans le cal data path à filtrer
     filtering.object <- read.csv(path.filtering.object, , sep = ";", dec = ",")
     filter.out <- filtering.object$file.uid[grep("rejected", filtering.object$measure_status)]
     str_split <- str_split(filter.out, "_")
     filter.out.df <- data.frame(do.call(rbind, str_split)) # colnames = c("probe.uid", "extr.date"))
     exclude.lines <- vector()
-    for(exclude in 1:nrow(filter.out.df)) {
+    for(exclude in 1:nrow(filter.out.df)) { 
       exclude.lines[exclude] <- which(grepl(filter.out.df[exclude,1], object.to.filter) & grepl(filter.out.df[exclude,2], object.to.filter))
     }
     object.to.filter.filtrd <- object.to.filter[-exclude.lines]
-  }
+  } 
+  if(c(!is.null(path.filtering.object) & is.null(object.to.filter))) { # fournir juste le cal data path à filtrer
+    object.to.filter.filtrd <- read.csv(path.filtering.object, sep = ";", dec = ",") %>% 
+      dplyr::filter(!measure_status == "rejected") %>% 
+      select(!contains("x.archive"))
+}
   return(object.to.filter.filtrd)
 }
 
 # uid.to.columns
-# ele.profiles <- readRDS(file = "c~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/clean/elevation.profiles.RDS")
-# file <- ele.profiles
+# ele.profiles <- readRDS(file = "~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/clean/elevation.profiles.RDS")
+# file.to.restructure <- ele.profiles
 # vegetation_lower.str <- read.xlsx("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/extracted_raw/vegetation_lower.str.xlsx")
-# file <- vegetation_lower.str # ok
+# file.to.restructure <- vegetation_lower.str # ok
 # vegetation_trees.shr <- read.xlsx("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/extracted_raw/vegetation_trees.shr.xlsx")
-# file <- vegetation_trees.shr # ok
+# file.to.restructure <- vegetation_trees.shr # ok
 # canopy.peat.fauna <- read.xlsx("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/extracted_raw/canopy.peat.fauna.xlsx")
-# file <- canopy.peat.fauna # ok
-# rendue à cal data
+# file.to.restructure <- canopy.peat.fauna # ok
+# path <- "connectivite/data/raw/level_logger_calibration_all.csv"
 {
   col.sequence <- list() # idée : nom des colonnes à mettre dans col.sequence... y référer dans la boucle
+  # mettre à jour les métadonnées de temps en temps (ok janv.2026)
   col.sequence$trmnt.uid.aaaa <- c("site.uid", "chapter", "type", "year", "no")
   col.sequence$trmnt.uid <- c("site.uid", "chapter", "type")
   col.sequence$trmnt.uid.orient.NO.aaaa <- c("site.uid", "chapter", "type", "orientation", "transect.replicate", "year")
@@ -113,39 +120,77 @@ filter.raw.file <- function(object.to.filter, path.filtering.object = NULL) {
   col.sequence$trmnt.uid.rel.dist.quadrat.aaaa <- c("site.uid", "chapter", "type", "relative.distance", "quadrat.letter", "year")
   col.sequence$trmnt.uid.ch3.position.aaaa <- c("site.uid", "chapter", "type", "well.no", "year")
   # cas spécifique de cal.data : retirer colonne probe.uid et la remettre après les manips
-  # col.sequence$well.uid <- de well.uid, remove "trmnt.uid" puis, si ch2 colonnes : c("relative.distance", "year", "bis.ia")
-  #                                                        ch3 colonnes : c("well.no", "year")
-  #                                                        ch1 colonnes : c("year")
-  # après que toutes les colonnes .uid (sauf probe.uid et site.uid) aient été subdivisées, n'est conserver qu'une seule de chacune
+  col.sequence$well.uid <- list()
+  col.sequence$well.uid$chap1 <- c("site.uid", "chapter", "type", "year") # traiter stations barométriques mm façon que les sonde du chapitre 1
+  col.sequence$well.uid$chap2 <- c("site.uid", "chapter", "type", "relative.distance", "year", "bis.ia")
+  col.sequence$well.uid$chap3 <- c("site.uid", "chapter", "type", "well.no", "year")
 }
-ignore.cols <- c("carotte.uid")
-uid.to.columns <- function(file, type = "cal.data") {
-  if(is.null(type)) {
-    file <- file %>% select(!c(site.uid, 
-                               grep("carotte.uid", colnames(file)), # ajouter des grep des colonnes à exclure de la restructuration, dans grep évite l'erreur "cannot remove col that doesn't exist
-                               # exclure ces dernier car info contenue n'est pas aggrégée (pas de points dans l'UID)
-                               grep("peat.samples_LOI_LAB.UID.1", colnames(file)), 
-                               grep("peat.samples_LOI_LAB.UID.2", colnames(file)), 
-                               grep("probe.uid", colnames(file)))) %>% 
-      mutate(ID = as.character(sample(unique(abs(rnorm(n = nrow(file))))))) # créer une colonne d'ID unique pas lequel joindre après la boucle
+uid.to.columns <- function(file.to.restructure = NULL, path = NULL) {
+  if(is.null(path)) {
+    file <- file.to.restructure %>% 
+      select(!c(site.uid, 
+                grep("carotte.uid", colnames(file)), # ajouter des grep des colonnes à exclure de la restructuration, dans grep évite l'erreur "cannot remove col that doesn't exist
+                # exclure ces dernier car info contenue n'est pas aggrégée (pas de points dans l'UID)
+                grep("peat.samples_LOI_LAB.UID.1", colnames(file)), 
+                grep("peat.samples_LOI_LAB.UID.2", colnames(file)), 
+                grep("probe.uid", colnames(file)))) %>% 
+      mutate(ID = as.character(sample(unique(abs(rnorm(n = nrow(file))))))) # créer une colonne d'ID unique par lequel joindre après la boucle
     cols <- grep("uid", colnames(file), ignore.case = T) # colonnes avec uid à séparer en plusieurs colonnes
     cols.list <- list()
     for(col in seq_along(cols)) {
-      # col <- 3
+      # col <-2
       col.no <- cols[col]
       file.2 <- file %>% 
         separate_wider_delim(colnames(file)[col.no], delim = ".", names = c(col.sequence[[match(colnames(file)[col.no], names(col.sequence))]]), cols_remove = F, too_few = "debug", too_many = "debug")
-      # test <- file.2[, c("trmnt.uid.rel.dist.aaaa", "trmnt.uid.rel.dist.aaaa_ok", "trmnt.uid.rel.dist.aaaa_pieces", "trmnt.uid.rel.dist.aaaa_remainder")]
       file.2$type <- str_replace(file.2$type, "C", "control")
       cols.list[[col]] <- file.2
     }
     cols.df <- cols.list %>%
       reduce(full_join) %>%
+      select(!c("ID"))  } 
+  if(is.null(file.to.restructure)) {
+    file <- filter.raw.file(path.filtering.object = path)
+    file.0 <- file %>%
+      mutate(ID = as.character(sample(unique(abs(rnorm(n = nrow(file))))))) # créer une colonne d'ID unique par lequel joindre après la boucle
+    rm(file)
+    probe.df <- data.frame("probe.uid" = file.0$probe.uid, "ID" = file.0$ID)
+    file.0 <- file.0 %>% 
+      select(!c(file.uid, site.uid, probe.uid)) # ignorer les colonnes à ne pas restructurer
+    cols <- grep("uid", colnames(file.0), ignore.case = T) # colonnes avec uid à séparer en plusieurs colonnes
+    cols.list <- list()
+    for(col in seq_along(cols)) {
+      # col <-2
+      col.no <- cols[col]
+      if(!colnames(file.0)[col.no] == "well.uid") {
+        # col <-2
+        file.2 <- file.0 %>%
+          separate_wider_delim(colnames(file.0)[col.no], delim = ".", names = c(col.sequence[[match(colnames(file.0)[col.no], names(col.sequence))]]), cols_remove = F) #, too_few = "debug", too_many = "debug")
+        file.2$type <- str_replace(file.2$type, "C", "control")
+        cols.list[[col]] <- file.2
+      }
+      if(colnames(file.0)[col.no] == "well.uid") {
+      # col <- 2
+        uid.X.list <- list()
+        for(chap in 1:length(col.sequence$well.uid)) {
+          # chap <- 2
+          file.1 <- file.0[grep(paste0("ch", chap), file.0$well.uid), ]
+          file.2 <- file.1 %>% 
+            # if well.uid...
+            # vs autre colonnes ?
+            separate_wider_delim(colnames(file.1)[col.no], delim = ".", names = c(col.sequence$well.uid[[chap]]), cols_remove = F) #, too_few = "debug", too_many = "debug")
+          # test <- file.2[, c("trmnt.uid.rel.dist.aaaa", "trmnt.uid.rel.dist.aaaa_ok", "trmnt.uid.rel.dist.aaaa_pieces", "trmnt.uid.rel.dist.aaaa_remainder")]
+          file.2$type <- str_replace(file.2$type, "C", "control")
+          uid.X.list[[chap]] <- file.2
+        }
+        col.lines <- do.call(bind_rows, uid.X.list) # row bind -> on colle deux df de structure identique (les ll.cal.pre.i) de différents i.l, associées à différents temps de la période de mesure de la sonde 
+        cols.list[[col]] <- col.lines
+    } # colonne well.uid, cas spécial (diviser le df en 3 sets de lignes, recoller les lignes, poursuivre)
+    cols.df <- cols.list %>%
+      reduce(full_join) %>%
       select(!c("ID"))
+    file <- left_join(file.2, probe.df)
+    }
   }
-  # } else {
-  #   cal.data <- match.arg(cal.data)
-  # }
   return(cols.df)
 }
 
@@ -557,15 +602,10 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
 # ============================================================================= /
 # raw.to.clean_cal.data
 # données de bulleur, emplacement des puits, nom de fichier, long. fil, etc.
-# cal.data.path <- "connectivite/data/raw/level_logger_calibration_all.csv" # lien pour tester fonction, mais dans le code, il se réfère aux lignes précédantes
-# idée : argument = file.uid interchangeable...
-# time.zone <- tz
 raw.to.clean_cal.data <- function(cal.data.path, time.zone) { # ne calibre pas encore les données
-  cal.data.0 <- read.csv(cal.data.path, sep = ";", dec = ",") %>% 
-    dplyr::filter(!measure_status == "rejected") %>% 
-    select(!contains("x.archive"))
-  
-  # ajout constante de distance de la sonde (CDS) : distance entre mesure de fil (voir protocole mesure de fil) et emplacement exact de la mesure de pression ou de mS/cm par la sonde
+  cal.data.0 <- filter.raw.file(path.filtering.object = "connectivite/data/raw/level_logger_calibration_all.csv")
+
+    # ajout constante de distance de la sonde (CDS) : distance entre mesure de fil (voir protocole mesure de fil) et emplacement exact de la mesure de pression ou de mS/cm par la sonde
   CDS <- data.frame(type = c("HOBO U20", "HOBO U20L", "ODYSSEY", "other"), # Hobo seulement : mesure longueur du fil tel que dans protocole; à la limite de la boîte de sonde. Les constantes de longueur de boîte de sonde à la sonde à l'interface intérieur de la sonde sont ajoutées à cette étape-ci.
                     constante = c("12.93", "13.3", "0", "0")) %>%
     mutate_at('constante', as.numeric) # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque/modèle" (type) est traitée de façon différente
