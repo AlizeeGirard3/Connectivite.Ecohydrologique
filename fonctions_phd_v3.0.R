@@ -107,25 +107,25 @@ filter.raw.file <- function(object.to.filter = NULL, path.filtering.object = NUL
 # file.to.restructure <- vegetation_trees.shr # ok
 # canopy.peat.fauna <- read.xlsx("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/extracted_raw/canopy.peat.fauna.xlsx")
 # file.to.restructure <- canopy.peat.fauna # ok
-# path <- "connectivite/data/raw/level_logger_calibration_all.csv"
-{
-  col.sequence <- list() # idée : nom des colonnes à mettre dans col.sequence... y référer dans la boucle
-  # mettre à jour les métadonnées de temps en temps (ok janv.2026)
-  col.sequence$trmnt.uid.aaaa <- c("site.uid", "chapter", "type", "year", "no")
-  col.sequence$trmnt.uid <- c("site.uid", "chapter", "type")
-  col.sequence$trmnt.uid.orient.NO.aaaa <- c("site.uid", "chapter", "type", "orientation", "transect.replicate", "year")
-  # col.sequence$perm.plot.uid.NO.aaaa <- c("site.uid", "chapter", "type", "perm.plot.replicate", "perm.plot.type", "year")
-  col.sequence$perm.plot.uid.NO.quadrat.aaaa <- c("site.uid", "chapter", "type", "perm.plot.replicate", "perm.plot.type", "quadrat.letter", "year")
-  col.sequence$trmnt.uid.rel.dist.aaaa <- c("site.uid", "chapter", "type", "relative.distance", "year")
-  col.sequence$trmnt.uid.rel.dist.quadrat.aaaa <- c("site.uid", "chapter", "type", "relative.distance", "quadrat.letter", "year")
-  col.sequence$trmnt.uid.ch3.position.aaaa <- c("site.uid", "chapter", "type", "well.no", "year")
-  # cas spécifique de cal.data : retirer colonne probe.uid et la remettre après les manips
-  col.sequence$well.uid <- list()
-  col.sequence$well.uid$chap1 <- c("site.uid", "chapter", "type", "year") # traiter stations barométriques mm façon que les sonde du chapitre 1
-  col.sequence$well.uid$chap2 <- c("site.uid", "chapter", "type", "relative.distance", "year", "bis.ia")
-  col.sequence$well.uid$chap3 <- c("site.uid", "chapter", "type", "well.no", "year")
-}
+# path <- "~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/raw/level_logger_calibration_all.csv"; file.to.restructure = NULL
 uid.to.columns <- function(file.to.restructure = NULL, path = NULL) {
+  {
+    col.sequence <- list() # idée : nom des colonnes à mettre dans col.sequence... y référer dans la boucle
+    # mettre à jour les métadonnées de temps en temps (ok janv.2026)
+    col.sequence$trmnt.uid.aaaa <- c("site.uid", "chapter", "type", "year", "no")
+    col.sequence$trmnt.uid <- c("site.uid", "chapter", "type")
+    col.sequence$trmnt.uid.orient.NO.aaaa <- c("site.uid", "chapter", "type", "orientation", "transect.replicate", "year")
+    # col.sequence$perm.plot.uid.NO.aaaa <- c("site.uid", "chapter", "type", "perm.plot.replicate", "perm.plot.type", "year")
+    col.sequence$perm.plot.uid.NO.quadrat.aaaa <- c("site.uid", "chapter", "type", "perm.plot.replicate", "perm.plot.type", "quadrat.letter", "year")
+    col.sequence$trmnt.uid.rel.dist.aaaa <- c("site.uid", "chapter", "type", "relative.distance", "year")
+    col.sequence$trmnt.uid.rel.dist.quadrat.aaaa <- c("site.uid", "chapter", "type", "relative.distance", "quadrat.letter", "year")
+    col.sequence$trmnt.uid.ch3.position.aaaa <- c("site.uid", "chapter", "type", "well.no", "year")
+    # cas spécifique de cal.data : retirer colonne probe.uid et la remettre après les manips
+    col.sequence$well.uid <- list()
+    col.sequence$well.uid$chap1 <- c("site.uid", "chapter", "type", "year") # traiter stations barométriques (lorsque chapitre == NA) mm façon que les sonde du chapitre 1
+    col.sequence$well.uid$chap2 <- c("site.uid", "chapter", "type", "relative.distance", "year")
+    col.sequence$well.uid$chap3 <- c("site.uid", "chapter", "type", "relative.distance", "year")
+  }
   if(is.null(path)) {
     file <- file.to.restructure %>% 
       select(!c(site.uid, 
@@ -150,49 +150,65 @@ uid.to.columns <- function(file.to.restructure = NULL, path = NULL) {
       select(!c("ID"))  } 
   if(is.null(file.to.restructure)) {
     file <- filter.raw.file(path.filtering.object = path)
-    file.0 <- file %>%
-      mutate(ID = as.character(sample(unique(abs(rnorm(n = nrow(file))))))) # créer une colonne d'ID unique par lequel joindre après la boucle
+    file.0.pre <- file %>%
+      mutate(ID = as.character(sample(unique(abs(rnorm(n = nrow(file))))))) #créer une colonne d'ID unique par lequel joindre après la boucle
     rm(file)
-    probe.df <- data.frame("probe.uid" = file.0$probe.uid, "ID" = file.0$ID)
-    file.0 <- file.0 %>% 
+    probe.df <- data.frame("probe.uid" = file.0.pre$probe.uid, "ID" = file.0.pre$ID, file.uid = file.0.pre$file.uid)
+    file.0 <- file.0.pre %>% 
       select(!c(file.uid, site.uid, probe.uid)) # ignorer les colonnes à ne pas restructurer
     cols <- grep("uid", colnames(file.0), ignore.case = T) # colonnes avec uid à séparer en plusieurs colonnes
     cols.list <- list()
     for(col in seq_along(cols)) {
-      # col <-2
-      col.no <- cols[col]
-      if(!colnames(file.0)[col.no] == "well.uid") {
-        # col <-2
-        file.2 <- file.0 %>%
-          separate_wider_delim(colnames(file.0)[col.no], delim = ".", names = c(col.sequence[[match(colnames(file.0)[col.no], names(col.sequence))]]), cols_remove = F) #, too_few = "debug", too_many = "debug")
-        file.2$type <- str_replace(file.2$type, "C", "control")
-        cols.list[[col]] <- file.2
-      }
-      if(colnames(file.0)[col.no] == "well.uid") {
-      # col <- 2
+      # col<-2
+      col.no <- cols[col]    
+      if(colnames(file.0)[col.no] == "well.uid") { # colonne well.uid, cas spécial (diviser le df en 3 sets de lignes, recoller les lignes, poursuivre)
         uid.X.list <- list()
         for(chap in 1:length(col.sequence$well.uid)) {
-          # chap <- 2
-          file.1 <- file.0[grep(paste0("ch", chap), file.0$well.uid), ]
-          file.2 <- file.1 %>% 
-            # if well.uid...
-            # vs autre colonnes ?
-            separate_wider_delim(colnames(file.1)[col.no], delim = ".", names = c(col.sequence$well.uid[[chap]]), cols_remove = F) #, too_few = "debug", too_many = "debug")
-          # test <- file.2[, c("trmnt.uid.rel.dist.aaaa", "trmnt.uid.rel.dist.aaaa_ok", "trmnt.uid.rel.dist.aaaa_pieces", "trmnt.uid.rel.dist.aaaa_remainder")]
-          file.2$type <- str_replace(file.2$type, "C", "control")
+          # chap <-1
+          file.1.pre <- file.0[grep(paste0("ch", chap), file.0$well.uid), ]
+          if(chap == 1) {
+            NAchap.df <- file.0[grep("NA", file.0$well.uid), ] # file.0 oui parce que file.1.pre est un subset alors que je veux aller chercher un subset complémentaire (traiter les chapitre == NA pour les stations barométriques)
+            file.1 <- rbind(NAchap.df, file.1.pre)
+          } else {
+            file.1 <- file.1.pre
+            }
+          file.2 <- file.1 %>%
+            separate_wider_delim(colnames(file.1)[col.no], delim = ".", names = c(col.sequence$well.uid[[chap]]), cols_remove = F, too_few = "align_start") #, too_few = "debug", too_many = "debug")
+          # file.2$type <- str_replace(file.2$type, "^C", "control") # où ^ = "pattern situé au début"
           uid.X.list[[chap]] <- file.2
-        }
-        col.lines <- do.call(bind_rows, uid.X.list) # row bind -> on colle deux df de structure identique (les ll.cal.pre.i) de différents i.l, associées à différents temps de la période de mesure de la sonde 
+          }
+        col.lines <- do.call(bind_rows, uid.X.list) # row bind -> on colle deux df de structure identique (les ll.cal.pre.i) de différents i.l, associées à différents temps de la période de mesure de la sonde
         cols.list[[col]] <- col.lines
-    } # colonne well.uid, cas spécial (diviser le df en 3 sets de lignes, recoller les lignes, poursuivre)
-    cols.df <- cols.list %>%
-      reduce(full_join) %>%
-      select(!c("ID"))
-    file <- left_join(file.2, probe.df)
+        rm(file.1); rm(file.1.pre); rm(file.2)
+        }
+      if(!colnames(file.0)[col.no] == "well.uid") {
+        file.2 <- file.0 %>%
+          separate_wider_delim(colnames(file.0)[col.no], delim = ".", names = c(col.sequence[[match(colnames(file.0)[col.no], names(col.sequence))]]), cols_remove = F) #, too_few = "debug", too_many = "debug")
+        # file.2$type <- str_replace(file.2$type, "C", "control")
+        # file.2 <- file.2 %>%
+        #   mutate(across(everything(), as.character))
+        # str(file.2)
+        cols.list[[col]] <- file.2
+      }
+      
+      cols.df.pre <- cols.list %>%
+        map(~ .x %>% mutate(across(everything(), as.character))) %>%
+        reduce(full_join, na_matches = "na") # précision de la gestion des NA pour débugger (voir code débuggage ci-dessous), cela ajoutait 13 lignes autrement; merci à GoogleIA pour l'aide au débuggage
+      {
+        # test <- reduce(cols.list, anti_join)
+        # test <- test[, -c(15:45)]
+        # complet <- do.call(bind_rows, cols.list)
+        # subset.ID <- complet[complet$ID %in% test$ID,-c(15:45)]
+        # test.binded <- bind_rows(test, subset.ID)
+        # test.binded[13,] == test.binded[26,]
+        } # preuve que les lignes sont essentiellement identiques -> puisque je veux utiliser uniquement la clé "ID" pour joindre les df, le join n'était plus sûr de comment gérer les NA
+      cols.df <- left_join(cols.df.pre, probe.df) %>% 
+        select(!c("ID"))
     }
-  }
+    }
   return(cols.df)
-}
+  }
+# cols.df <- uid.to.columns(path = "~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/raw/level_logger_calibration_all.csv")
 
 # ============================================================================= /
 #  Data download and overwrite ----
