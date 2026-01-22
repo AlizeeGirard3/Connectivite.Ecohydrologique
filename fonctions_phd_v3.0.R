@@ -18,11 +18,7 @@
 # ============================================================================= /
 #  Libraries ----
 # ============================================================================= /
-if (!require("tidyverse")) install.packages("tidyverse") # méta package // gosser avec des suites de caractères, str_replace, [...]
-# if (!require("dplyr")) install.packages("dplyr") # entre autres : left_join()
-# if (!require("tidyr")) install.packages("tidyr") # entre autres : extract_numeric() / extract_numeric() is deprecated: please use readr::parse_number() instead
-# contient purr aussi
-# 3 packages inutiles après avoir refomaté le code en tidyverse
+if (!require("tidyverse")) install.packages("tidyverse") # méta package // dplyr, tidyr, purrr, ect
 if (!require("data.table")) install.packages("data.table") # ℹ Use the conflicted package to force all conflicts to become errors    ---->>>>  devtools::install_github("r-lib/conflicted")
 if (!require("sf")) install.packages("sf"); if (!require("lutz")) install.packages("lutz") # GIS in R
 if (!require("readxl")) install.packages("readxl") # lire les excel
@@ -30,11 +26,9 @@ if (!require("openxlsx")) install.packages("openxlsx") # lire les excel
 if (!require("conflicted")) install.packages("conflicted") # ℹ Use the conflicted package to force all conflicts to become errors    ---->>>>  devtools::install_github("r-lib/conflicted")
 if (!require("stringr")) install.packages("stringr") # gosser avec des suites de caractères, str_replace, [...]
 if (!require("lubridate")) install.packages("lubridate")
-options(lubridate.verbose = TRUE) # pour expliciter ce que les fonctions font
+options(lubridate.verbose = F) # pour expliciter ce que les fonctions font
 if (!require("parsedate")) install.packages("parsedate") # lire les excel
-# option d'arrêter le code si message d'erreur (source fonctions.R)
-# options(error=pause)
-# options(error=NULL) # annuler
+# if (!require("withr")) install.packages("withr") # T'o Québec icitte (date-time en français)
 
 # ============================================================================= /
 #  Data selection ----
@@ -108,7 +102,7 @@ filter.raw.file <- function(object.to.filter = NULL, path.filtering.object = NUL
 # canopy.peat.fauna <- read.xlsx("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/extracted_raw/canopy.peat.fauna.xlsx")
 # file.to.restructure <- canopy.peat.fauna # ok
 # path <- "~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/raw/level_logger_calibration_all.csv"; file.to.restructure = NULL
-uid.to.columns <- function(file.to.restructure = NULL, path = NULL) {
+uid.to.columns <- function(file.to.restructure = NULL, type = NULL, path = NULL) { # other ou cal.data
   {
     col.sequence <- list() # idée : nom des colonnes à mettre dans col.sequence... y référer dans la boucle
     # mettre à jour les métadonnées de temps en temps (ok janv.2026)
@@ -126,7 +120,7 @@ uid.to.columns <- function(file.to.restructure = NULL, path = NULL) {
     col.sequence$well.uid$chap2 <- c("site.uid", "chapter", "type", "relative.distance", "year")
     col.sequence$well.uid$chap3 <- c("site.uid", "chapter", "type", "relative.distance", "year")
   }
-  if(is.null(path)) {
+  if(type == "other") {
     file <- file.to.restructure %>% 
       select(!c(site.uid, 
                 grep("carotte.uid", colnames(file)), # ajouter des grep des colonnes à exclure de la restructuration, dans grep évite l'erreur "cannot remove col that doesn't exist
@@ -148,11 +142,11 @@ uid.to.columns <- function(file.to.restructure = NULL, path = NULL) {
     cols.df <- cols.list %>%
       reduce(full_join) %>%
       select(!c("ID"))  } 
-  if(is.null(file.to.restructure)) {
-    file <- filter.raw.file(path.filtering.object = path)
-    file.0.pre <- file %>%
-      mutate(ID = as.character(sample(unique(abs(rnorm(n = nrow(file))))))) #créer une colonne d'ID unique par lequel joindre après la boucle
-    rm(file)
+  if(is.null(file.to.restructure) | c(is.null(path) & type == "cal.data")) {
+    # file.0.pre <- filter.raw.file(path.filtering.object = path)
+    file.0.pre <- file.to.restructure %>%
+      mutate(ID = as.character(sample(unique(abs(rnorm(n = nrow(file.to.restructure))))))) #créer une colonne d'ID unique par lequel joindre après la boucle
+    # rm(file)
     probe.df <- data.frame("probe.uid" = file.0.pre$probe.uid, "ID" = file.0.pre$ID, file.uid = file.0.pre$file.uid)
     file.0 <- file.0.pre %>% 
       select(!c(file.uid, site.uid, probe.uid)) # ignorer les colonnes à ne pas restructurer
@@ -184,15 +178,11 @@ uid.to.columns <- function(file.to.restructure = NULL, path = NULL) {
       if(!colnames(file.0)[col.no] == "well.uid") {
         file.2 <- file.0 %>%
           separate_wider_delim(colnames(file.0)[col.no], delim = ".", names = c(col.sequence[[match(colnames(file.0)[col.no], names(col.sequence))]]), cols_remove = F) #, too_few = "debug", too_many = "debug")
-        # file.2$type <- str_replace(file.2$type, "C", "control")
-        # file.2 <- file.2 %>%
-        #   mutate(across(everything(), as.character))
-        # str(file.2)
         cols.list[[col]] <- file.2
       }
-      
+      # coller les colonnes ensemble en joignant par l'identifiant unique
       cols.df.pre <- cols.list %>%
-        map(~ .x %>% mutate(across(everything(), as.character))) %>%
+        map(~ .x %>% mutate(across(everything(), as.character))) %>% # d'abord, tout en caractères, car classe des NA en arrière plan posait problème
         reduce(full_join, na_matches = "na") # précision de la gestion des NA pour débugger (voir code débuggage ci-dessous), cela ajoutait 13 lignes autrement; merci à GoogleIA pour l'aide au débuggage
       {
         # test <- reduce(cols.list, anti_join)
@@ -205,15 +195,17 @@ uid.to.columns <- function(file.to.restructure = NULL, path = NULL) {
       cols.df <- left_join(cols.df.pre, probe.df) %>% 
         select(!c("ID"))
     }
-    }
+    } # soit je fournis le path de cal.data, soit je fournis le fichier filtré (sortie de la fonction select.raw.ll.files() ci-dessus, exemple, utilisé dans la fonction raw.to.clean_cal.data() ci-dessous)
   return(cols.df)
   }
 # cols.df <- uid.to.columns(path = "~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/raw/level_logger_calibration_all.csv")
 
 # ============================================================================= /
-#  Data download and overwrite ----
+#  MeteoStat data (download and overwrite) ----
 # ============================================================================= /
-# 1ier décembre 2025 fonctionne
+# télécharger données horaires (1ier décembre 2025 fonctionne)
+# if (!require("data.table")) install.packages("data.table") # ℹ Use the conflicted package to force all conflicts to become errors    ---->>>>  devtools::install_github("r-lib/conflicted")
+# if (!require("tidyverse")) install.packages("tidyverse") # méta package // gosser avec des suites de caractères, str_replace, [...]
 # station_id.phd <- read.csv("connectivite/data/raw/station_id.phd.csv") # issu du script "Recherche_station_meteo_ID_v2.0.r"
 # year <- (2024:2025) # ajouter 2026 en 2026 et dans bind_rows aussi
 # list.data.format <- c("hourly", "daily", "monthly", "normals") # ajouter boucle pour données d'autres type au besoin
@@ -227,7 +219,26 @@ uid.to.columns <- function(file.to.restructure = NULL, path = NULL) {
 #     meteoStat.site.year[[i]] <- fread(temp)
 #   }
 #   aggr.meteoStat.site <- bind_rows(meteoStat.site.year[[1]], meteoStat.site.year[[2]]) # ajouter 3e année et + (2026, +) ou coder différemment
-#   write.csv(aggr.meteoStat.site,  paste0("connectivite/data/raw/meteoStat.data.", station_id.phd$phd.site.name[n], ".csv"))
+#   write.csv(aggr.meteoStat.site,  paste0("connectivite/data/raw/meteoStat.data.hourly", station_id.phd$phd.site.name[n], ".csv"))
+# }
+
+# télécharger données quotidiennes (22 janvier 2026)
+# if (!require("data.table")) install.packages("data.table") # ℹ Use the conflicted package to force all conflicts to become errors    ---->>>>  devtools::install_github("r-lib/conflicted")
+# if (!require("tidyverse")) install.packages("tidyverse") # méta package // gosser avec des suites de caractères, str_replace, [...]
+# station_id.phd <- read.csv("connectivite/data/raw/station_id.phd.csv") # issu du script "Recherche_station_meteo_ID_v2.0.r"
+# year <- (2024:2025) # ajouter 2026 en 2026 et dans bind_rows aussi
+# list.data.format <- c("hourly", "daily", "monthly", "normals") # ajouter boucle pour données d'autres type au besoin
+# meteoStat.site.year <- list()
+# for(n in 1:nrow(station_id.phd)) {
+#   for (i in 1:length(year)) {
+#     # n<-1
+#     URL <- paste0("https://data.meteostat.net/", list.data.format[2], "/", year[i],"/", station_id.phd$station_id_MeteoStat[n],".csv.gz")
+#     temp <- tempfile()
+#     download.file(url = URL, temp)
+#     meteoStat.site.year[[i]] <- fread(temp)
+#   }
+#   aggr.meteoStat.site.daily <- bind_rows(meteoStat.site.year[[1]], meteoStat.site.year[[2]]) # ajouter 3e année et + (2026, +) ou coder différemment
+#   write.csv(aggr.meteoStat.site.daily,  paste0("connectivite/data/raw/meteoStat.data.daily.", station_id.phd$phd.site.name[n], ".csv"))
 # }
 
 # ============================================================================= /
@@ -521,10 +532,10 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
              prof_nappe_bulleur_cm = (bulleur.rel.to.surface.mm/10), # en cm // ok -> le out déjà retiré dans raw.to.clean_cal.data, c'est pourquoi on a bulleur au lieu de in.bulleur (valeur brutte)
              offset_cm = prof_nappe_odyssey_cm_plus.out - prof_nappe_bulleur_cm)
     tidy.cal.bulleur.data$mean_offset_cm <- mean(tidy.cal.bulleur.data$offset_cm[tidy.cal.bulleur.data$cal.no == "3"], na.rm = TRUE) # ok vérif : sum(tidy.cal.bulleur.data$offset_cm[tidy.cal.bulleur.data$cal.no == "3"])/length(which(tidy.cal.bulleur.data$cal.no == "3"))
-    tidy.cal.bulleur.data <- tidy.cal.bulleur.data %>% select("file.uid", "lat.garmin.dms", "long.garmin.dms", "measure_status", "chapitre", "site.uid", "well.uid", "trmnt.uid",
-                                                              "lab.probe.id", "probe.uid", "probe.brand", "long.fil.CDS.cm", "comment", "day.begining.aaaa.mm.dd.hh.mm", "day.end.aaaa.mm.dd.hh.mm",
-                                                              "distance.m", "out.mean.cm", "bulleur.no",  "bulleur.prof.mm", "bulleur.rel.to.surface.mm",
-                                                              "in.bulleur.date.time.UTC.0" = "date.time.UTC.0", "in.bulleur.date.aaaammdd", "in.bulleur.time.tz.orig", "in.bulleur.obs",
+    tidy.cal.bulleur.data <- tidy.cal.bulleur.data %>% select("file.uid", "lat.garmin.dms", "long.garmin.dms", "measure_status", "site.uid", "chapter", "type", "relative.distance", "year", "well.uid", "trmnt.uid", 
+                                                              "lab.probe.id", "probe.uid", "probe.brand", "comment", "day.begining.aaaa.mm.dd.hh.mm", "day.end.aaaa.mm.dd.hh.mm", 
+                                                              "out.mean.cm", "bulleur.no",  "bulleur.prof.mm", "bulleur.rel.to.surface.mm", 
+                                                              "in.bulleur.date.time.UTC.0" = "date.time.UTC.0", "in.bulleur.date.aaaammdd", "in.bulleur.time.tz.orig", "in.bulleur.obs", 
                                                               "period.file.uid", "scan.id", raw.value = "raw.value.mm", "calibrated.value.cm", "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.tz.orig",
                                                               "cal.neg.length_mm", "cal.value", "cal.no", "prof_nappe_odyssey_cm_plus.out", "prof_nappe_bulleur_cm", "offset_cm", "mean_offset_cm")
     file.to.calibrate$calibrated.value.cm = (((file.to.calibrate$raw.value.mm*a.slope) + b.verticalIntercept)/10) + unique(tidy.cal.bulleur.data$out.mean.cm - tidy.cal.bulleur.data$mean_offset_cm)
@@ -601,9 +612,9 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
     # créer mm colonnes que pour les Odyssey en prévision du rbind
     tidy.cal.bulleur.data <- tidy.cal.bulleur.data.pre %>% 
       mutate(prof_nappe_odyssey_cm_plus.out = NA, prof_nappe_bulleur_cm = NA, offset_cm = NA, mean_offset_cm = NA)
-    tidy.cal.bulleur.data <- tidy.cal.bulleur.data %>% select("file.uid", "lat.garmin.dms", "long.garmin.dms", "measure_status", "chapitre", "site.uid", "well.uid", "trmnt.uid", 
-                                                              "lab.probe.id", "probe.uid", "probe.brand", "long.fil.CDS.cm", "comment", "day.begining.aaaa.mm.dd.hh.mm", "day.end.aaaa.mm.dd.hh.mm", 
-                                                              "distance.m", "out.mean.cm", "bulleur.no",  "bulleur.prof.mm", "bulleur.rel.to.surface.mm", 
+    tidy.cal.bulleur.data <- tidy.cal.bulleur.data %>% select("file.uid", "lat.garmin.dms", "long.garmin.dms", "measure_status", "site.uid", "chapter", "type", "relative.distance", "year", "well.uid", "trmnt.uid", 
+                                                              "lab.probe.id", "probe.uid", "probe.brand", "comment", "day.begining.aaaa.mm.dd.hh.mm", "day.end.aaaa.mm.dd.hh.mm", 
+                                                              "out.mean.cm", "bulleur.no",  "bulleur.prof.mm", "bulleur.rel.to.surface.mm", 
                                                               "in.bulleur.date.time.UTC.0" = "date.time.UTC.0", "in.bulleur.date.aaaammdd", "in.bulleur.time.tz.orig", "in.bulleur.obs", 
                                                               "period.file.uid", "scan.id", raw.value = "raw.value.kPa_pres.abs", "calibrated.value.cm", "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.tz.orig",
                                                               "cal.neg.length_mm", "cal.value", "cal.no", "prof_nappe_odyssey_cm_plus.out", "prof_nappe_bulleur_cm", "offset_cm", "mean_offset_cm")
@@ -618,10 +629,12 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
 # ============================================================================= /
 # raw.to.clean_cal.data
 # données de bulleur, emplacement des puits, nom de fichier, long. fil, etc.
-raw.to.clean_cal.data <- function(cal.data.path, time.zone) { # ne calibre pas encore les données
-  cal.data.0 <- filter.raw.file(path.filtering.object = "connectivite/data/raw/level_logger_calibration_all.csv")
-
-    # ajout constante de distance de la sonde (CDS) : distance entre mesure de fil (voir protocole mesure de fil) et emplacement exact de la mesure de pression ou de mS/cm par la sonde
+raw.to.clean_cal.data <- function(cal.data.file, time.zone) { # ne calibre pas encore les données
+  cal.data.0 <- cal.data.file %>% 
+  mutate(across(matches("out\\.|.cm$"), as.numeric), # .* "n'importe quel caractère"
+         long.fil.cm = as.numeric(long.fil.cm))
+  
+  # ajout constante de distance de la sonde (CDS) : distance entre mesure de fil (voir protocole mesure de fil) et emplacement exact de la mesure de pression ou de mS/cm par la sonde
   CDS <- data.frame(type = c("HOBO U20", "HOBO U20L", "ODYSSEY", "other"), # Hobo seulement : mesure longueur du fil tel que dans protocole; à la limite de la boîte de sonde. Les constantes de longueur de boîte de sonde à la sonde à l'interface intérieur de la sonde sont ajoutées à cette étape-ci.
                     constante = c("12.93", "13.3", "0", "0")) %>%
     mutate_at('constante', as.numeric) # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque/modèle" (type) est traitée de façon différente
@@ -631,7 +644,7 @@ raw.to.clean_cal.data <- function(cal.data.path, time.zone) { # ne calibre pas e
   
   # vérification de valeurs OUT
   cal.data.0 <- cal.data.0 %>% 
-    mutate(out.R = ifelse(is.na(out.1.a.cm), round((out.1.a.cm + out.1.b.cm + out.1.c.cm)/3, digits = 1), out.mean.cm))
+    mutate(out.R = ifelse(is.na(out.1.a.cm), round((out.1.a.cm + out.1.b.cm + out.1.c.cm)/3, digits = 1), as.numeric(out.mean.cm)))
   if(all(cal.data.0$out.R == round(cal.data.0$out.mean.cm, digits = 2), na.rm =T))  { # si TOUS TRUE (fonction any()) = changer nom de out.R et supprimer la mesure entrée manuellement // si FALSE = avertissement
     print("out moyenne ok")
   } else { stop("Attention, le out entré dans cal.data.1 (syn. level_logger_calibration_all.csv) n'est pas identique à la moyenne hauteurs de la saison.") } 
@@ -676,8 +689,8 @@ raw.to.clean_cal.data <- function(cal.data.path, time.zone) { # ne calibre pas e
       remove <- paste(setdiff(unique(nstep), k), collapse = "|")
       odyssey.data.j.k <- odyssey.data.list[[j]] %>% select(!matches(remove)) %>% # sélect si contient j dans les noms de colonne; j'obtiens les colonnes de chiffre (step) k, je crée un df avec juste ces colonnes; j'ajoute une colonne avec le chiffre
         mutate(!!paste0(step[j],".no") := rep(k, nrow(odyssey.data.pre)),
-               period.file.uid = odyssey.data.pre$period.file.uid,
-               row.uid = odyssey.data.pre$row.uid)
+               period.file.uid = odyssey.data.pre$period.file.uid) #,
+               # row.uid = odyssey.data.pre$row.uid)
       colnames(odyssey.data.j.k) <- sub('[[:digit:]]+', '', colnames(odyssey.data.j.k)) # nom colonne sans chiffre
       odyssey.data[[k]] <- odyssey.data.j.k
     }
@@ -711,7 +724,7 @@ raw.to.clean_cal.data <- function(cal.data.path, time.zone) { # ne calibre pas e
   tidy.bulleur.data$date.time.UTC.0pre.1 <- format_iso_8601(tidy.bulleur.data$date.time.UTC.0pre)
   tidy.bulleur.data$date.time.UTC.0 <- gsub("[+]00:00", "Z",  tidy.bulleur.data$date.time.UTC.0pre.1)
   tidy.bulleur.data <- tidy.bulleur.data %>%
-    mutate(bulleur.prof.mm = (in.bulleur.prof.cm - out.mean.cm) * 10) %>% # données de bulleur finales (in.bulleur-out) et en mm pour correspondre aux cal.val
+    mutate(bulleur.prof.mm = (as.numeric(in.bulleur.prof.cm) - out.mean.cm) * 10) %>% # données de bulleur finales (in.bulleur-out) et en mm pour correspondre aux cal.val
     mutate(bulleur.rel.to.surface.mm = (in.bulleur.rel.to.surface.cm + out.mean.cm) * 10) %>% # données de bulleur finales (in.bulleur-out) et en mm pour correspondre aux cal.val
     select(!c(date.time.UTC.0pre, date.time.UTC.0pre.1, date.time.roundd, in.bulleur.prof.cm, in.bulleur.rel.to.surface.cm))
   # retour à la sous-liste pour utilisation dans la fonction clean.to.calibrated_ll (itération de calibration pour les sondes ODYSSEY, n'impacte pas les autres marques de sondes)

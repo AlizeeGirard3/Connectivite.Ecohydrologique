@@ -7,13 +7,14 @@
 # Fait par :      Alizée Girard
 # Affiliation :   ULaval
 # Date création initiale : 2025-05-025
-# Date mise à jour : 
-# Pourquoi : télécharger les données météo quotidiennes et les sauvegarder
+# Date mise à jour : 22 janvier 2026
+# Pourquoi : afficher données de MétéoStat
 # Structure :
 # —— connectivite
 #         |—— archive
 #         |—— data
 #                     |—— raw
+#                     |—— extracted_raw    <- raw feuilles numériques terrain (plusieurs onglets pour un site), extrait en un df par onglet, tous site confondu (script "data_sites_all")
 #                     |—— clean
 #         |—— output
 #                     |—— data
@@ -30,39 +31,38 @@
 ##########################################################################-
 
 
-# RENDUE LÀ
+# ============================================================================= /
+# Initialisation ----
+# ============================================================================= /
+# Librairies (autres initialisées dans le script sourcé)
+if (!require("ggplot2")) install.packages("ggplot2")
+# if (!require("ggpubr")) install.packages("ggpubr") # ggarrange()
+if (!require("grDevices")) install.packages("grDevices") # pdf()
+if (!require("gridExtra")) install.packages("gridExtra") # multiplot()
 
-
-# fichiers "R data serialized" (RDS) à charger directement
-# ll.clean<-readRDS("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/clean/ll.clean.RDS") # issu de section A.1 du code ci-présent
-
+# Données, dossier directeur fonctions et à charger directement
 # .rs.restartR()
-source("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/general.scripts/scripts/fonctions.R")
 setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
+source("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/connectivite/scripts/fonctions_phd_v3.0.R")
+# source("general.scripts/scripts/fonctions_generales.R") # CADUQUE ? appel du fichier de métadonnées de projet
 
-# Librairies ----
-if (!require("conflicted")) install.packages("conflicted") # ℹ Use the conflicted package to force all conflicts to become errors    ---->>>>  devtools::install_github("r-lib/conflicted")
-if (!require("readxl")) install.packages("readxl") # lire les excel
-if (!require("openxlsx")) install.packages("openxlsx") # lire les excel
-if (!require("stringr")) install.packages("stringr") # gosser avec des suites de caractères, str_replace, [...]
-if (!require("dplyr")) install.packages("dplyr") # entre autres : left_join()
-if (!require("tidyr")) install.packages("tidyr") # entre autres : extract_numeric() / extract_numeric() is deprecated: please use readr::parse_number() instead
-if (!require("sf")) install.packages("sf"); if (!require("lutz")) install.packages("lutz") # GIS in R
-if (!require("lubridate")) install.packages("lubridate")
-options(lubridate.verbose = TRUE) # pour expliciter ce que les fonctions font
-# librairies de weathercan
-if (!require("weathercan")) install.packages("weathercan") # Integrating data from weathercan (ECCC/CCCS), Gouvernement du Canada
-stations_dl()
-stations_meta()
-# if (!require("naniar")) install.packages("naniar") # Checking data completeness
-# if (!require("mapview")) install.packages("mapview") ## Spatial analyses
-if (!require("parsedate")) install.packages("parsedate") # lire les excel
-# option d'arrêter le code si message d'erreur (source fonctions.R)
-# options(error=pause)
-# options(error=NULL) # annuler
+# tidy.WTD.data <- readRDS("connectivite/data/clean/tidy.WTD.data.RDS") # obtenu via le script "/scripts/data_water.table.all(v.X).R"
+# tidy.cal.data <- readRDS("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/clean/tidy.cal.data.RDS") # obtenu via le script "/scripts/data_water.table.all(v.X).R"
+# ele.profiles <- readRDS("connectivite/data/clean/elevation.profiles.RDS") # obtenu via le script "/scripts/data_silte_all(v.X).R" et traité avec
 
-# A  Donnée issues des sonde de niveau hydrostatique ----
-SNH <- as.vector(c("_odyssey", "_hobo"), mode = "character") # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque" est traitée de façon différente
+# ============================================================================= /
+#  Examination des données bruttes et nettoyage ----
+# ============================================================================= /
+# daily.weather <- read.csv("connectivite/data/raw/", , sep = ";", dec = ",")
 
-# A.1 nettoyage et enregistrement en RDS ----
-# fonction : modifications automatisées pour chaque fichier issus d'une période de mesures des level loggers
+# étape 1 : aggréger toutes les données météoStat 
+# 1.1 : daily -> UTC.0
+# 1.2 : nettoyage date-heure
+# 1.3 : hourly
+# 1.4 : nettoyage date-heure
+# étape 2 : join les données météoStat, répétition des données daily à chaque ligne heure
+
+# utlimement : je veux afficher données horaire de barométrie et TROUVER LE MOOYEN D'ENLEVER LA VARIATION DE PRESSION journalière !! 
+
+
+

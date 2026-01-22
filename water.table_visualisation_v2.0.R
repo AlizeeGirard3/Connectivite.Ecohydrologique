@@ -16,15 +16,8 @@
 # https://finchstudio.io/blog/ggplot-dual-y-axes/
 ###########################################################################-
 
-setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
-source("general.scripts/scripts/fonctions_generales.R") # appel du fichier de métadonnées de projet
-
-# Import de données ----
-tidy.WTD.data <- readRDS("connectivite/data/clean/tidy.WTD.data.RDS")
-# obtenu via le script "/scripts/data_water.table.all(v.X).R"
-# importer le graphique que topographie
-
-# Librairies ----
+# Initialisation ----
+# Librairies
 library(conflicted) # ℹ Use the conflicted package to force all conflicts to become errors    ---->>>>  devtools::install_github("r-lib/conflicted")
 if (!require("dplyr")) install.packages("dplyr") # pour manipulation donnees (pipe, etc)
 if (!require("ggplot2")) install.packages("ggplot2")
@@ -34,13 +27,18 @@ if (!require("grDevices")) install.packages("grDevices") # pdf()
 if (!require("gridExtra")) install.packages("gridExtra") # multiplot()
 # if (!require("withr")) install.packages("withr") # T'o Québec icitte (date-time en français)
 
-# Dossier de travail
+# Dossier de travail et fonctions
 setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
+source("general.scripts/scripts/fonctions_generales.R") # appel du fichier de métadonnées de projet
 
-# Import du fichier de données récent
+# Import des fichiers de données récents
 tidy.WTD.data <- readRDS("connectivite/data/clean/tidy.WTD.data.RDS")
-tidy.cal.data <-readRDS("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/clean/tidy.cal.data.RDS")
+tidy.cal.data <- readRDS("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/clean/tidy.cal.data.RDS")
 ele.profiles <- readRDS("connectivite/data/clean/elevation.profiles.RDS")
+
+tidy.WTD.data <- readRDS("connectivite/data/clean/tidy.WTD.data.RDS")
+# obtenu via le script "/scripts/data_water.table.all(v.X).R"
+# importer le graphique que topographie
 
 ## Aperçu des offets - Sondes Odyssey ----
 for (j in 1:length(tidy.WTD.data)) {

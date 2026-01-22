@@ -77,3 +77,8 @@ texi2pdf("Reproducible/Exemple-latex.tex")
 #   /opt/R/arm64/bin/texi2dvi: cannot read /reproducible/Exemple-latex.tex, skipping.
 
 
+# autres codes ----
+# option d'arrêter le code si message d'erreur (source fonctions.R)
+# options(error=pause)
+# options(error=NULL) # annuler
+

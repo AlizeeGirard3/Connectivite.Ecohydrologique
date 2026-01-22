@@ -25,19 +25,26 @@
   
 ###########################################################################-
 
-# Bibliothèques ----
+# ============================================================================= /
+# Initialisation ----
+# ============================================================================= /
+#  Libraries
 if (!require("conflicted")) install.packages("conflicted") # Use the conflicted package to force all conflicts to become errors    ---->>>>  devtools::install_github("r-lib/conflicted")
 if (!require("ggplot2")) install.packages("ggplot2")
 if (!require("patchwork")) install.packages("patchwork")
 if (!require("lubridate")) install.packages("lubridate")
 # autres packages dans le script sourcé
 
-# Données, dossier directeur fonctions et à charger directement ----
+# Données, dossier directeur fonctions et à charger directement
 setwd("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD")
 source("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/connectivite/scripts/fonctions_phd_v3.0.R") 
+
+# ============================================================================= /
+# Lecture, nettoyage, visualisation des fichier bruts ----
+# ============================================================================= /
 ele.profiles.raw <- readxl::read_xlsx("connectivite/data/extracted_raw/microtopo.xlsx")
 
-# Nettoyage des données ----
+# Nettoyage des données
 ele.profiles <- filter.raw.file(ele.profiles.raw) # script "fonctions_phd_v3.0.R"
 ele.profiles$distance.m <- round(as.numeric(ele.profiles$distance.m), digits = 2)
 ele.profiles$elevation.cm <- round(as.numeric(ele.profiles$elevation.cm), digits = 2)
@@ -100,9 +107,11 @@ GRAPH <- ggplot(ele.profiles.subset) +
   theme(legend.position = c(0.8, 0.2))
 GRAPH
 
+## transect (trmnt.uid.aaaa) résolus ---- 
+
 
 ## INK ----
-# INK.ch3.sprd.2025.2, INK.ch3.sprd.2025.1 et INK.ch3.rmvd
+### INK.ch3.sprd.2025.2, INK.ch3.sprd.2025.1 et INK.ch3.rmvd ----
 trmnt.to.compare.2 <- c("INK.ch3.sprd.2025.2", "INK.ch3.sprd.2025.1", "INK.ch3.rmvd.2025")
 ele.profiles.subset.2 <- ele.profiles[ele.profiles$trmnt.uid.aaaa %in% trmnt.to.compare.2,]
 unique(na.omit(ele.profiles.subset.2$trmnt.uid.aaaa))
@@ -116,7 +125,7 @@ GRAPH <- ggplot(ele.profiles.subset.2) +
   theme(legend.position = c(0.8, 0.2))
 GRAPH
 
-# transect (trmnt.uid.aaaa) résolus ---- 
+## transect (trmnt.uid.aaaa) résolus ---- 
 
 
 # ============================================================================= /
