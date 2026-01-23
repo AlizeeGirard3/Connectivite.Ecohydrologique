@@ -18,14 +18,12 @@
 # ============================================================================= /
 #  Libraries ----
 # ============================================================================= /
-if (!require("tidyverse")) install.packages("tidyverse") # méta package // dplyr, tidyr, purrr, ect
+if (!require("tidyverse")) install.packages("tidyverse") # méta package // dplyr, tidyr, purrr, stringr, lubridate, ect
 if (!require("data.table")) install.packages("data.table") # ℹ Use the conflicted package to force all conflicts to become errors    ---->>>>  devtools::install_github("r-lib/conflicted")
 if (!require("sf")) install.packages("sf"); if (!require("lutz")) install.packages("lutz") # GIS in R
 if (!require("readxl")) install.packages("readxl") # lire les excel
 if (!require("openxlsx")) install.packages("openxlsx") # lire les excel
 if (!require("conflicted")) install.packages("conflicted") # ℹ Use the conflicted package to force all conflicts to become errors    ---->>>>  devtools::install_github("r-lib/conflicted")
-if (!require("stringr")) install.packages("stringr") # gosser avec des suites de caractères, str_replace, [...]
-if (!require("lubridate")) install.packages("lubridate")
 options(lubridate.verbose = F) # pour expliciter ce que les fonctions font
 if (!require("parsedate")) install.packages("parsedate") # lire les excel
 # if (!require("withr")) install.packages("withr") # T'o Québec icitte (date-time en français)
@@ -67,7 +65,7 @@ cat_lists <- function(list1, list2) {   # concatener le contenu de listes aux no
 # path.filtering.object <- "connectivite/data/raw/level_logger_calibration_all.csv"
 # object.to.filter <- ele.profiles
 # object.to.filter <- env.data.n
-filter.raw.file <- function(object.to.filter = NULL, path.filtering.object = NULL) {
+filter.raw.file <- function(object.to.filter = NULL, path.filtering.object = NULL, type = NULL) {
   if(c(is.null(path.filtering.object) & !is.null(object.to.filter))) { # fournir juste un objet à filtrer, sans cal data path
     object.to.filter.filtrd <- object.to.filter %>% 
       dplyr::filter(!grepl("rejected", object.to.filter$measure.status), 
@@ -88,7 +86,17 @@ filter.raw.file <- function(object.to.filter = NULL, path.filtering.object = NUL
     object.to.filter.filtrd <- read.csv(path.filtering.object, sep = ";", dec = ",") %>% 
       dplyr::filter(!measure_status == "rejected") %>% 
       select(!contains("x.archive"))
-}
+  }
+  if(c(!is.null(object.to.filter) & type == "MeteoStat")) {
+    cols_a_nettoyer <- c("temp", "tmin", "tmax", "rhum", "prcp", "snwd", "wspd", "wpgt", "pres", "cldc")
+    # idée : convertir en recherche automatique
+    daily.weather.raw[cols_a_nettoyer] <- map(cols_a_nettoyer, ~ {
+      # .x représente ici le nom de la colonne (ex: "temp")
+      sources <- daily.weather.raw[[paste0(.x, "_source")]]
+      ifelse(sources == "metno_forecast", NA, daily.weather.raw[[.x]])
+    })
+
+  } # pour meteoStat
   return(object.to.filter.filtrd)
 }
 
@@ -203,6 +211,19 @@ uid.to.columns <- function(file.to.restructure = NULL, type = NULL, path = NULL)
 # ============================================================================= /
 #  MeteoStat data (download and overwrite) ----
 # ============================================================================= /
+### tableau avec les station ID de chaque site (utilisé ci-dessous)
+# source : meteoStat
+#### MANUELLEMENT : trouvé la station ID (canada+(lat, long) et la distance du site de recherche et trouver le station ID sur MeteoStat[-> sur le site de MétéoStat])
+# station_id.phd <- data.frame("phd.site.UID" = NA, "phd.site.name"= NA,"station_name" = NA, "station_id_canada" = NA, "station_id_MeteoStat" = NA, 
+#                              "lat.station" = NA, "long.station" = NA, "dist_from_zone" = NA, "start.hourly" = NA, "end.hourly" = NA) # start et end à jour : 1ier décembre
+# station_id.phd[1,1:10] <- c("STH", "St-Henri","BEAUPORT",27803,71578,46.8,-71.2,18.14627, "2003", "2025-11-22")
+# station_id.phd[2,1:10] <- c("INK", "Inkerman","TRACADIE",6205,71719,48.01,-64.49, 49.50673, "1977", "2025-04-27") # MISCOU ISLAND (AUT)
+# station_id.phd[3,1:10] <- c("BRNTC", "Burnt Church","MIRAMICHI RCS", 10808,"AOYMS",47.01,-65.47,27.63049, "2020", "2022-12-14")
+# station_id.phd[4,1:10] <- c("PRO", "Président-Ouest","RIVIERE-DU-LOUP",8539,71578,47.81,-69.55,3.021966, "2003", "2025-11-22")
+# station_id.phd[5,1:10] <- c("GPB", "Grande Plée Bleue", "BEAUPORT",27803,71578,46.8,-71.2,12.499890, "2003", "2025-11-22")
+# write.csv(station_id.phd, file = "connectivite/data/raw/station_id.phd.csv")
+# ok (1ier déc. 2025), ajouter des sites au besoin
+
 # télécharger données horaires (1ier décembre 2025 fonctionne)
 # if (!require("data.table")) install.packages("data.table") # ℹ Use the conflicted package to force all conflicts to become errors    ---->>>>  devtools::install_github("r-lib/conflicted")
 # if (!require("tidyverse")) install.packages("tidyverse") # méta package // gosser avec des suites de caractères, str_replace, [...]
@@ -240,6 +261,8 @@ uid.to.columns <- function(file.to.restructure = NULL, type = NULL, path = NULL)
 #   aggr.meteoStat.site.daily <- bind_rows(meteoStat.site.year[[1]], meteoStat.site.year[[2]]) # ajouter 3e année et + (2026, +) ou coder différemment
 #   write.csv(aggr.meteoStat.site.daily,  paste0("connectivite/data/raw/meteoStat.data.daily.", station_id.phd$phd.site.name[n], ".csv"))
 # }
+
+
 
 # ============================================================================= /
 #  Metadata manipulations ----

@@ -23,11 +23,10 @@
 # LEXIQUE :
 ##########################################################################-
 
-# .rs.restartR()
-setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
-source("general.scripts/scripts/fonctions.R")
-
-# Librairies ----
+# ============================================================================= /
+# Initialisation ----
+# ============================================================================= /
+# Librairies 
 if (!require("conflicted")) install.packages("conflicted") # ℹ Use the conflicted package to force all conflicts to become errors    ---->>>>  devtools::install_github("r-lib/conflicted")
 # if (!require("readxl")) install.packages("readxl") # lire les excel
 # if (!require("openxlsx")) install.packages("openxlsx") # lire les excel
@@ -36,16 +35,27 @@ if (!require("tidyverse")) install.packages("tidyverse") # entre autres : left_j
 # if (!require("tidyr")) install.packages("tidyr") # entre autres : extract_numeric() / extract_numeric() is deprecated: please use readr::parse_number() instead
 if (!require("sf")) install.packages("sf"); if (!require("lutz")) install.packages("lutz") # GIS in R
 
-# A. Importer/modifier toutes données pertinentes  ----
+# Données, dossier directeur fonctions et à charger directement
+# .rs.restartR()
+setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
+source("general.scripts/scripts/fonctions.R")
+
+# ============================================================================= /
+# Nettoyage et enregistrement en RDS ----
+# ============================================================================= /
+# données
 cal.data <- read.csv("connectivite/data/raw/level_logger_calibration_all.csv", sep = ";", dec = ",") 
 zones <- read_sf("~Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectitite_PhD_Mergin_26nov24/Ecotone.restauration.zone.pt.shp") %>% # couche géomatique (QGIS) à laquelle référer avec la fonction read_sf("")
   as.data.frame(zones) %>% 
-  dplyr::filter(descriptio == "Site confirmé")
+  dplyr::filter(description == "Site confirmé")
 head(zones); str(zones)
 
-### tableau avec les station ID de chaque site   ----
+
+# ============================================================================= /
+### tableau avec les station ID de chaque site (utilisé dans)
+# ============================================================================= /
 # source : package weathercan et meteoStat
-#### MANUELLEMENT : trouvé la station ID (canada+(lat, long) et la distance du site de recherche et trouver le station ID sur MeteoStat[-> sur le site de MétéoStat])  ----
+#### MANUELLEMENT : trouvé la station ID (canada+(lat, long) et la distance du site de recherche et trouver le station ID sur MeteoStat[-> sur le site de MétéoStat])
 # station_id.phd <- data.frame("phd.site.UID" = NA, "phd.site.name"= NA,"station_name" = NA, "station_id_canada" = NA, "station_id_MeteoStat" = NA, 
 #                              "lat.station" = NA, "long.station" = NA, "dist_from_zone" = NA, "start.hourly" = NA, "end.hourly" = NA) # start et end à jour : 1ier décembre
 # station_id.phd[1,1:10] <- c("STH", "St-Henri","BEAUPORT",27803,71578,46.8,-71.2,18.14627, "2003", "2025-11-22")
@@ -55,8 +65,6 @@ head(zones); str(zones)
 # station_id.phd[5,1:10] <- c("GPB", "Grande Plée Bleue", "BEAUPORT",27803,71578,46.8,-71.2,12.499890, "2003", "2025-11-22")
 # write.csv(station_id.phd, file = "connectivite/data/raw/station_id.phd.csv")
 # ok (1ier déc. 2025), ajouter des sites au besoin
-
-
 
 
 
