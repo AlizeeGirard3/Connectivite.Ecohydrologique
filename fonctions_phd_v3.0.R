@@ -96,18 +96,12 @@ filter.raw.file <- function(object.to.filter = NULL, path.filtering.object = NUL
   if(c(!is.null(object.to.filter) & type == "MeteoStat")) {
     object.to.filter.filtrd.pre <- names(object.to.filter) %>%
       reduce(function(df, col_name) {
-        # col <- names(weather.raw)[6]
-        # Condition d'exclusion : on vérifie si la colonne source existe dans le dataframe
-        nom_source <- paste0(col_name, "_source")
-        # source_existe <- any(paste0(col, "_source") %in% colnames(df)) # créer ma réponse au test dynamiquement, hors du "if"
+        nom_source <- paste0(col_name, "_source")  # Condition d'exclusion : on vérifie si la colonne source existe dans le dataframe
         if (nom_source %in% colnames(df)) {
-          # Si elle existe, on applique la modification
             df <- df %>% mutate(
-            !!col_name := if_else(df[[nom_source]] == "metno_forecast", NA, df[[col_name]])
-          )
+            !!col_name := if_else(df[[nom_source]] == "metno_forecast", NA, df[[col_name]]))
             return(df)
         } else {
-          # Sinon, on renvoie le dataframe tel quel sans rien toucher
           return(df)
         }}, .init = object.to.filter)
     object.to.filter.filtrd <- object.to.filter.filtrd.pre %>% 
