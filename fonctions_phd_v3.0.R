@@ -1,3 +1,7 @@
+#-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+#                           Fonctions rédigées pour mon Ph.D.
+#-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
 # Description -------------------------------------------------------------
 ###########################################################################-
 # Fait par :      Alizée Girard
@@ -14,6 +18,8 @@
 # Merci à Francis Lessard pour ses idées.
 # référer aux fonctions en sourçant ce script (ligne suivante)
 # source("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/connectivite/scripts/fonctions_phd_v2.0.R")
+
+# life hack : options(warn = 2) # wrning converted to error (arrête la boucle au moment où l'avertissement arrive)
 
 # ============================================================================= /
 #  Libraries ----
@@ -66,7 +72,7 @@ cat_lists <- function(list1, list2) {   # concatener le contenu de listes aux no
 # object.to.filter <- ele.profiles
 # object.to.filter <- env.data.n
 filter.raw.file <- function(object.to.filter = NULL, path.filtering.object = NULL, type = NULL) {
-  if(c(is.null(path.filtering.object) & !is.null(object.to.filter))) { # fournir juste un objet à filtrer, sans cal data path
+  if(c(is.null(path.filtering.object) & !is.null(object.to.filter) & is.null(type))) { # fournir juste un objet à filtrer, sans cal data path
     object.to.filter.filtrd <- object.to.filter %>% 
       dplyr::filter(!grepl("rejected", object.to.filter$measure.status), 
                     !if_all(everything(), is.na))
@@ -88,14 +94,24 @@ filter.raw.file <- function(object.to.filter = NULL, path.filtering.object = NUL
       select(!contains("x.archive"))
   }
   if(c(!is.null(object.to.filter) & type == "MeteoStat")) {
-    cols_a_nettoyer <- c("temp", "tmin", "tmax", "rhum", "prcp", "snwd", "wspd", "wpgt", "pres", "cldc")
-    # idée : convertir en recherche automatique
-    daily.weather.raw[cols_a_nettoyer] <- map(cols_a_nettoyer, ~ {
-      # .x représente ici le nom de la colonne (ex: "temp")
-      sources <- daily.weather.raw[[paste0(.x, "_source")]]
-      ifelse(sources == "metno_forecast", NA, daily.weather.raw[[.x]])
-    })
-
+    object.to.filter.filtrd.pre <- names(object.to.filter) %>%
+      reduce(function(df, col_name) {
+        # col <- names(weather.raw)[6]
+        # Condition d'exclusion : on vérifie si la colonne source existe dans le dataframe
+        nom_source <- paste0(col_name, "_source")
+        # source_existe <- any(paste0(col, "_source") %in% colnames(df)) # créer ma réponse au test dynamiquement, hors du "if"
+        if (nom_source %in% colnames(df)) {
+          # Si elle existe, on applique la modification
+            df <- df %>% mutate(
+            !!col_name := if_else(df[[nom_source]] == "metno_forecast", NA, df[[col_name]])
+          )
+            return(df)
+        } else {
+          # Sinon, on renvoie le dataframe tel quel sans rien toucher
+          return(df)
+        }}, .init = object.to.filter)
+    object.to.filter.filtrd <- object.to.filter.filtrd.pre %>% 
+      select(!"X")
   } # pour meteoStat
   return(object.to.filter.filtrd)
 }
@@ -214,13 +230,13 @@ uid.to.columns <- function(file.to.restructure = NULL, type = NULL, path = NULL)
 ### tableau avec les station ID de chaque site (utilisé ci-dessous)
 # source : meteoStat
 #### MANUELLEMENT : trouvé la station ID (canada+(lat, long) et la distance du site de recherche et trouver le station ID sur MeteoStat[-> sur le site de MétéoStat])
-# station_id.phd <- data.frame("phd.site.UID" = NA, "phd.site.name"= NA,"station_name" = NA, "station_id_canada" = NA, "station_id_MeteoStat" = NA, 
+# station_id.phd <- data.frame("phd.site.UID" = NA, "phd.site.name"= NA,"station_name" = NA, "station_id_canada" = NA, "station_id_MeteoStat" = NA,
 #                              "lat.station" = NA, "long.station" = NA, "dist_from_zone" = NA, "start.hourly" = NA, "end.hourly" = NA) # start et end à jour : 1ier décembre
 # station_id.phd[1,1:10] <- c("STH", "St-Henri","BEAUPORT",27803,71578,46.8,-71.2,18.14627, "2003", "2025-11-22")
 # station_id.phd[2,1:10] <- c("INK", "Inkerman","TRACADIE",6205,71719,48.01,-64.49, 49.50673, "1977", "2025-04-27") # MISCOU ISLAND (AUT)
 # station_id.phd[3,1:10] <- c("BRNTC", "Burnt Church","MIRAMICHI RCS", 10808,"AOYMS",47.01,-65.47,27.63049, "2020", "2022-12-14")
-# station_id.phd[4,1:10] <- c("PRO", "Président-Ouest","RIVIERE-DU-LOUP",8539,71578,47.81,-69.55,3.021966, "2003", "2025-11-22")
-# station_id.phd[5,1:10] <- c("GPB", "Grande Plée Bleue", "BEAUPORT",27803,71578,46.8,-71.2,12.499890, "2003", "2025-11-22")
+# station_id.phd[4,1:10] <- c("PRO", iconv("Président-Ouest", to = "UTF-8-MAC"),"RIVIERE-DU-LOUP",8539,71578,47.81,-69.55,3.021966, "2003", "2025-11-22") # merci google IA pourm'aider à traiter mes noms de site avec un accent francophone...
+# station_id.phd[5,1:10] <- c("GPB", iconv("Grande Plée Bleue", to = "UTF-8-MAC"), "BEAUPORT",27803,71578,46.8,-71.2,12.499890, "2003", "2025-11-22") # merci google IA pourm'aider à traiter mes noms de site avec un accent francophone...
 # write.csv(station_id.phd, file = "connectivite/data/raw/station_id.phd.csv")
 # ok (1ier déc. 2025), ajouter des sites au besoin
 
