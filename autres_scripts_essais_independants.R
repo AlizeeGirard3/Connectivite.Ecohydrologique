@@ -82,3 +82,23 @@ texi2pdf("Reproducible/Exemple-latex.tex")
 # options(error=pause)
 # options(error=NULL) # annuler
 
+
+# tentative WeatherCan ----
+if (!require("weathercan")) install.packages("weathercan") # Integrating data from weathercan (ECCC/CCCS), Gouvernement du Canada
+#### extraction des données de ECCC/CCCS et ménage ----
+# transformer eccc.data avec le mm format de colonne que ll.cal.pre.i 0$date.time.tz.orig
+station_ids <- "7010566"
+stations[grep("BEAUPORT",stations$station_name), ]
+## A tibble: 6 × 17
+# prov  station_name station_id climate_id WMO_id TC_id   lat   lon  elev tz        interval start   end normals normals_1991_2020 normals_1981_2010
+# <chr> <chr>             <dbl> <chr>       <dbl> <chr> <dbl> <dbl> <dbl> <chr>     <chr>    <dbl> <dbl> <lgl>   <lgl>             <lgl>            
+# 1 QC    BEAUPORT           5207 7010566        NA NA     46.9 -71.2  84.1 Etc/GMT+5 day       1982  1985 FALSE   FALSE             FALSE            
+# 2 QC    BEAUPORT           5207 7010566        NA NA     46.9 -71.2  84.1 Etc/GMT+5 hour        NA    NA FALSE   FALSE             FALSE            
+# 3 QC    BEAUPORT           5207 7010566        NA NA     46.9 -71.2  84.1 Etc/GMT+5 month     1982  1985 FALSE   FALSE             FALSE            
+# 4 QC    BEAUPORT          27803 7010565     71578 XBO    46.8 -71.2  10   Etc/GMT+5 day       1999  2023 FALSE   FALSE             FALSE            
+# 5 QC    BEAUPORT          27803 7010565     71578 XBO    46.8 -71.2  10   Etc/GMT+5 hour      1999  2023 FALSE   FALSE             FALSE            
+# 6 QC    BEAUPORT          27803 7010565     71578 XBO    46.8 -71.2  10   Etc/GMT+5 month       NA    NA FALSE   FALSE             FALSE            
+# # ℹ 1 more variable: normals_1971_2000 <lgl>
+eccc.data.pre.0 <- weather_dl(station_ids, start = "2025-10-01", end = "2025-10-30", time_disp = "none") 
+
+

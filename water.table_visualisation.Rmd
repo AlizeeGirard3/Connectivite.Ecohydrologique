@@ -29,42 +29,21 @@ Sometimes you may want to use another directory as the working directory. The us
 
 # Aperçu de la répartition des données tidy.WTD.data.df
 ```{r eval=FALSE, message=FALSE, include=FALSE}
-setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
-# Libraries
-# 2 lignes suivantes : archives
-# if (!require("knitr")) install.packages("knitr") # Integrating data from weathercan (ECCC/CCCS), Gouvernement du Canada
-# if (!require("kableExtra")) install.packages("kableExtra") # Integrating data from weathercan (ECCC/CCCS), Gouvernement du Canada
-
-# import
-ll.clean <- readRDS("connectivite/data/clean/tidy.WTD.data.RDS")
-SNH <- as.vector(c("_odyssey", "_hobo"), mode = "character") # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque" est traitée de façon différente
-for (j in 1:length(ll.clean)) {
-  if(tidy.WTD.data[[j]])
-  print(j)
-  # j<-14
-  tidy.WTD.data.j <- tidy.WTD.data[[j]]
-  
-  # ODYSSEY
-  if (grepl(SNH[1], tidy.WTD.data.j$metadata[11])) {
-    # où trouver no de sonde dans ODYSSEY
-    metadata.line <- tidy.WTD.data.j$metadata[12] # probe.uid
-    numbers <- gregexpr("[0-9]+", metadata.line)
-    sonde <- regmatches(metadata.line, numbers)
-  } else if (grepl(SNH[2], tidy.WTD.data.j$metadata[4])) {
-    # où trouver no de sonde dans HOBO
-    metadata.line <- tidy.WTD.data.j$metadata[5] # probe.uid
-    numbers <- gregexpr("[0-9]+", metadata.line)
-    sonde <- regmatches(metadata.line, numbers)
-  }
-  # données à visualiser
-  data <- tidy.WTD.data[[j]]$data
-  if (nrow(data) > 0) {
-    hist(data$calibrated.value.cm/10, warn.unused = F, 
-         main = paste("Histograme des données de sonde no ", paste(sonde,"\n"))) # en cm
-  } 
-  # les hauteurs de nappe phréatique calibrées devraient toutes être négatives ou presque !
-  # ou alors est-ce que les ODYSSEY donnent en + ?
-}
+setidy.weather.data$pres.kpa <- as.numeric(tidy.weather.data$pres)/10
+list <- split(tidy.weather.data, c(tidy.weather.data$station.name, tidy.weather.data$year, tidy.weather.data$month)) # équivalent à toute la boucle sous "graph.topo.list <- list()"
+chaque.graph <- map(list, ~ ggplot(.x, aes(date.time.SiteTZ, pres.kpa)) + # pression en HPa/10 -> kpa
+                      geom_line() +
+                      scale_x_datetime(date_breaks = "4 months", date_labels = "%y/%b/%d") + 
+                      ggtitle(unique(.$station.name)) +
+                      theme_bw() + 
+                      theme(plot.title = element_text(hjust = 0.5), 
+                            axis.text.x = element_text(angle = 45, hjust = 1, vjust = 0.5)))
+# tous graphiques arrangés automatiquement (merci aux nouvelles fonctions apparues depuis mon M.Sc. <3 !!)
+mes_graphiques <- wrap_plots(chaque.graph, 
+                             nrow = length(list),
+                             widths = 200, 
+                             heights = 200)
+mes_graphiques
 ```
 
 # Aperçu du code de calibration - Sonde Odyssey

@@ -21,6 +21,8 @@
 
 # life hack : options(warn = 2) # wrning converted to error (arrête la boucle au moment où l'avertissement arrive)
 
+message("Importation de paquet et chargement de fonctions pour le projet")
+
 # ============================================================================= /
 #  Libraries ----
 # ============================================================================= /
@@ -93,18 +95,19 @@ filter.raw.file <- function(object.to.filter = NULL, path.filtering.object = NUL
       dplyr::filter(!measure_status == "rejected") %>% 
       select(!contains("x.archive"))
   }
-  if(c(!is.null(object.to.filter) & type == "MeteoStat")) {
-    object.to.filter.filtrd.pre <- names(object.to.filter) %>%
-      reduce(function(df, col_name) {
-        nom_source <- paste0(col_name, "_source")  # Condition d'exclusion : on vérifie si la colonne source existe dans le dataframe
-        if (nom_source %in% colnames(df)) {
-            df <- df %>% mutate(
-            !!col_name := if_else(df[[nom_source]] == "metno_forecast", NA, df[[col_name]]))
-            return(df)
-        } else {
-          return(df)
-        }}, .init = object.to.filter)
-    object.to.filter.filtrd <- object.to.filter.filtrd.pre %>% 
+  if(c(!is.null(object.to.filter) && identical(type, "MeteoStat"))) {
+    # caduque, metno_forecast n'est pas de la prédiction, ça vient d'une source qui s'appelle comme ça... # https://dev.meteostat.net/faq.html
+    # object.to.filter.filtrd.pre <- names(object.to.filter) %>%
+    #   reduce(function(df, col_name) {
+    #     nom_source <- paste0(col_name, "_source")  # Condition d'exclusion : on vérifie si la colonne source existe dans le dataframe
+    #     if (nom_source %in% colnames(df)) {
+    #         df <- df %>% mutate(
+    #         !!col_name := if_else(df[[nom_source]] == "metno_forecast", NA, df[[col_name]]))
+    #         return(df)
+    #     } else {
+    #       return(df)
+    #     }}, .init = object.to.filter)
+    object.to.filter.filtrd <- object.to.filter %>%
       select(!"X")
   } # pour meteoStat
   return(object.to.filter.filtrd)
@@ -775,8 +778,32 @@ raw.to.clean_cal.data <- function(cal.data.file, time.zone) { # ne calibre pas e
 # ============================================================================= /
 #  Graphs & visualisation ----
 # ============================================================================= /
+# dual.axis.calculation
+# yaxis.left <- tidy.weather.data$pres.kpa
+# yaxis.right <- tidy.weather.data$temp
+# abs.ratio <- 0.2
+dual.axis.calculation <- function(yaxis.left, yaxis.right, abs.ratio = NULL) {
+  parameters.list <- list(ratio = NA, offset = NA, right.max = NA, right.min = NA, left.max = NA, left.min = NA)
+  
+  # ratio des axes (source : multiples forums)
+  parameters.list$left.max <- max(yaxis.left, na.rm = T)
+  parameters.list$left.min <- min(yaxis.left, na.rm = T)
+  left_range <- left.max - left.min
+  
+  parameters.list$right.max <- max(yaxis.right, na.rm = T)
+  parameters.list$right.min <- min(yaxis.right, na.rm = T)
+  right_range <- right.max - right.min
 
-# theme.Aliz
+# facteur de mise à l'échelle pour le ratio et offset à partir du haut du range de l'axe gauche
+  if(!is.null(abs.ratio)) {
+    parameters.list$ratio <- (left_range * abs.ratio) / right_range
+    parameters.list$offset <- right.max - (right_range * abs.ratio) 
+  }
+  return(parameters.list)
+}
+
+# theme.Aliz ----
+{
 # https://rfortherestofus.com/2025/04/ggplot2-theme
 # theme.Aliz <- function() {
 #   # Set base theme and font family ============================================= #
@@ -825,6 +852,7 @@ raw.to.clean_cal.data <- function(cal.data.file, time.zone) { # ne calibre pas e
 #     axis.ticks.length.x = unit(4, units = "pt")
 #   )
 # }
+  }
 
 # ============================================================================= /
 #  Georeferenced data ----

@@ -37,7 +37,9 @@
 if (!require("ggplot2")) install.packages("ggplot2")
 # if (!require("ggpubr")) install.packages("ggpubr") # ggarrange()
 if (!require("grDevices")) install.packages("grDevices") # pdf()
-if (!require("gridExtra")) install.packages("gridExtra") # multiplot()
+# if (!require("gridExtra")) install.packages("gridExtra") # multiplot()
+if (!require("patchwork")) install.packages("patchwork")
+
 
 # Données, dossier directeur fonctions et à charger directement
 # .rs.restartR()
@@ -46,12 +48,13 @@ source("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/connectivite/scripts/fonct
 # source("general.scripts/scripts/fonctions_generales.R") # CADUQUE ? appel du fichier de métadonnées de projet
 
 # ============================================================================= /
-#  Examination des données bruttes et nettoyage ----
+# Lecture, agglomérationd des données ----
 # ============================================================================= /
 # listes de données
 weather.files <- list.files(path = "connectivite/data/raw", pattern = "meteoStat.data.", full.names = T) # issus directement de MeteoStat, script "recherche_station_meteo_ID_v2.0.r"
 # https://dev.meteostat.net/parameters
 # https://dev.meteostat.net/formats.html
+# https://dev.meteostat.net/faq.html
 zones <- read_sf("~Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectitite_PhD_Mergin_26nov24/Ecotone.restauration.zone.pt.shp") %>% # couche géomatique (QGIS) à laquelle référer avec la fonction read_sf("")
   as.data.frame(zones) %>% 
   dplyr::filter(descriptio == "Site confirmé")
@@ -72,13 +75,13 @@ for(file.no in 1:length(weather.files)) {
   # traitement selon le type de donnée
   if(grepl("hourly", weather.files[file.no])) {
     weather.raw  <- read.csv(file.step)
-    # fonction : filtrer données meteoStat : si "metno_forecast", extraire nom de colonne et retirer les colonnes où nom a une partie correspondant
+    # fonction : filtrer données meteoStat
     weather.raw.filtrd <- filter.raw.file(object.to.filter = weather.raw, type = "MeteoStat")
 
     # préparation de la colonnes de jointure "date.time.UTC.0" et de la colonne de temps au time zone du site
     weather.0 <- weather.raw.filtrd %>% mutate(date.time.UTC.0pre = paste(year, month, day, hour))
     weather.0$date.time.UTC.0pre <- ymd_h(weather.0$date.time.UTC.0pre, tz = "UTC") + 1 # date-temps des données bruttes = UTC-0 source :https://dev.meteostat.net/formats.html. Spécifier "UTC" dans la fonction = notation de lubridate pour UTC-0.
-    weather.1 <- weather.0 %>% select(date.time.UTC.0pre, everything(), -c(year, month, day, hour)) # ajuster la date et l'heure et ajout d'une seconde, sinon, les données 00:00:00 étaient effacées !
+    weather.1 <- weather.0 %>% select(date.time.UTC.0pre, everything(), -c("day", "hour")) # ajuster la date et l'heure et ajout d'une seconde, sinon, les données 00:00:00 étaient effacées !
     weather <- weather.1 %>% 
       mutate(date.time.SiteTZ = with_tz(as.POSIXct(weather.1[["date.time.UTC.0pre"]], tz = "UTC"), tz = tz), 
              date.time.UTC.0 = gsub("[+]00:00", "Z", format_iso_8601(date.time.UTC.0pre))) %>% 
@@ -97,35 +100,48 @@ for(file.no in 1:length(weather.files)) {
     weather.raw  <- read.csv(file.step)
     # fonction : filtrer données meteoStat : si "metno_forecast", extraire nom de colonne et retirer les colonnes où nom a une partie correspondant
     weather.raw.filtrd <- filter.raw.file(object.to.filter = weather.raw, type = "MeteoStat")
-    
+
     # préparation de la colonnes de jointure "date.time.UTC.0" et de la colonne de temps au time zone du site
     weather.0 <- weather.raw.filtrd %>% mutate(date.time.UTC.0pre = paste(year, month, day))
     weather.0$date.time.UTC.0pre <- ymd(weather.0$date.time.UTC.0pre, tz = "UTC") + 1 # date-temps des données bruttes = UTC-0 source :https://dev.meteostat.net/formats.html. Spécifier "UTC" dans la fonction = notation de lubridate pour UTC-0.
-    weather.1 <- weather.0 %>% select(date.time.UTC.0pre, everything(), -c("year", "month", "day")) # ajuster la date et l'heure et ajout d'une seconde, sinon, les données 00:00:00 étaient effacées !
-    weather <- weather.1 %>% 
-      mutate(date.time.SiteTZ = with_tz(as.POSIXct(weather.1[["date.time.UTC.0pre"]], tz = "UTC"), tz = tz), 
-             date.time.UTC.0 = gsub("[+]00:00", "Z", format_iso_8601(date.time.UTC.0pre))) %>% 
+    weather.1 <- weather.0 %>% select(date.time.UTC.0pre, everything(), -c("day")) # ajuster la date et l'heure et ajout d'une seconde, sinon, les données 00:00:00 étaient effacées !
+    weather <- weather.1 %>%
+      mutate(date.time.SiteTZ = with_tz(as.POSIXct(weather.1[["date.time.UTC.0pre"]], tz = "UTC"), tz = tz),
+             date.time.UTC.0 = gsub("[+]00:00", "Z", format_iso_8601(date.time.UTC.0pre))) %>%
       select(!date.time.UTC.0pre)
-    
+
     # ajout de colonnes d'identification (station.name, d'oü provient les données)
-    weather <- weather %>% 
+    weather <- weather %>%
       mutate(station.name = station_id.phd$station_name[station_id.phd$phd.site.name == site.name],
-             "tz.col" = tz, 
-             initial.type = "MeteoStat daily")
-    
+             "tz.col" = tz,
+             initial.type = "MeteoStat daily") %>%
+      select(!c(temp, temp_source, pres, pres_source))
+
     # placer dans la liste de recueil des fichiers, à l'endroit "file.no"
     weather.data.list[[file.no]] <- weather
   } # daily
 } # file in weather.files
+rm(weather); rm(weather.0); rm(weather.1); rm(weather.raw); rm(weather.raw.filtrd)
 
-# # joindre les données horaires et journalières
-# tidy.weather.data <- weather.data.list %>%
-#   map(~ .x %>% mutate(across(everything(), as.character))) %>% # d'abord, tout en caractères, car classe des NA en arrière plan posait problème
-#   reduce(full_join, na_matches = "na") %>% # précision de la gestion des NA pour débugger (voir code débuggage ci-dessous), cela ajoutait 13 lignes autrement; merci à GoogleIA pour l'aide au débuggage
-#   select(date.time.SiteTZ, tz.col, date.time.UTC.0 , station.name, everything()) %>% 
-#   group_by(tz.col) %>% 
-#   mutate(date.time.SiteTZ = ymd_hms(date.time.SiteTZ, tz = unique(tz.col))) %>% # considère que le tz est celui spécifié dans la col.tz, donc ne change pas le tz
-#   arrange(date.time.SiteTZ, .by_group = T)
+# joindre les données horaires et journalières
+source("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/general.scripts/scripts/fonctions.R")
+tidy.weather.data <- weather.data.list %>%
+  map(~ .x %>% mutate(across(everything(), as.character))) %>% # d'abord, tout en caractères, car classe des NA en arrière plan posait problème
+  reduce(full_join, na_matches = "na") %>% # précision de la gestion des NA pour débugger (voir code débuggage ci-dessous), cela ajoutait 13 lignes autrement; merci à GoogleIA pour l'aide au débuggage
+  # select(date.time.SiteTZ, tz.col, date.time.UTC.0 , station.name, everything()) %>%
+  mutate(pres.kpa = as.numeric(pres)/10,
+         temp = as.numeric(temp), 
+         month  = month.df$month.en[as.numeric(tidy.weather.data$month)]) %>% 
+  group_by(tz.col) %>%
+  mutate(date.time.SiteTZ = ymd_hms(date.time.SiteTZ, tz = unique(tz.col))) %>% # considère que le tz est celui spécifié dans la col.tz, donc ne change pas le tz
+  arrange(date.time.SiteTZ, .by_group = T) %>% 
+  select(date.time.SiteTZ, tz.col, date.time.UTC.0 , station.name, pres.kpa, pres_source, everything(), -"pres")
+
+## stockage des résultats (écrase version précédante) ====
+# format R des tidy.weather.data (une liste)
+if("tidy.weather.data.RDS" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
+  stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
+} else { saveRDS(tidy.weather.data, file = "connectivite/data/clean/tidy.weather.data.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
 
 
 # RNEDUE LÀ
@@ -149,3 +165,61 @@ tidy.weather.data <- weather.data.list %>%
 
 # ultimement : je veux afficher données horaire de barométrie et TROUVER LE MOYEN D'ENLEVER LA VARIATION DE PRESSION journalière !! 
 
+
+# ============================================================================= /
+#  Examination des données bruttes ----
+# ============================================================================= /
+
+tidy.weather.data$pres.kpa <- as.numeric(tidy.weather.data$pres)/10
+list <- split(tidy.weather.data, c(tidy.weather.data$station.name, tidy.weather.data$year, tidy.weather.data$month)) # équivalent à toute la boucle sous "graph.topo.list <- list()"
+chaque.graph <- map(list, ~ ggplot(.x, aes(date.time.SiteTZ, pres.kpa)) + # pression en HPa/10 -> kpa
+                      geom_line() +
+                      scale_x_datetime(date_breaks = "4 months", date_labels = "%y/%b/%d") + 
+                      ggtitle(unique(.$station.name)) +
+                      theme_bw() + 
+                      theme(plot.title = element_text(hjust = 0.5), 
+                            axis.text.x = element_text(angle = 45, hjust = 1, vjust = 0.5)))
+# tous graphiques arrangés automatiquement (merci aux nouvelles fonctions apparues depuis mon M.Sc. <3 !!)
+mes_graphiques <- wrap_plots(chaque.graph, 
+                             nrow = length(list)) # ,
+                             # widths = 200, 
+                             # heights = 200)
+mes_graphiques
+
+
+# TRACADIE SEULEMENT 
+# tidy.weather.data$pres <- as.numeric(tidy.weather.data$pres)/10
+# tidy.weather.data.tracadie <- tidy.weather.data %>% dplyr::filter(station.name == "TRACADIE")
+# tidy.weather.data.graph <- tidy.weather.data.tracadie %>% 
+#   ggplot(aes(date.time.SiteTZ, pres)) + # pression en HPa/10 -> kpa
+#   geom_line() +
+#   # scale_x_datetime(date_breaks = "2 weeks", date_labels = "%y/%b/%d") + 
+#   ggtitle(unique(tidy.weather.data$station.name)) +
+#   theme_bw() + 
+#   theme(plot.title = element_text(hjust = 0.5))
+# tidy.weather.data.graph
+
+# ============================================================================= /
+# autres tests
+# ============================================================================= /
+# mm données que sur ECCC en ligne ?
+tidy.weather.data.beauport.oct.2025 <- tidy.weather.data %>% 
+  dplyr::filter(station.name == "BEAUPORT",
+                date.time.SiteTZ >= "2025-10-01",
+                date.time.SiteTZ <= "2025-10-30") # mm valeurs que sur Environnement Canada mm date (26 janvier 2026)
+                                                  # différence que sur ECCC pas de données de pression...
+# oui..
+
+# analyse de corrélation sur l'ensemble du jeux de données ----
+tidy.weather.data$temp <- as.numeric(tidy.weather.data$temp)
+tidy.weather.data$pres <- as.numeric(tidy.weather.data$pres)
+cor.test(tidy.weather.data$temp, tidy.weather.data$pres, method = "pearson")
+# Pearson's product-moment correlation
+# data:  tidy.weather.data$temp and tidy.weather.data$pres
+# t = -8.3754, df = 67560, p-value < 2.2e-16
+# alternative hypothesis: true correlation is not equal to 0
+# 95 percent confidence interval:
+#  -0.03973658 -0.02467128
+# sample estimates:
+#         cor 
+# -0.03220576 

@@ -52,8 +52,8 @@ setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
 raw.ll.files.pre <- list.files(path = "connectivite/data/raw", pattern = "_odyssey|_hobo", full.names = T) # mettre dans "pattern" tous les ID de SNH listés dans l'objet SNH
 raw.ll.files <- filter.raw.file(object.to.filter = raw.ll.files.pre, path.filtering.object = "connectivite/data/raw/level_logger_calibration_all.csv") # script "fonctions_phd_v3.0.R"
 cal.data.file.pre <- filter.raw.file(path.filtering.object = 
-                                    "/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/raw/level_logger_calibration_all.csv") # © AlizéeGirard ci-haut
-cal.data.file <- uid.to.columns(file.to.restructure = cal.data.file.pre, type = "cal.data") # © AlizéeGirard ci-haut
+                                    "/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/raw/level_logger_calibration_all.csv") # © AlizéeGirard, script "fonctions_phd_vX.r"
+cal.data.file <- uid.to.columns(file.to.restructure = cal.data.file.pre, type = "cal.data") # © AlizéeGirard, script "fonctions_phd_vX.r"
 tidy.WTD.data <- list()
 s = Sys.time() # compte le temps d'exécution
 ## boucle pour transformer les fichiers bruts ====
