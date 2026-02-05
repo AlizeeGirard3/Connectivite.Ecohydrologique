@@ -20,7 +20,7 @@
 #                     |—— figures
 #         |—— scripts
 # NOTES : 
-# 
+# on sait que la pression ne change pas à l’échlle régionale, mais capteurs mauvais a une erreur à cause de la température // et voir les articles sur l’ÉT horaire
 
 # LEXIQUE :
 # NP : Nappe phréatique / synonymes : water table

@@ -62,6 +62,7 @@ mes_graphiques
 # Aperçu des offets - Sondes Odyssey
 ```{r, message = FALSE, echo = FALSE}
 #### bibliothèques à charger
+setwd("~/Documents/Doctorat/_R.&.Stats_PhD") # fonctions utiles et working directory
 if (!require("dplyr")) install.packages("dplyr") # pour manipulation donnees (pipe, etc)
 if (!require("ggplot2")) install.packages("ggplot2")
 
