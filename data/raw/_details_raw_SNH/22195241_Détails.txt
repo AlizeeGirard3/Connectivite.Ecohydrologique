@@ -1,0 +1,155 @@
+﻿Détails
+Séries : Pres. abs., kPa
+	Périphériques
+		Infos périphérique
+			- Produit : HOBO U20L-04 Water Level
+			- Numéro de série : 22195241
+			- Numéro de version : 1.14
+			- Fabricant : Onset Computer Corporation
+			- Mémoire de l'appareil : 65536
+			- En-tête créé : 01/03/25 02:32:15 PM GMT-03:00
+			- Date d'étalonnage : 01/06/25 08:54:36 AM GMT-03:00
+	Infos de déploiement
+		- Nom de série complet : Pression absolue, kPa
+		- Description de lancement :  22195241
+		- Numéro de déploiement : 3
+		- Heure de lancement : 05/11/25 07:55:21 PM GMT-03:00
+		- Intervalle d'enregistrement : 01 h 00 min 00 s
+		- Lancer décalage GMT : -3 h 0 min
+		- Pile au lancement : 3,46 V
+		- Lancement du Programme : HOBOware Pro-3.7.28_0415_1447_Mac
+	Statistiques de la série
+		- Échantillons : 1 703
+		- Max. : 111,866
+		- Min. : 99,545
+		- Moy. : 107,222
+		- Écart type (s) : 3,078
+		- Heure premier échantillon : 05/11/25 08:00:00 PM GMT-03:00
+		- Heure dernier échantillon : 07/21/25 06:00:00 PM GMT-03:00
+Séries : Temp., *C
+	Périphériques
+		Infos périphérique
+			- Produit : HOBO U20L-04 Water Level
+			- Numéro de série : 22195241
+			- Numéro de version : 1.14
+			- Fabricant : Onset Computer Corporation
+			- Mémoire de l'appareil : 65536
+			- En-tête créé : 01/03/25 02:32:15 PM GMT-03:00
+			- Date d'étalonnage : 01/06/25 08:54:36 AM GMT-03:00
+	Infos de déploiement
+		- Nom de série complet : Température, *C
+		- Description de lancement :  22195241
+		- Numéro de déploiement : 3
+		- Heure de lancement : 05/11/25 07:55:21 PM GMT-03:00
+		- Intervalle d'enregistrement : 01 h 00 min 00 s
+		- Lancer décalage GMT : -3 h 0 min
+		- Pile au lancement : 3,46 V
+		- Lancement du Programme : HOBOware Pro-3.7.28_0415_1447_Mac
+	Statistiques de la série
+		- Échantillons : 1 703
+		- Max. : 27,173
+		- Min. : 3,472
+		- Moy. : 8,768
+		- Écart type (s) : 5,772
+		- Heure premier échantillon : 05/11/25 08:00:00 PM GMT-03:00
+		- Heure dernier échantillon : 07/21/25 06:00:00 PM GMT-03:00
+Type d'événement : Coupleur détaché
+	Périphériques
+		Infos périphérique
+			- Produit : HOBO U20L-04 Water Level
+			- Numéro de série : 22195241
+			- Numéro de version : 1.14
+			- Fabricant : Onset Computer Corporation
+			- Mémoire de l'appareil : 65536
+			- En-tête créé : 01/03/25 02:32:15 PM GMT-03:00
+	Infos de déploiement
+		- Nom de série complet : Coupleur détaché
+		- Description de lancement :  22195241
+		- Numéro de déploiement : 3
+		- Heure de lancement : 05/11/25 07:55:21 PM GMT-03:00
+		- Lancer décalage GMT : -3 h 0 min
+		- Pile au lancement : 3,46 V
+	Statistiques de la série
+		- Échantillons : 1
+		- Heure premier échantillon : 05/11/25 08:00:00 PM GMT-03:00
+		- Heure dernier échantillon : 05/11/25 08:00:00 PM GMT-03:00
+Type d'événement : Coupleur attaché
+	Périphériques
+		Infos périphérique
+			- Produit : HOBO U20L-04 Water Level
+			- Numéro de série : 22195241
+			- Numéro de version : 1.14
+			- Fabricant : Onset Computer Corporation
+			- Mémoire de l'appareil : 65536
+			- En-tête créé : 01/03/25 02:32:15 PM GMT-03:00
+	Infos de déploiement
+		- Nom de série complet : Coupleur attaché
+		- Description de lancement :  22195241
+		- Numéro de déploiement : 3
+		- Heure de lancement : 05/11/25 07:55:21 PM GMT-03:00
+		- Lancer décalage GMT : -3 h 0 min
+		- Pile au lancement : 3,46 V
+	Statistiques de la série
+		- Échantillons : 1
+		- Heure premier échantillon : 07/21/25 06:22:10 PM GMT-03:00
+		- Heure dernier échantillon : 07/21/25 06:22:10 PM GMT-03:00
+Type d'événement : Hôte connecté
+	Périphériques
+		Infos périphérique
+			- Produit : HOBO U20L-04 Water Level
+			- Numéro de série : 22195241
+			- Numéro de version : 1.14
+			- Fabricant : Onset Computer Corporation
+			- Mémoire de l'appareil : 65536
+			- En-tête créé : 01/03/25 02:32:15 PM GMT-03:00
+	Infos de déploiement
+		- Nom de série complet : Hôte connecté
+		- Description de lancement :  22195241
+		- Numéro de déploiement : 3
+		- Heure de lancement : 05/11/25 07:55:21 PM GMT-03:00
+		- Lancer décalage GMT : -3 h 0 min
+		- Pile au lancement : 3,46 V
+	Statistiques de la série
+		- Échantillons : 1
+		- Heure premier échantillon : 07/21/25 06:22:11 PM GMT-03:00
+		- Heure dernier échantillon : 07/21/25 06:22:11 PM GMT-03:00
+Type d'événement : Arrêté
+	Périphériques
+		Infos périphérique
+			- Produit : HOBO U20L-04 Water Level
+			- Numéro de série : 22195241
+			- Numéro de version : 1.14
+			- Fabricant : Onset Computer Corporation
+			- Mémoire de l'appareil : 65536
+			- En-tête créé : 01/03/25 02:32:15 PM GMT-03:00
+	Infos de déploiement
+		- Nom de série complet : Arrêté
+		- Description de lancement :  22195241
+		- Numéro de déploiement : 3
+		- Heure de lancement : 05/11/25 07:55:21 PM GMT-03:00
+		- Lancer décalage GMT : -3 h 0 min
+		- Pile au lancement : 3,46 V
+	Statistiques de la série
+		- Échantillons : 1
+		- Heure premier échantillon : 07/21/25 06:22:33 PM GMT-03:00
+		- Heure dernier échantillon : 07/21/25 06:22:33 PM GMT-03:00
+Type d'événement : Fin de fichier
+	Périphériques
+		Infos périphérique
+			- Produit : HOBO U20L-04 Water Level
+			- Numéro de série : 22195241
+			- Numéro de version : 1.14
+			- Fabricant : Onset Computer Corporation
+			- Mémoire de l'appareil : 65536
+			- En-tête créé : 01/03/25 02:32:15 PM GMT-03:00
+	Infos de déploiement
+		- Nom de série complet : Fin de fichier
+		- Description de lancement :  22195241
+		- Numéro de déploiement : 3
+		- Heure de lancement : 05/11/25 07:55:21 PM GMT-03:00
+		- Lancer décalage GMT : -3 h 0 min
+		- Pile au lancement : 3,46 V
+	Statistiques de la série
+		- Échantillons : 1
+		- Heure premier échantillon : 07/21/25 06:22:33 PM GMT-03:00
+		- Heure dernier échantillon : 07/21/25 06:22:33 PM GMT-03:00
