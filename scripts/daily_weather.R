@@ -48,7 +48,7 @@ source("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/connectivite/scripts/fonct
 # source("general.scripts/scripts/fonctions_generales.R") # CADUQUE ? appel du fichier de métadonnées de projet
 
 # ============================================================================= /
-# Lecture, agglomérationd des données ----
+# Lecture, agglomération des données ----
 # ============================================================================= /
 # listes de données
 weather.files <- list.files(path = "connectivite/data/raw", pattern = "meteoStat.data.", full.names = T) # issus directement de MeteoStat, script "recherche_station_meteo_ID_v2.0.r"
