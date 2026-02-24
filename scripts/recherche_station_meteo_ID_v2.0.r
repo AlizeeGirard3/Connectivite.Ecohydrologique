@@ -44,8 +44,7 @@ source("general.scripts/scripts/fonctions.R")
 # Nettoyage et enregistrement en RDS ----
 # ============================================================================= /
 # données
-cal.data <- read.csv("connectivite/data/raw/level_logger_calibration_all.csv", sep = ";", dec = ",") 
-zones <- read_sf("~Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectitite_PhD_Mergin_26nov24/Ecotone.restauration.zone.pt.shp") %>% # couche géomatique (QGIS) à laquelle référer avec la fonction read_sf("")
+zones <- read_sf("~Aliz/Desktop/QGIS/_FOR-7046/_FOR-7046/point.tortue.shp") %>% # couche géomatique (QGIS) à laquelle référer avec la fonction read_sf("")
   as.data.frame(zones) %>% 
   dplyr::filter(description == "Site confirmé")
 head(zones); str(zones)

@@ -58,7 +58,7 @@ weather.files <- list.files(path = "connectivite/data/raw", pattern = "meteoStat
 zones <- read_sf("~Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectitite_PhD_Mergin_26nov24/Ecotone.restauration.zone.pt.shp") %>% # couche géomatique (QGIS) à laquelle référer avec la fonction read_sf("")
   as.data.frame(zones) %>% 
   dplyr::filter(descriptio == "Site confirmé")
-station_id.phd <- read.csv("connectivite/data/raw/station_id.phd.csv") # issu du script "Recherche_station_meteo_ID_v2.0.r", trouver "station.name"
+station_id.phd <- read.csv("data/raw/station_id.phd.csv") # issu du script "Recherche_station_meteo_ID_v2.0.r", trouver "station.name"
 
 # consigne de données
 weather.data.list <- list()

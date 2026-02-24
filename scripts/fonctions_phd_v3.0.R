@@ -24,7 +24,7 @@
 message("Importation de paquet et chargement de fonctions pour le projet")
 
 # ============================================================================= /
-#  Libraries ----
+#  Initialisation ----
 # ============================================================================= /
 if (!require("tidyverse")) install.packages("tidyverse") # méta package // dplyr, tidyr, purrr, stringr, lubridate, ect
 if (!require("data.table")) install.packages("data.table") # ℹ Use the conflicted package to force all conflicts to become errors    ---->>>>  devtools::install_github("r-lib/conflicted")
@@ -68,7 +68,7 @@ cat_lists <- function(list1, list2) {   # concatener le contenu de listes aux no
     set_names(keys)  
 }
 
-# select.raw.ll.files
+# filter.raw.file
 # object.to.filter <- raw.ll.files.pre
 # path.filtering.object <- "connectivite/data/raw/level_logger_calibration_all.csv"
 # object.to.filter <- ele.profiles
