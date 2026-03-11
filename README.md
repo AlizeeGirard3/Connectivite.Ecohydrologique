@@ -1,5 +1,5 @@
-READ ME (ou script R)
-
+# Nom dépôt
+description sommaire
 version R
 
 structure du dossier joint
@@ -12,6 +12,9 @@ où
  
 comment
 
+# Ressources
+## QGIS Python API [application programming interface]:
+- https://qgis.org/pyqgis/3.40/index.html
 
 # exemple : 
 # Commencer par une petite description du README lui-même avec un numéro de version. 
@@ -46,8 +49,15 @@ APERÇU DES DONNÉES ET DES FICHIERS
 # Décrire ce qui se retrouve comme données dans le projet. 
 1. Description of dataset
 2. Liste des fichiers :
-  Nom du fichier 1 :
-  Description du fichier 1 :
+**fichier :** REMPLIR ICI  
+**script de nettoyage:** REMPLIR ICI  
+**REMLIR ICI : descr tableau**
+| Nom de colonne | Commentaire 1 | Commentaire 2 |
+|---|---|---|
+| REMPLIR ICI | REMPLIR ICI | REMPLIR ICI |
+|---|---|---|
+| **Fichier traité** | **Commentaire 1** | **Commentaire 2** |
+| REMPLIR ICI | REMPLIR ICI | REMPLIR ICI |
 
 INFORMATIONS MÉTHODOLOGIQUES
 # Décrire ici les informations méthodologiques de la collecte de données. 

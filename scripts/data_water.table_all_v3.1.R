@@ -7,8 +7,8 @@
 # Fait par :      Alizée Girard
 # Affiliation :   ULaval
 # Date création initiale : 2024-12-09
-# Date mise à jour : 2026-01-08
-# Pourquoi : pour l'ensemble du traitement des données de nappe phréatique 
+# Date mise à jour : 2026-03-11
+# Pourquoi : pour l'ensemble du traitement des données de nappe phréatique
 # Structure :
 # —— connectivite
 #         |—— archive
@@ -23,16 +23,19 @@
 # NOTES : 
 # version avec la calibration corrigée
 # V3.0 tranféré en fonctions dans "fonction_phd_v2.0.R" et complété la calibration automatisée des sondes Odyssey et Hobo
+# V3.1 ajout de la calibration avec SONDES BAROMÉTRIQUES dans FONCTIONS V3.1
 
 # LEXIQUE :
 { 
-# SNH : sonde de niveau hydrostatique / synonymes : LL : level logger; sonde, probe
-# ll : level logger; sonde de niveau hydrostatique / synonymes : sonde, probe, SNH
-# NP : Nappe phréatique / synonymes : water table
-# tz : time zone, syn. fuseau horaire
-# cal.data, syn. connectivite/data/raw/level_logger_calibration_all.csv
-# patron universel d'appellation des fichiers de SNH : probe.uid_site.uid_datedextraction_probe.brand.csv
-  }
+  # SNH : sonde de niveau hydrostatique / synonymes : LL : level logger; sonde, probe
+  # ll : level logger; sonde de niveau hydrostatique / synonymes : sonde, probe, SNH
+  # NP : Nappe phréatique / synonymes : water table
+  # tz : time zone, syn. fuseau horaire
+  # cal.data, syn. connectivite/data/raw/level_logger_calibration_all.csv
+  # patron universel d'appellation des fichiers de SNH : probe.uid_site.uid_datedextraction_probe.brand.csv
+  # ms : MeteoStat
+  # bs : barometric station
+}
 ##########################################################################-
 
 # Initialisation ----
@@ -41,7 +44,7 @@
 
 # Données, dossier directeur fonctions et à charger directement
 # .rs.restartR()
-source("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/scripts/fonctions_phd_v3.0.R")
+source("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/scripts/fonctions_phd_v3.1.R")
 setwd("~/Documents/Doctorat/_R_Stats_PhD")
 
 # fichiers "R data serialized" (RDS) à charger directement
@@ -49,38 +52,47 @@ setwd("~/Documents/Doctorat/_R_Stats_PhD")
 # tidy.WTD.data.df et tidy.cal.data systématiquement produits avec dernière version de tidy.WTD.data, par concaténation des sous-listes
 
 # Données brutes aux données calibrées et propres (tidy) ====
-raw.ll.files.pre <- list.files(path = "connectivite/data/raw", pattern = "_odyssey|_hobo", full.names = T) # mettre dans "pattern" tous les ID de SNH listés dans l'objet SNH
+raw.ll.files.pre <- order.list(path = "connectivite/data/raw", pattern = "_odyssey|_hobo|barometric.station") # ordonner avec "barometric.station" en premier, pour ensuite aider à calibrer
 raw.ll.files <- filter.raw.file(object.to.filter = raw.ll.files.pre, path.filtering.object = "connectivite/data/raw/level_logger_calibration_all.csv") # script "fonctions_phd_v3.0.R"
 cal.data.file.pre <- filter.raw.file(path.filtering.object = 
-                                    "/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/raw/level_logger_calibration_all.csv") # © AlizéeGirard, script "fonctions_phd_vX.r"
+                                       "/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/raw/level_logger_calibration_all.csv") # © AlizéeGirard, script "fonctions_phd_vX.r"
 cal.data.file <- uid.to.columns(file.to.restructure = cal.data.file.pre, type = "cal.data") # © AlizéeGirard, script "fonctions_phd_vX.r"
+rm(list=c(ls(pattern='.pre')))
+
+## boucle et préalables pour transformer les fichiers bruts ====
 tidy.WTD.data <- list()
 s = Sys.time() # compte le temps d'exécution
-## boucle pour transformer les fichiers bruts ====
 for (i in 1:length(raw.ll.files)) {
-  # i<-17
+  # i<-1943 / 74
   print(i)
   raw.ll.files[i]
-
+  
   #### lecture et séparation des données et métadonnées
   raw.ll.files.i.init <- data.metadata(raw.ll.files[i]) # objet temporaire pour ajouter des lignes
   raw.ll.files.i <- metadata(raw.ll.files.i.init)
   
   files.uid.df <- files.uid(raw.ll.files.i.init); rm(raw.ll.files.i.init)
-
+  
   #### ménage de la date et heure
   tz <- zone.tz("~Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectitite_PhD_Mergin_26nov24/Ecotone.restauration.zone.pt.shp")
   files.uid.df$tz_orig[i] <- tz
-
-  ##### cal.bulleur.list.appendd (liste des cal.data, séparées en bulleur et en données de calibration Odyssey. Si autre marque, la l'élément [[2]] donne juste des NA)
-  cal.bulleur.list.appendd <- raw.to.clean_cal.data(cal.data.file, time.zone = tz) # import et nettoyage, bon format de date
   
-  # level.logger propre, à calibrer
+  ##### cal.bulleur.list.appendd (liste des cal.data, séparées en bulleur et en données de calibration Odyssey. Si autre marque, la l'élément [[2]] donne juste des NA)
+  if (!grepl("barometric.station", raw.ll.files[i])) {
+    cal.bulleur.list.appendd <- raw.to.clean_cal.data(cal.data.file, time.zone = tz) # import et nettoyage, bon format de date
+  }
+    
+  #### créer le level.logger propre 
+  # -> sondes de niveau hydrostatique : reste à concatener + calibrer
+  # -> sondes de niveau hydrostatique : FIN (enregistrement en .RDS dans cette fonction, utilisation pour calibration des sondes du même site.UID)
   ll.clean <- raw.to.clean_ll(raw.ll.files.i[[1]])  # NOTES : début = installation du puits + 48h de rabattement de la NP / ou non, si puits intallé d'avance, dans quel cas inscrire début officiel - 24h) # fin = heure de retrait // note : données de date en format xlsx ça lit TOUT CROCHE, transformé en csv fonctionne bien
-
-  #### calibration des sondes
-  ll.cal.pre.i <- concatenate.ll(ll.clean)
-  tidy.WTD.data[[i]] <- clean.to.calibrated_ll(ll.cal.pre.i)
+  
+  if (!grepl("barometric.station", raw.ll.files[i])) {
+    #### concaténation des périodes valides
+    ll.cal.pre.i <- concatenate.ll(ll.clean)
+    #### calibration des sondes
+    tidy.WTD.data[[i]] <- clean.to.calibrated_ll(ll.cal.pre.i)
+  }
   # rm(tz)
 }
 Sys.time()-s # temps d'exécution de la boucle

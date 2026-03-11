@@ -78,6 +78,8 @@ for (n in names(env.data.sitewise[[1]])) { # n c'est chaque feuille dans env.dat
                           env.data.sitewise[[4]][[n]],
                           env.data.sitewise[[5]][[n]])
                           # autant de ligne que DE SITE sinon les sites ultérieurs vont manquer dans les données
+  # AJUSTER CETTE FORMULE env.data.n <- bind_rows(cat(paste0("env.data.sitewise[[", n, "]][[n]]"), ")"))
+  
   env.data.n <- filter.raw.file(env.data.n)
   env.data.merged[[n]] <- env.data.n # liste (de feuillets) contenant les données de chaque site concatennés ensemble
   
