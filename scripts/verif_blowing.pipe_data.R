@@ -30,16 +30,21 @@ if (!require("viridis")) install.packages("viridis")
 
 # Dossier directeur et sourçage ----
 # .rs.restartR()
-setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
+setwd("~/Documents/Doctorat/_R_Stats_PhD")
 
 # Fichiers à charger directement ----
-tidy.cal.data <- readRDS("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/clean/tidy.cal.data.RDS") # issu du code "data_water.table_all_v3.0"
-# tidy.WTD.data.df <- readRDS("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/clean/tidy.WTD.data.df.RDS") # issu du code "data_water.table_all_v3.0"
-tidy.WTD.data <- readRDS("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/clean/tidy.WTD.data.RDS") # issu du code "data_water.table_all_v3.0"
-extracted.list_data <- lapply(tidy.WTD.data, `[[`, 4) # tidy.WTD.cata[[1]] -> data
+# tidy.cal.data <- readRDS("~/Documents/Doctorat/_R_Stats_PhD/connectivite/data/clean/tidy.cal.data.RDS") # issu du code "data_water.table_all_v3.1"
+# tidy.WTD.data <- readRDS("~/Documents/Doctorat/_R_Stats_PhD/connectivite/data/clean/tidy.WTD.data.RDS") # issu du code "data_water.table_all_v3.1"
+# extracted.list_data <- lapply(tidy.WTD.data, `[[`, 4) # tidy.WTD.cata[[1]] -> data
+
+tidy.cal.data.v3.0 <- readRDS("~/Documents/Doctorat/_R_Stats_PhD/connectivite/data/clean/v3.0/tidy.cal.data.RDS") # issu du code "data_water.table_all_v3.0"
+# tidy.WTD.data.df <- readRDS("~/Documents/Doctorat/_R_Stats_PhD/connectivite/data/clean/tidy.WTD.data.df.RDS") # issu du code "data_water.table_all_v3.0"
+tidy.WTD.data.v3.0 <- readRDS("~/Documents/Doctorat/_R_Stats_PhD/connectivite/data/clean/v3.0/tidy.WTD.data.RDS") # issu du code "data_water.table_all_v3.0"
+extracted.list_data <- lapply(tidy.WTD.data.v3.0, `[[`, 4) # tidy.WTD.cata[[1]] -> data
 tidy.WTD.data.df.9janv <- do.call(rbind, extracted.list_data) # bind_rows identique à rbind, mais ne donne pas de message d'erreur
 
 # retrait de colonnes inutiles de tidy.cal.cata
+tidy.cal.data <- tidy.cal.data.v3.0
 tidy.cal.data <- tidy.cal.data %>%
   group_by(probe.brand) %>% 
   distinct() # %>%
@@ -56,7 +61,7 @@ for (tidy.cal.data.line in 1:nrow(tidy.cal.data)) {
   # extraction données de tidy.cal.data pour la ligne "tidy.cal.data.line"
   tidy.cal.data.line.df <- tidy.cal.data[tidy.cal.data.line,] # filtrer ll.bulleur (level_logger_calibration_all.csv) par le ligne "n" (vérification n au bulleur)
   
-  # extraction données de tidy.WTD.data pour la ligne "tidy.cal.data.line"
+  # extraction données communes au tidy.WTD.data pour la ligne "tidy.cal.data.line"
   probe.uid <- tidy.cal.data.line.df$probe.uid
   date.line <- tidy.cal.data.line.df$file.uid
   date.extraction <- sub(".*_", "", date.line)
@@ -70,7 +75,7 @@ for (tidy.cal.data.line in 1:nrow(tidy.cal.data)) {
   # données extraites à l'heure du bulleur
   long.fil.cm <- tidy.cal.data.line.df$long.fil.CDS.cm
   hauteur.eau.cm <- tidy.WTD.data.match.cal.line$hauteur.eau.cm
-  
+  # 20853328_20250106
   # dataframe compilation données
   water.table.verif[tidy.cal.data.line, 1:11] <- tibble("probe.uid" = probe.uid, # créer le dataframe de vérification pour les lignes "n" de la SNH "m"
                                                         "file.extraction.date" = date.extraction,
@@ -89,11 +94,12 @@ for (tidy.cal.data.line in 1:nrow(tidy.cal.data)) {
 
 # ODYSSEY ----
 # tous les offsets
-tidy.cal.data <- readRDS("connectivite/data/clean/tidy.cal.data.RDS")
+tidy.cal.data.v3.0 <- readRDS("connectivite/data/clean/v3.0/tidy.cal.data.RDS")
+tidy.cal.data <- tidy.cal.data.v3.0
 vérif.1 <- tidy.cal.data %>% 
   dplyr::filter(cal.no == "3",
                 probe.brand == "ODYSSEY")
-vérif.1 <- vérif.1[-which(is.na(vérif.1$offset_cm)),] # règle l'avertissement d'avoir retiré 22 lignes contenant des
+vérif.1 <- vérif.1[-which(is.na(vérif.1$offset_cm)),] # règle l'avertissement d'avoir retiré 22 lignes contenant des...
 vérif.1$probe.uid <- as.character(vérif.1$probe.uid)
 
 ## Graphique de tous les offsets ----
@@ -107,7 +113,7 @@ vérif.1 %>%
   ggplot(aes(x = myaxis, y = offset_cm, fill = as.character(probe.uid))) +
   geom_violin(width = 1.4, show.legend = FALSE, drop = FALSE) +
   geom_boxplot(width = 0.1, color = "grey", alpha = 0.2, show.legend = FALSE) +
-  scale_fill_viridis(discrete = TRUE) +
+  # scale_fill_viridis(discrete = TRUE) +
   theme_bw() +
   # theme(legend.position = "none",
         # plot.title = element_text(size=11)) +
@@ -117,7 +123,11 @@ vérif.1 %>%
   # theme.Aliz() + # crée plein de warnings incompréhensibles
   labs(title = "Offsets des sondes Odyssey,\npar identifiant unique de sonde\n(années confondues)") + 
   xlab("")
-vérif.1$offset_cm
+quantile(vérif.1$offset_cm, probs = seq(0.6, 1, 0.05))
+# 60%       65%       70%       75%       80%       85%       90%       95%      100% 
+# 3.201689  3.699753  4.095349  5.170698  6.007105  6.479801  8.099370 11.961840 13.782051 
+hist(vérif.1$offset_cm, nclass = length(unique(vérif.1$offset_cm)))
+# exclure certaines données abérrantes ? Quel seuil ? J'ai choisi quantile de 70 % puisque respecte le 4 cm mentionné par Sylvain
 
 # #### 42564_20241125 ----
 # water.table.verif$donnée.aberrente[water.table.verif$probe.uid == 42564 & water.table.verif$file.extraction.date == "20241125"] <- "aberrent"
@@ -128,7 +138,7 @@ vérif.1$offset_cm
 
 
 # HOBO ----
-# fichiers/sondes en cours de résolution (résulus ci-dessous)
+# fichiers/sondes en cours de résolution (résolus ci-dessous)
 #### 22063159_20251210 ----
 unique(water.table.verif[water.table.verif$probe.uid == 22063159,])
 # 35.4678290; bulleur #1 
@@ -171,7 +181,7 @@ water.table.verif$donnée.aberrente[water.table.verif$probe.uid == 22224407] <- 
 # pas de glitch
 # ne sais pas pourquoi/quoi faire encore
 
-### / mesures prises par JLG avant mon arrivée ----
+## / mesures prises par JLG avant mon arrivée ----
 #### 10279769_20250106 ----
 water.table.verif$donnée.aberrente[water.table.verif$probe.uid == 10279769 & water.table.verif$well.uid == "INK.ED.70m.2024"] <- "aberrent"
 tidy.WTD.data.df.9janv %>%
@@ -199,7 +209,6 @@ tidy.WTD.data.df.9janv %>%
                 date.time.tz.orig <= "2025-11-12 09:00:01")
 # mais la courbe est relativement stable, avec un signal journalier (augm. températures journalières impact la pression atm ?)
 # remesurer le fil et le out (à faire)
-
 
 
 ### / autres VÉRIFICATIONS À FAIRE (12 janv) ----

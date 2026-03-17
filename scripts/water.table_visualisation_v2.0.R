@@ -28,12 +28,12 @@ if (!require("gridExtra")) install.packages("gridExtra") # multiplot()
 # if (!require("withr")) install.packages("withr") # T'o Québec icitte (date-time en français)
 
 # Dossier de travail et fonctions
-setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
+setwd("~/Documents/Doctorat/_R_Stats_PhD")
 source("general.scripts/scripts/fonctions_generales.R") # appel du fichier de métadonnées de projet
 
 # Import des fichiers de données récents
 tidy.WTD.data <- readRDS("connectivite/data/clean/tidy.WTD.data.RDS")
-tidy.cal.data <- readRDS("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/clean/tidy.cal.data.RDS")
+tidy.cal.data <- readRDS("~/Documents/Doctorat/_R_Stats_PhD/connectivite/data/clean/tidy.cal.data.RDS")
 ele.profiles <- readRDS("connectivite/data/clean/elevation.profiles.RDS")
 
 tidy.WTD.data <- readRDS("connectivite/data/clean/tidy.WTD.data.RDS")
@@ -46,25 +46,26 @@ for (j in 1:length(tidy.WTD.data)) {
   # j<-14
   tidy.WTD.data.j <- tidy.WTD.data[[j]]
   
-  # ODYSSEY
-  if (grepl("odyssey", tidy.WTD.data.j$metadata[11])) {
-    # où trouver no de sonde dans ODYSSEY
-    metadata.line <- tidy.WTD.data.j$metadata[12] # probe.uid
-    numbers <- gregexpr("[0-9]+", metadata.line)
-    sonde <- regmatches(metadata.line, numbers)
-  } 
-  else if (grepl("hobo", tidy.WTD.data.j$metadata[4])) {
-    # où trouver no de sonde dans HOBO
-    metadata.line <- tidy.WTD.data.j$metadata[5] # probe.uid
-    numbers <- gregexpr("[0-9]+", metadata.line)
-    sonde <- regmatches(metadata.line, numbers)
+  if (!is.null(tidy.WTD.data.j)) {
+    if (grepl("odyssey", tidy.WTD.data.j$metadata[11])) {
+      # où trouver no de sonde dans ODYSSEY
+      metadata.line <- tidy.WTD.data.j$metadata[12] # probe.uid
+      numbers <- gregexpr("[0-9]+", metadata.line)
+      sonde <- regmatches(metadata.line, numbers)
+    } else if (grepl("hobo", tidy.WTD.data.j$metadata[4])) {
+      # où trouver no de sonde dans HOBO
+      metadata.line <- tidy.WTD.data.j$metadata[5] # probe.uid
+      numbers <- gregexpr("[0-9]+", metadata.line)
+      sonde <- regmatches(metadata.line, numbers)
+    }
+    # données à visualiser
+    data <- tidy.WTD.data[[j]]$data
+    if (length(data) > 0) {
+      hist(data$calibrated.value.cm, warn.unused = F, 
+           main = paste("Histograme des données de sonde no ", paste(sonde,"\n"))) # en cm
+    }
   }
-  # données à visualiser
-  data <- tidy.WTD.data[[j]]$data
-  if (length(data) > 0) {
-    hist(data$calibrated.value.cm, warn.unused = F, 
-         main = paste("Histograme des données de sonde no ", paste(sonde,"\n"))) # en cm
-  } 
+
 }
 
 vérif.1 <- tidy.cal.data%>% dplyr::filter(cal.no == "3")

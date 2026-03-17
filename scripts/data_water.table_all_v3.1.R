@@ -53,7 +53,8 @@ setwd("~/Documents/Doctorat/_R_Stats_PhD")
 
 # Données brutes aux données calibrées et propres (tidy) ====
 raw.ll.files.pre <- order.list(path = "connectivite/data/raw", pattern = "_odyssey|_hobo|barometric.station") # ordonner avec "barometric.station" en premier, pour ensuite aider à calibrer
-raw.ll.files <- filter.raw.file(object.to.filter = raw.ll.files.pre, path.filtering.object = "connectivite/data/raw/level_logger_calibration_all.csv") # script "fonctions_phd_v3.0.R"
+raw.ll.files <- filter.raw.file(object.to.filter = raw.ll.files.pre[[1]], path.filtering.object = "connectivite/data/raw/level_logger_calibration_all.csv") # script "fonctions_phd_v3.0.R"
+barometric.station <- raw.ll.files.pre[[2]]
 cal.data.file.pre <- filter.raw.file(path.filtering.object = 
                                        "/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/raw/level_logger_calibration_all.csv") # © AlizéeGirard, script "fonctions_phd_vX.r"
 cal.data.file <- uid.to.columns(file.to.restructure = cal.data.file.pre, type = "cal.data") # © AlizéeGirard, script "fonctions_phd_vX.r"
@@ -63,7 +64,7 @@ rm(list=c(ls(pattern='.pre')))
 tidy.WTD.data <- list()
 s = Sys.time() # compte le temps d'exécution
 for (i in 1:length(raw.ll.files)) {
-  # i<-1943 / 74
+  # i <-74 # début des ODYSSEY
   print(i)
   raw.ll.files[i]
   
@@ -104,18 +105,37 @@ if("tidy.WTD.data.RDS" %in% list.files("connectivite/data/clean"))  { # si TRUE 
   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
 } else { saveRDS(tidy.WTD.data, file = "connectivite/data/clean/tidy.WTD.data.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
 
-# format tableur des tidy.WTD.data
+# format tableur LONG des tidy.WTD.data
 extracted.list_data <- lapply(tidy.WTD.data, `[[`, 1) # tidy.WTD.data[[1]] -> data
-tidy.WTD.data.df <- do.call(rbind, extracted.list_data) # bind_rows identique à rbind, mais ne donne pas de message d'erreur
-# format RDS des tidy.cal.data (formaté en wide-to-long)
+tidy.WTD.data.df.large <- do.call(rbind, extracted.list_data) # bind_rows identique à rbind, mais ne donne pas de message d'erreur
+tidy.WTD.data.df <- tidy.WTD.data.df.large %>%
+  pivot_longer(cols = contains("calibrated.value.cm"),
+               names_to = "source_calib",
+               values_to = "calibrated.value.cm") %>%
+  mutate(source_calib = as.factor(gsub("calibrated.value.cm.", "", source_calib))) %>%
+  dplyr::filter(!is.na(calibrated.value.cm))
+{ ## enregistrement en RDS
+  if("etiquette.source_calib.fr.txt" %in% list.files("connectivite/data/clean"))  {
+    stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
+  } else {
+    etiquette.source_calib.fr <- 
+      'c("blo" = "Mesure manuelle avec le bulleur",
+"bs" = "Pression atmosphérique (sonde barométrique in situ)",
+"lin" = "Interpolation linéaire (Dataflow Systems PTY Ltd.,2026),
+"ms" = "Pression atmosphérique (MeteoStat.org, 2025")'
+    writeLines(text = etiquette.source_calib.fr, con = "connectivite/data/clean/etiquette.source_calib.fr.txt")
+  }
+} ## enregistrement en RDS de la légende pour les graphiques et tableaux ----
+# format RDS des tidy.WTD.data.df (formaté en wide-to-long)
 if("tidy.WTD.data.df.RDS" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
 } else { saveRDS(tidy.WTD.data.df, file = "connectivite/data/clean/tidy.WTD.data.df.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
 
-# format tidy des cal.data (formaté en wide-to-long)
-extracted.list_verif.data <- lapply(tidy.WTD.data, `[[`, 3) # tidy.WTD.data[[3]] -> verif.data
-tidy.cal.data <- do.call(rbind, extracted.list_verif.data)    #   / archive (ligne suivante) : # tidy.cal.data <- tidy.cal.data %>% dplyr::filter(is.na(tidy.cal.data) %>% rowSums() != length(tidy.cal.data)) # enlever les lignes complètement composées de NA (tous les hobo en date du 7 janvier)
-# format RDS des tidy.cal.data (formaté en wide-to-long)
-if("tidy.cal.data.RDS" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
-  stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
-} else { saveRDS(tidy.cal.data, file = "connectivite/data/clean/tidy.cal.data.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
+# À réparer (17 mars, suite aux modifs v3.1)
+# # format tidy des cal.data (formaté en wide-to-long)
+# extracted.list_verif.data <- lapply(tidy.WTD.data, `[[`, 3) # tidy.WTD.data[[3]] -> verif.data
+# tidy.cal.data <- do.call(rbind, extracted.list_verif.data)    #   / archive (ligne suivante) : # tidy.cal.data <- tidy.cal.data %>% dplyr::filter(is.na(tidy.cal.data) %>% rowSums() != length(tidy.cal.data)) # enlever les lignes complètement composées de NA (tous les hobo en date du 7 janvier)
+# # format RDS des tidy.cal.data (formaté en wide-to-long)
+# if("tidy.cal.data.RDS" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
+#   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
+# } else { saveRDS(tidy.cal.data, file = "connectivite/data/clean/tidy.cal.data.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }

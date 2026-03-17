@@ -1,3 +1,6 @@
+# Notes analyses à faire
+BACI : VOIR COURS 8 diapo 20-2 bayésien
+
 # Nom dépôt
 description sommaire
 version R

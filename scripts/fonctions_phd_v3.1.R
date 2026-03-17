@@ -75,19 +75,17 @@ cat_lists <- function(list1, list2) {   # concatener le contenu de listes aux no
     set_names(keys)  
 }
 
-
 # order.list
 # pour commencer par nettoyer les fichiers de sonde barométriques, utilisées ultérieurement pour calibrer (en plus des données de MeteoStat)
 # path <- "connectivite/data/raw"
 # pattern <- "_odyssey|_hobo|barometric.station"
-barometric.station <- vector()
 order.list <- function(path, pattern) {
   files.pre <- list.files(path = path, pattern = pattern, full.names = T)
   files <- files.pre[!grepl("\\.RDS$", files.pre)]
   barometric.station_T.F <- grepl("^connectivite/data/raw/barometric.station", files) # trouver les files avec le terme 'barometric.station', sauf ceux qui contiennent ".RDS" 
   sorted_files <- c(sort(files[barometric.station_T.F]), sort(files[!barometric.station_T.F])) # et les mettre en premier dans la liste
   barometric.station <- files.pre[barometric.station_T.F]
-  return(c(sorted_files))
+  return(list(sorted_files, barometric.station))
 }
 
 # filter.raw.file
@@ -379,7 +377,7 @@ metadata <- function(x) {
 
 ## files.uids
 # x <- raw.ll.files.i.init
-files.uid.df <- data.frame(file.uid = NA, file.name = NA, probe.uid = NA, "extraction.data.aaaammjj" = NA, "tz_orig" = NA, site.uid = NA,  probe.brand = NA) # pour stocker les fichier.uid (aussi première colonne de cal.data) et autres données intérimaires
+files.uid.df <- data.frame(file.uid = NA, file.name = NA, probe.uid = NA, "extraction.data.aaaammjj" = NA, "tz_orig" = NA, site.uid = NA,  probe.brand = NA, well.uid = NA) # pour stocker les fichier.uid (aussi première colonne de cal.data) et autres données intérimaires
 files.uid <- function(x) { # création du fichier.uid.i, nom unique du FICHIER qui ne pourra JAMAIS être dupliqué (utile dans section début et fin des mesures par périodes, pour un mm FICHIER)
   if (grepl("odyssey", raw.ll.files[i])) {
     texte <- x[[2]][4] # logger serial no, en base R
@@ -413,8 +411,23 @@ files.uid <- function(x) { # création du fichier.uid.i, nom unique du FICHIER q
 raw.to.clean_ll <- function(file.i.raw.data) { # ne calibre pas encore les données
   if (grepl("odyssey", raw.ll.files[i])) {
     raw.ll.data <- read.csv(text = raw.ll.files.i[[1]], # création du dataframe contenant données de nappe phréatique et ménage  ----
-                            col.names = c("scan.id", "date.JJ.MM.AAAA", "time.HH.MM.SS",'raw.value.mm',"calibrated.value.cm")) 
-    raw.ll.data$calibrated.value.cm <- ifelse(raw.ll.data$raw.value.mm == raw.ll.data$calibrated.value.cm, yes = raw.ll.data$calibrated.value.cm[rep("NA", times = length(raw.ll.data$calibrated.value.cm))], no = raw.ll.data$calibrated.value.cm)
+                            col.names = c("scan.id", "date.JJ.MM.AAAA", "time.HH.MM.SS",'raw.value.mm',"calibrated.value.cm.lin")) 
+    if (all(is.na(raw.ll.data$calibrated.value.cm.lin)) == TRUE) {
+      message("NA partout dans la colonne calibrated.value.cm.lin des données bruttes.
+Signifie que PAS CALIBRÉ, les NA seront écrasés par les calculs suivants.")
+    } else if (unique(raw.ll.data$raw.value.mm %in% raw.ll.data$calibrated.value.cm.lin) == TRUE) {
+      message("Même valeur entre raw.value.mm et calibrated.value.cm.lin dans les données bruttes.
+Signifie que PAS CALIBRÉ, donc remplacer calibrated.value.cm.lin par des NA qui seront écrasés par les calculs suivants.")
+      raw.ll.data$calibrated.value.cm.lin <- rep("NA", times = length(raw.ll.data$calibrated.value.cm.lin)) 
+    } else {
+      stop("Pas la même valeur entre raw.value.mm et calibrated.value.cm.lin dans les données bruttes.
+Signifie que calibrated.value.cm.lin fut calibré initialement avec le logiciel, conserver les valeurs et tout arrêter (à coder).")
+    } 
+    # colonnes utiles au JOIN FINAL
+    # calibrated.value.cm.lin calibration initiale ~ relation linéaire de conductivité (Odyssey seulement)
+    raw.ll.data$"calibrated.value.cm.blo" <- rep(NA, times = nrow(raw.ll.data)) # NA pour l'instant, sera rempli après CALCUL DES OFFSETS ** (Odyssey seulement); pour les Hobo, rempli avec mesure manuelle (voir section Calibration data ----)
+    raw.ll.data$"calibrated.value.cm.ms" <- rep(NA, times = nrow(raw.ll.data)) # pour calibration via MeteoStat (pour les Odyssey)
+    raw.ll.data$"calibrated.value.cm.bs" <- rep(NA, times = nrow(raw.ll.data)) # pour calibration via station barométrique (bs)
     
     ### date et heure : format ISO date AAAA-MM-JJTHH:MM:SS,ss-/+FF:ff, voir https://fr.wikipedia.org/wiki/ISO_8601 ----
     # heure : « Z » à la fin lorsqu’il s’agit de l’heure UTC. (« Z » pour méridien zéro, aussi connu sous le nom « Zulu » dans l’alphabet radio international).
@@ -440,10 +453,14 @@ raw.to.clean_ll <- function(file.i.raw.data) { # ne calibre pas encore les donn�
     # ARRANGER UN JOUR (langage C++ pour plus de complications) # ou alors setter cette date manuellement (voir à chaque année la date de changement d'heure) # Sys.timezone(location = F) essayé, n'aide pas
     # nom final (et retirer colonnes inutiles)
     ll.clean <- ll.pre.2.data.3 %>% dplyr::select(!c(date.AAAA.MM.JJ,  "date.time.UTC.0pre", "date.time.UTC.0pre.1")) %>% 
-      dplyr::select("scan.id", "raw.value.mm", "calibrated.value.cm", "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.tz.orig", date.time.UTC.0) # date et time sans "UTC.0" sont dans le fuseau horaire d'origine (tz trouvé en croisant les coordonnées "coords")
+      dplyr::select("scan.id", raw.value.mm, contains("calibrated.value.cm"), date.time.UTC.0, date.time.tz.orig)
+    # enlevé aussi : `date.AAAA-MM-JJ`, time.HH.MM.SS, date.time.tz.orig, long.fil.CDS.cm, out.mean.cm, hauteur.eau.cm 
+    
     return(ll.clean)}
   if (grepl("hobo|barometric.station", raw.ll.files[i])) {
     raw.ll.data <- read.csv(text = raw.ll.files.i[[1]], header = F, col.names = c("scan.id", "date.JJ.MM.AAAA_time.HH.MM.SS",	"raw.value.kPa_pres.abs",	"temperature_dC", "Coupleur détaché", "Coupleur attaché", 'Hôte connecté',	"Arrêté", "Fin de fichier")) # text = argument de read.csv qui lit la valeur contenue dans l'objet / DATE mauvais format
+    # suite : si calibration intégrée avec le hobo, QUE FAIRE ? coder ici, voir procédure avec ODYSSEY
+    
     ll.pre.0.data.1 <- raw.ll.data[1:4] # garder seules les colonnes pertinentes
     #### date et heure : format ISO date AAAA-MM-JJTHH:MM:SS,ss-/+FF:ff, voir https://fr.wikipedia.org/wiki/ISO_8601 ----
     # heure : « Z » à la fin lorsqu’il s’agit de l’heure UTC. (« Z » pour méridien zéro, aussi connu sous le nom « Zulu » dans l’alphabet radio international).
@@ -468,26 +485,18 @@ raw.to.clean_ll <- function(file.i.raw.data) { # ne calibre pas encore les donn�
     # exemple format de la colonne formatée en ISO : "2024-08-14T15:00:01+00:00"
     # la ligne suivante lui dit que à chaque rencontre des caractères +00:00 (milisecondes), il remplace par un "Z" simplement
     ll.pre.0.data.2$date.time.UTC.0 <- gsub("[+]00:00", "Z",  ll.pre.0.data.2$date.time.UTC.0pre.1) 
-    # formation de sortie : "2024-08-14T15:00:01Z" (enlevé les milisecondes)
-    
+
     if (grepl("hobo", raw.ll.files[i])) {
-      {
-        # À FAIRE
-        # ICI VÉRIFIER NOM DE COLONNE CALIBRÉE AVEC HOBO / ou assembler les données manuellement, mais + de gossage ? (à voir)
-        # + mettre ce test à la mm place que Odyssey si possible
-        # # ajouter colonne vide "calibrated value" à l'instar de ODYSSEY, où sera inséré la valeur finale de nappe phréatique
-        # if(FALSE %in% (!file.to.calibrate$calibrated.value.cm %in% rep("NA", times = length(file.to.calibrate$calibrated.value.cm)))) { # si TRUE = STOP et warning (les données ont été calibrées avec le programme-mère, vérifier que j'obtiens les mêmes) // si FALSE = continuer la boucle (donc rien, donc IF statement)
-        #   stop(paste0("Attention, la colonne calibrated.value n'est pas vide. Sonde : i = ", paste(i), "; ", ll.pre[i]))
-        # } # créer une autre colonne, le cas échéant (à faire)
-      }
+      # colonnes utiles au JOIN FINAL
+      ll.pre.0.data.2$calibrated.value.cm.lin <- rep(NA, times = nrow(ll.pre.0.data.2)) # NA (Odyssey seulement; calibration initiale ~ relation linéaire de conductivité)
+      ll.pre.0.data.2$"calibrated.value.cm.blo" <- rep(NA, times = nrow(ll.pre.0.data.2)) # pour calibration via le bulleur (blowing pipe, blo)
       ll.pre.0.data.2$"calibrated.value.cm.ms" <- rep(NA, times = nrow(ll.pre.0.data.2)) # pour calibration via MeteoStat
       ll.pre.0.data.2$"calibrated.value.cm.bs" <- rep(NA, times = nrow(ll.pre.0.data.2)) # pour calibration via station barométrique (bs)
 
       # nom final (et retirer colonnes inutiles)
       ll.clean <- ll.pre.0.data.2 %>% select(!c(date.JJ.MM.AAAA_time.HH.MM.SS, date.AAAA.MM.JJ,  "date.time.UTC.0pre", "date.time.UTC.0pre.1")) %>% 
         select("scan.id", "date.JJ.MM.AAAA_time.HH.MM.SS_tz", "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.tz.orig", "date.time.UTC.0", 
-               "raw.value.kPa_pres.abs", "temperature_dC", "calibrated.value.cm.ms", "calibrated.value.cm.bs")
-      # suite : si calibration intégrée avec le hobo, QUE FAIRE ? coder ici, voir procédure avec ODYSSEY
+               "raw.value.kPa_pres.abs", "temperature_dC", contains("calibrated.value.cm"))
     } else { # sondes barométriques : seules différences...
       # [...]
       # ici différence avec version pour sonde données hydrostatique; pas besoin de colonne "calibrated.value.cm"
@@ -495,12 +504,12 @@ raw.to.clean_ll <- function(file.i.raw.data) { # ne calibre pas encore les donn�
       # autre différence : le fichier est maintenant propre et prêt à calibrer les sonde données hydrostatiques -> enregistrement
       # nom final (et retirer colonnes inutiles)
       ll.clean <- ll.pre.0.data.2 %>% select(!c(scan.id, date.JJ.MM.AAAA_time.HH.MM.SS, date.AAAA.MM.JJ,  "date.time.UTC.0pre", "date.time.UTC.0pre.1", 
-                                                "date.JJ.MM.AAAA_time.HH.MM.SS_tz", date.time.tz.orig)) %>% # date.time.tz.orig et autres font DUPLIQUÉ le JOIN parce le moment exact n'est pas le mm
+                                                "date.JJ.MM.AAAA_time.HH.MM.SS_tz", date.time.tz.orig)) %>% # date.time.tz.orig et autres font DUPLIQUER le JOIN parce le moment exact n'est pas le mm
         select("date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.UTC.0", "pressure.kPa.bs" = raw.value.kPa_pres.abs, "temperature_bs"= temperature_dC) 
       # enlevé calibrated.value.cm.ms et ...bs, enlevé scan.id (info inutile, SURTOUT nuisible dans le JOIN)
   
       saveRDS(ll.clean, file = paste0("connectivite/data/raw/barometric.station.", files.uid.df$site.uid[i], ".RDS"))
-    }
+    } # si sonde barométrique, enregistrer le ll.clean en .RDS
   }
   return(ll.clean)
 }
@@ -529,7 +538,7 @@ concatenate.ll <- function(file.to.concat) {
       ll.clean.l <- ll.clean %>%
         dplyr::filter(date.time.tz.orig >= cal.data.i.l$day.begining.aaaa.mm.dd.hh.mm) %>% # >= date de mesure de NP plus grand ou égale à la date beginning dans cal.data.i.l
         dplyr::filter(date.time.tz.orig <= cal.data.i.l$day.end.aaaa.mm.dd.hh.mm) %>% # <= date de mesure de NP plus petite ou égale à la date end dans cal.data.i.l 
-        dplyr::select("scan.id", "raw.value.mm", "calibrated.value.cm", "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.tz.orig", "date.time.UTC.0") # %>%  # date et time sans "UTC.0" sont dans le fuseau horaire d'origine (tz trouvé en croisant les coordonnées "coords")
+        dplyr::select("scan.id", "raw.value.mm", contains("calibrated.value.cm"), "date.time.UTC.0") 
       # changer pour un nom explicite, fichier encore à calibrer (d'où "pre")
       ll.cal.pre.i.l[[l]] <- ll.clean.l
     }
@@ -551,12 +560,9 @@ concatenate.ll <- function(file.to.concat) {
         # ll.clean.l.pre <- ll.clean %>%
         dplyr::filter(date.time.tz.orig >= cal.data.i.l$day.begining.aaaa.mm.dd.hh.mm) %>% # >= date de mesure de NP plus grand ou égale à la date beginning dans cal.data.i.l
         dplyr::filter(date.time.tz.orig <= cal.data.i.l$day.end.aaaa.mm.dd.hh.mm) %>% # <= date de mesure de NP plus petite ou égale à la date end dans cal.data.i.l 
-        select("scan.id", "raw.value.kPa_pres.abs", "calibrated.value.cm.ms", "calibrated.value.cm.bs",  "temperature_dC", "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.tz.orig", "date.time.UTC.0") # %>%  # date et time sans "UTC.0" sont dans le fuseau horaire d'origine (tz trouvé en croisant les coordonnées "coords")
+        select("scan.id", "raw.value.kPa_pres.abs", contains("calibrated.value.cm"),  "temperature_dC", "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.tz.orig", "date.time.UTC.0") # %>%  # date et time sans "UTC.0" sont dans le fuseau horaire d'origine (tz trouvé en croisant les coordonnées "coords")
       # insérer les données de longueur de fil(où ajouté CDS, voir raw.to.clean_cal.data) et de out.mean.cm de cal.data
-      
-      ### RÉSOUDRE CE PROBLÈME !!
-      # file.to.calibrate <- cal.data$file.to.calibrate[cal.data$period.file.uid == period.file.uid.l]
-      long.fil.CDS.cm <- unique(cal.data$long.fil.CDS.cm[cal.data$period.file.uid == period.file.uid.l])
+            long.fil.CDS.cm <- unique(cal.data$long.fil.CDS.cm[cal.data$period.file.uid == period.file.uid.l])
       ll.clean.l$long.fil.CDS.cm <- rep(long.fil.CDS.cm, times = nrow(ll.clean.l))
       out.mean.cm <- unique(cal.data$out.mean.cm[cal.data$period.file.uid == period.file.uid.l])
       ll.clean.l$out.mean.cm <- rep(out.mean.cm, times = nrow(ll.clean.l))
@@ -578,6 +584,7 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
       stop(paste0("Attention, la colonne calibrated.value n'est pas vide. Sonde problématique : i = ", paste(i), "; ", ll.pre[i]))
     } # créer une autre colonne, le cas échéant (à faire)
     
+    # joindre les données avec celles du fichier de calibration
     # joindre données de bulleur par la colonne en commun "date.time.UTC.0"
     tidy.cal.bulleur.data.pre.0 <- left_join(cal.bulleur.list.appendd[[2]], file.to.calibrate)  # comparaions aux données (raw.val, en (UNITÉS?) de sonde (i) au même moment que chaque mesure (ligne) de tidy.bulleur.data // selon Wikipedia, il y aurait des mSiemens/mm qqpart
     tidy.cal.bulleur.data.pre <- full_join(tidy.cal.bulleur.data.pre.0, cal.bulleur.list.appendd[[1]], relationship = "many-to-many")
@@ -610,21 +617,54 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
       mutate(prof_nappe_odyssey_cm_plus.out = cal.neg.length_mm/10 + tidy.cal.bulleur.data.pre.1$out.mean.cm, # ok
              prof_nappe_bulleur_cm = (bulleur.rel.to.surface.mm/10), # en cm // ok -> le out déjà retiré dans raw.to.clean_cal.data, c'est pourquoi on a bulleur au lieu de in.bulleur (valeur brutte)
              offset_cm = prof_nappe_odyssey_cm_plus.out - prof_nappe_bulleur_cm)
-    tidy.cal.bulleur.data$mean_offset_cm <- mean(tidy.cal.bulleur.data$offset_cm[tidy.cal.bulleur.data$cal.no == "3"], na.rm = TRUE) # ok vérif : sum(tidy.cal.bulleur.data$offset_cm[tidy.cal.bulleur.data$cal.no == "3"])/length(which(tidy.cal.bulleur.data$cal.no == "3"))
+    
+    # calcul du mean_offset, en enlevant les outliers + de 4 cm d'écart (vérifier avec Sylvain)
+    offset.all <- tidy.cal.bulleur.data$offset_cm[tidy.cal.bulleur.data$cal.no == "3" & abs(tidy.cal.bulleur.data$offset_cm) <= 5]
+    tidy.cal.bulleur.data$mean_offset_cm <- mean(offset.all)
+    
+    # tidy.cal.bulleur.data, pour les autres calibrations 
     tidy.cal.bulleur.data <- tidy.cal.bulleur.data %>% select("file.uid", "lat.garmin.dms", "long.garmin.dms", "measure_status", "site.uid", "chapter", "type", "relative.distance", "year", "well.uid", "trmnt.uid", 
                                                               "lab.probe.id", "probe.uid", "probe.brand", "comment", "day.begining.aaaa.mm.dd.hh.mm", "day.end.aaaa.mm.dd.hh.mm", 
                                                               "out.mean.cm", "bulleur.no",  "bulleur.prof.mm", "bulleur.rel.to.surface.mm", 
                                                               "in.bulleur.date.time.UTC.0" = "date.time.UTC.0", "in.bulleur.date.aaaammdd", "in.bulleur.time.tz.orig", "in.bulleur.obs", 
-                                                              "period.file.uid", "scan.id", raw.value = "raw.value.mm", "calibrated.value.cm", "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.tz.orig",
-                                                              "cal.neg.length_mm", "cal.value", "cal.no", "prof_nappe_odyssey_cm_plus.out", "prof_nappe_bulleur_cm", "offset_cm", "mean_offset_cm")
-    file.to.calibrate$calibrated.value.cm = (((file.to.calibrate$raw.value.mm*a.slope) + b.verticalIntercept)/10) + unique(tidy.cal.bulleur.data$out.mean.cm - tidy.cal.bulleur.data$mean_offset_cm)
+                                                              "period.file.uid", "scan.id", raw.value = "raw.value.mm", contains("calibrated.value.cm"), 
+                                                              "cal.neg.length_mm", "cal.value", "cal.no", "prof_nappe_odyssey_cm_plus.out", 
+                                                              "prof_nappe_bulleur_cm", "offset_cm", "mean_offset_cm", long.fil.CDS.cm)
+
+    { # Calibration linéaire (Odyssey seulement)
+    file.to.calibrate$calibrated.value.cm.lin = round( x = (((file.to.calibrate$raw.value.mm*a.slope) + b.verticalIntercept)/10) + unique(tidy.cal.bulleur.data$out.mean.cm - tidy.cal.bulleur.data$mean_offset_cm), digits = 2)
+    } # Calibration linéaire (Odyssey seulement)
+    
+    { # Calibration avec le offset moyen à partir du bulleur (Odyssey seulement)
+      file.to.calibrate$calibrated.value.cm.blo <- round(unique(tidy.cal.bulleur.data$mean_offset_cm) + file.to.calibrate$calibrated.value.cm.lin, 2)
+    } # Calibration avec le bulleur (offset; Odyssey seulement)
+    
+    # format final -> nom final et ajout de métadonnées
+    files.uid.df$well.uid[i] <- unique(tidy.cal.bulleur.data$well.uid)
+    file.to.calibrate$well.uid <- rep(files.uid.df$well.uid[i], times = nrow(file.to.calibrate))
     file.to.calibrate <- file.to.calibrate %>% rename(raw.value = raw.value.mm)
     file.to.calibrate$file.uid <- rep(files.uid.df$file.uid[i], times = nrow(file.to.calibrate))
     ll.cal <- file.to.calibrate # ceci est donc le format final, à intégrer dans la liste tidy.WTD.data
+    
     ### création de la liste dans la liste [[i]]  ----
-    tidy.WTD.data.i <- list("data" = ll.cal, "metadata" = raw.ll.files.i[[2]], "verif.data" = tidy.cal.bulleur.data, "hobo.verif.9janv" = NA)
+    tidy.WTD.data.i <- list("data" = ll.cal, "metadata" = raw.ll.files.i[[2]], "verif.data" = tidy.cal.bulleur.data)
   } # le fichier du level logger correspondant à la position i; [1] : data (dataframe), [2] : metadata (character string)
   if (grepl("hobo", raw.ll.files[i])) {
+    # D'abord, tidy.cal.bulleur.data, utilisé dans certaines calibrations 
+    # joindre les données avec celles du fichier de calibration
+    # joindre données de bulleur par la colonne en commun "date.time.UTC.0"
+    tidy.cal.bulleur.data.pre.0 <- left_join(cal.bulleur.list.appendd[[2]], file.to.calibrate)  # comparaions aux données (raw.val, en (UNITÉS?) de sonde (i) au même moment que chaque mesure (ligne) de tidy.bulleur.data // selon Wikipedia, il y aurait des mSiemens/mm qqpart
+    tidy.cal.bulleur.data.pre <- full_join(tidy.cal.bulleur.data.pre.0, cal.bulleur.list.appendd[[1]], relationship = "many-to-many")
+    # créer mm colonnes que pour les Odyssey en prévision du rbind
+    tidy.cal.bulleur.data <- tidy.cal.bulleur.data.pre %>% 
+      mutate(prof_nappe_odyssey_cm_plus.out = NA, prof_nappe_bulleur_cm = NA, offset_cm = NA, mean_offset_cm = NA)
+    tidy.cal.bulleur.data <- tidy.cal.bulleur.data %>% select("file.uid", "lat.garmin.dms", "long.garmin.dms", "measure_status", "site.uid", "chapter", "type", "relative.distance", "year", "well.uid", "trmnt.uid", 
+                                                              "lab.probe.id", "probe.uid", "probe.brand", "comment", "day.begining.aaaa.mm.dd.hh.mm", "day.end.aaaa.mm.dd.hh.mm", 
+                                                              "out.mean.cm", "bulleur.no",  "bulleur.prof.mm", "bulleur.rel.to.surface.mm", 
+                                                              "in.bulleur.date.time.UTC.0" = "date.time.UTC.0", "in.bulleur.date.aaaammdd", "in.bulleur.time.tz.orig", "in.bulleur.obs", 
+                                                              "period.file.uid", "scan.id", raw.value = "raw.value.kPa_pres.abs", contains("calibrated.value.cm"), "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.tz.orig",
+                                                              "cal.neg.length_mm", "cal.value", "cal.no", "prof_nappe_odyssey_cm_plus.out", "prof_nappe_bulleur_cm", "offset_cm", "mean_offset_cm", long.fil.CDS.cm)
+    
     # Référence : Jutras et Bourgault, 2024, Version 2.0, section 7 (/Users/Aliz/Documents/Doctorat/_Connectivité/Protocoles (dossiers copiés du serveur A'24)/Leveloggers & Hauteur nappe phréatique/_HOBO_Protocole de mesure de nappe_2024-11-01_NE PAS DIFFUSER.docx)
     { # Calibration MeteoStat
       #### extraction des données de METEOSTAT //[auparavant : ECCC/CCCS] et ménage ----
@@ -651,20 +691,9 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
       #### assembler données du HOBO et données de MeteoStat selon la date et l'heure ----
       # Jutras&Bourgault V2.0, 2024; étape a) Associer par dates et par heures les données mesurées par les sondes de niveau hydrostatique et la pression atmosphérique
       cal.meteoStat.data <- left_join(file.to.calibrate, meteoStat.data, by = join_by(date.time.UTC.0)) %>%
-        select("scan.id", "date.time.UTC.0","raw.value.kPa_pres.abs", "temperature_dC", "calibrated.value.cm.ms", "calibrated.value.cm.bs",
+        select("scan.id", "date.time.UTC.0","raw.value.kPa_pres.abs", "temperature_dC", contains("calibrated.value.cm"),
                `date.AAAA-MM-JJ`, "time.HH.MM.SS", `date.time.tz.orig`, "date.time.ms", pressure.kPa.ms, everything()) # enlever les nombreuses colonnes qui n'ont pas rapport dans ces démarches
-      {    # À faire : VÉRIFIER SI TOUT EST OK NIVEAU TIME ZONES...
-        ##### inscrire le time zone (tz) dans la colonne time (équivalent à "date.time.tz.orig.pre") ----
-        # json_data <- fromJSON(file ="connectivite/data/raw/full.json") # time zone inscrite dans ce fichier
-        # trouver ma station
-        # ??? et le bon UTC...
-        
-        
-        # à faire
-        # REMETTRE FICHIERS BRNTC dans dossier principal
-        # SI MESSAGE D'ERREUR contient les caractères suivants, UTILISER LES DONNÉES DE LA STATION MÉTÉO LOCALE
-        }     # À FAIRE
-      
+ 
       # Jutras&Bourgault V2.0, 2024; étape b)	Calculer la hauteur d’eau au-dessus de la sonde par la soustraction de la pression atmosphérique, convertie en cm d’eau, à la pression mesurée par la sonde
       # Jutras&Bourgault V2.0, 2024; étape b.i)	La conversion de kPa en cm d’eau est : 1 kPa = 10,1972 cm d’eau
       cal.meteoStat.data$pression.eau.kPa <- cal.meteoStat.data$raw.value.kPa_pres.abs - cal.meteoStat.data$pressure.kPa.ms
@@ -676,46 +705,20 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
       # Jutras&Bourgault V2.0, 2024; étape c.i)	La profondeur de la nappe phréatique par rapport à la surface du sol =
       # ((La longueur du fil + La constante CDS) – La longueur du puits d’observation qui dépasse la surface du sol) – La hauteur d’eau au-dessus de la sonde
       # c. Convertir la hauteur d’eau au-dessus de la sonde en profondeur de la nappe phréatique par rapport à la surface du sol
-      cal.meteoStat.data$calibrated.value.cm.ms <- cal.meteoStat.data$long.fil.CDS.cm - cal.meteoStat.data$out.mean.cm - cal.meteoStat.data$hauteur.eau.cm
+      cal.meteoStat.data$calibrated.value.cm.ms <- round(x = (cal.meteoStat.data$long.fil.CDS.cm - cal.meteoStat.data$out.mean.cm - cal.meteoStat.data$hauteur.eau.cm), digits = 2)
       
-      if (any(grepl(files.uid.df$site.uid[i], barometric.station)) == FALSE) { # pas de sonde barométrique 
-        # AJOUTER VÉRIFICATION D'ANNÉE SI PAS DISPO UN ANNÉE MAIS QUE J'EN AJOUTE UNE AUTRE ANNÉE...
-        # format final -> nom final
-        ll.cal <- cal.meteoStat.data %>% # ceci est donc le format final, à intégrer dans la liste ll.clean
-          select(scan.id, raw.value = raw.value.kPa_pres.abs, calibrated.value.cm.ms, calibrated.value.cm.bs, `date.AAAA-MM-JJ`, time.HH.MM.SS, date.time.tz.orig, # retirer des colonnes intermédiaires et mm format que ll.clean[[i]]$data
-                 date.time.UTC.0)
-        ll.cal$file.uid <- rep(files.uid.df$file.uid[i], times = nrow(ll.cal))
-        
-        { # fichier de vérification du 9 janv 2026
-          ll.cal.verif.9janv <- cal.meteoStat.data %>%  # ceci est donc le format final, à intégrer dans la liste ll.clean
-            select(scan.id, raw.value = raw.value.kPa_pres.abs, calibrated.value.cm.ms, calibrated.value.cm.bs, `date.AAAA-MM-JJ`, time.HH.MM.SS, date.time.tz.orig, # retirer des colonnes intermédiaires et mm format que ll.clean[[i]]$data
-                   date.time.UTC.0, long.fil.CDS.cm, out.mean.cm, hauteur.eau.cm) 
-          ll.cal.verif.9janv$file.uid <- rep(files.uid.df$file.uid[i], times = nrow(ll.cal.verif.9janv))
-        } # fichier de vérification du 9 janv 2026
-      }
     }  # Calibration MeteoStat
     
-    # Calibration sonde barométrique / barometric station (bs)
-    if (any(grepl(files.uid.df$site.uid[i], barometric.station))) {
-      #   #### ouverture des données de la station appropriée ----
-      barometric.data <- read_rds(paste0("connectivite/data/raw/barometric.station.", files.uid.df$site.uid[i],".RDS"))
+    # si sonde barométrique LA BONNE ANNÉE, calibration / barometric station (bs)
+    if (any(grepl(files.uid.df$site.uid[i], barometric.station) & unique(lubridate::year(cal.meteoStat.data$date.time.UTC.0)) %in% barometric.station)) {
+      # ouverture des données de la station appropriée ----
+      barometric.data <- read_rds(paste0("connectivite/data/raw/barometric.station.", files.uid.df$site.uid[i],".RDS")) # enregistré lors de l'exécution de la fonction : raw.to.clean_ll()
       
-      #   #### assembler données du HOBO et données de la barometric station selon la date et l'heure ----
-      #   # Jutras&Bourgault V2.0, 2024; étape a) Associer par dates et par heures les données mesurées par les sondes de niveau hydrostatique et la pression atmosphérique
+      # assembler données du HOBO et données de la barometric station selon la date et l'heure ----
+      # Jutras&Bourgault V2.0, 2024; étape a) Associer par dates et par heures les données mesurées par les sondes de niveau hydrostatique et la pression atmosphérique
       cal.meteoStat.baro.data <- full_join(cal.meteoStat.data, barometric.data) %>% 
-        select("scan.id", "date.time.UTC.0","raw.value.kPa_pres.abs", "temperature_dC", "calibrated.value.cm.ms", "calibrated.value.cm.bs",
+        select("scan.id", "date.time.UTC.0","raw.value.kPa_pres.abs", "temperature_dC", contains("calibrated.value.cm"),
                `date.AAAA-MM-JJ`, "time.HH.MM.SS", `date.time.tz.orig`, "date.time.ms", pressure.kPa.ms, pressure.kPa.bs, everything()) # enlever les nombreuses colonnes qui n'ont pas rapport dans ces démarches
-      {    # À faire : VÉRIFIER SI TOUT EST OK NIVEAU TIME ZONES...
-        ##### inscrire le time zone (tz) dans la colonne time (équivalent à "date.time.tz.orig.pre") ----
-        # json_data <- fromJSON(file ="connectivite/data/raw/full.json") # time zone inscrite dans ce fichier
-        # trouver ma station
-        # ??? et le bon UTC...
-        
-        
-        # à faire
-        # REMETTRE FICHIERS BRNTC dans dossier principal
-        # SI MESSAGE D'ERREUR contient les caractères suivants, UTILISER LES DONNÉES DE LA STATION MÉTÉO LOCALE
-        }     # À FAIRE
       
       # Jutras&Bourgault V2.0, 2024; étape b)	Calculer la hauteur d’eau au-dessus de la sonde par la soustraction de la pression atmosphérique, convertie en cm d’eau, à la pression mesurée par la sonde
       # Jutras&Bourgault V2.0, 2024; étape b.i)	La conversion de kPa en cm d’eau est : 1 kPa = 10,1972 cm d’eau
@@ -728,24 +731,43 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
       # Jutras&Bourgault V2.0, 2024; étape c.i)	La profondeur de la nappe phréatique par rapport à la surface du sol =
       # ((La longueur du fil + La constante CDS) – La longueur du puits d’observation qui dépasse la surface du sol) – La hauteur d’eau au-dessus de la sonde
       # c. Convertir la hauteur d’eau au-dessus de la sonde en profondeur de la nappe phréatique par rapport à la surface du sol
-      cal.meteoStat.baro.data$calibrated.value.cm.bs <- cal.meteoStat.baro.data$long.fil.CDS.cm - cal.meteoStat.baro.data$out.mean.cm - cal.meteoStat.baro.data$hauteur.eau.cm.bs
-    } # Calibration sonde barométrique / barometric station (bs)
+      cal.meteoStat.baro.data$calibrated.value.cm.bs <- round(x = (cal.meteoStat.baro.data$long.fil.CDS.cm - cal.meteoStat.baro.data$out.mean.cm - cal.meteoStat.baro.data$hauteur.eau.cm.bs), digits = 2)
+      
+      # format final -> nom final (et ajout de métadonnées plus bas)
+      ll.cal <- cal.meteoStat.baro.data %>% # ceci est donc le format final, à intégrer dans la liste ll.clean
+        select(scan.id, raw.value = raw.value.kPa_pres.abs, contains("calibrated.value.cm"), date.time.UTC.0) # retirer des colonnes intermédiaires et mm format que ll.clean[[i]]$data
+               # enlevé aussi : `date.AAAA-MM-JJ`, time.HH.MM.SS, date.time.tz.orig, long.fil.CDS.cm, out.mean.cm, hauteur.eau.cm 
+    } else { # Calibration sonde barométrique / barometric station (bs)
+     # Si aucune station barométrique, enregistrement final
+      # si pas de sonde barométrique, juste enregistrer ll.cal (nom final, ll.cal <- cal.meteoStat.data) sans autre modification
+      # format final -> nom final
+      ll.cal <- cal.meteoStat.data %>% # ceci est donc le format final, à intégrer dans la liste ll.clean
+        select(scan.id, raw.value = raw.value.kPa_pres.abs, contains("calibrated.value.cm"), date.time.UTC.0) # retirer des colonnes intermédiaires et mm format que ll.clean[[i]]$data
+      # enlevé aussi : `date.AAAA-MM-JJ`, time.HH.MM.SS, date.time.tz.orig, long.fil.CDS.cm, out.mean.cm, hauteur.eau.cm 
+      files.uid.df$well.uid[i] <- unique(tidy.cal.bulleur.data$well.uid)
+      ll.cal$well.uid <- rep(files.uid.df$well.uid[i], times = nrow(file.to.calibrate))
+      ll.cal$file.uid <- rep(files.uid.df$file.uid[i], times = nrow(ll.cal))
+    }
     
-    # créer les vérif data prévision du rbind (n'affecte aucunement les données hobo)
-    # joindre données de bulleur par la colonne en commun "date.time.UTC.0"
-    tidy.cal.bulleur.data.pre.0 <- left_join(cal.bulleur.list.appendd[[2]], file.to.calibrate)  # comparaions aux données (raw.val, en (UNITÉS?) de sonde (i) au même moment que chaque mesure (ligne) de tidy.bulleur.data // selon Wikipedia, il y aurait des mSiemens/mm qqpart
-    tidy.cal.bulleur.data.pre <- full_join(tidy.cal.bulleur.data.pre.0, cal.bulleur.list.appendd[[1]], relationship = "many-to-many")
-    # créer mm colonnes que pour les Odyssey en prévision du rbind
-    tidy.cal.bulleur.data <- tidy.cal.bulleur.data.pre %>% 
-      mutate(prof_nappe_odyssey_cm_plus.out = NA, prof_nappe_bulleur_cm = NA, offset_cm = NA, mean_offset_cm = NA)
-    tidy.cal.bulleur.data <- tidy.cal.bulleur.data %>% select("file.uid", "lat.garmin.dms", "long.garmin.dms", "measure_status", "site.uid", "chapter", "type", "relative.distance", "year", "well.uid", "trmnt.uid", 
-                                                              "lab.probe.id", "probe.uid", "probe.brand", "comment", "day.begining.aaaa.mm.dd.hh.mm", "day.end.aaaa.mm.dd.hh.mm", 
-                                                              "out.mean.cm", "bulleur.no",  "bulleur.prof.mm", "bulleur.rel.to.surface.mm", 
-                                                              "in.bulleur.date.time.UTC.0" = "date.time.UTC.0", "in.bulleur.date.aaaammdd", "in.bulleur.time.tz.orig", "in.bulleur.obs", 
-                                                              "period.file.uid", "scan.id", raw.value = "raw.value.kPa_pres.abs", "calibrated.value.cm.ms", "calibrated.value.cm.bs", "date.AAAA-MM-JJ", "time.HH.MM.SS", "date.time.tz.orig",
-                                                              "cal.neg.length_mm", "cal.value", "cal.no", "prof_nappe_odyssey_cm_plus.out", "prof_nappe_bulleur_cm", "offset_cm", "mean_offset_cm")
+    { # Vérification avec le bulleur, lorsque disponible
+      ll.cal$calibrated.value.cm.blo <- map_dbl( # merci à GoogleIA, j'apprends à utiliser la programmation fonctionnelle (l'univers PURRR)
+        ll.cal$date.time.UTC.0, 
+        ~ {
+          # On cherche l'index de la date correspondante (ll.cal$date.time.UTC.0 = .x) dans tidy.cal.bulleur.data.pre
+          idx <- match(.x, tidy.cal.bulleur.data$in.bulleur.date.time.UTC.0)
+          # Si trouvé, on divise par 10, sinon on met NA
+          if (!is.na(idx)) round(tidy.cal.bulleur.data$bulleur.rel.to.surface.mm[idx]/10, 2) else NA_real_
+        }
+      )
+    } # Vérification avec le bulleur, lorsque disponible
+
+    # ajout de métadonnées
+    files.uid.df$well.uid[i] <- unique(tidy.cal.bulleur.data$well.uid)
+    ll.cal$well.uid <- rep(files.uid.df$well.uid[i], times = nrow(ll.cal))
+    ll.cal$file.uid <- rep(files.uid.df$file.uid[i], times = nrow(ll.cal))
+    
     ### création de la liste dans la liste [[i]]  ----
-    tidy.WTD.data.i <- list("data" = ll.cal, "metadata" = raw.ll.files.i[[2]], "verif.data" = tidy.cal.bulleur.data, "hobo.verif.9janv" = ll.cal.verif.9janv) 
+    tidy.WTD.data.i <- list("data" = ll.cal, "metadata" = raw.ll.files.i[[2]], "verif.data" = tidy.cal.bulleur.data) 
   } # le fichier du level logger correspondant à la position i; [1] : data (dataframe), [2] : metadata (character string)
   return(tidy.WTD.data.i)
 }
@@ -857,12 +879,13 @@ raw.to.clean_cal.data <- function(cal.data.file, time.zone) { # ne calibre pas e
   # retour à la sous-liste pour utilisation dans la fonction clean.to.calibrated_ll (itération de calibration pour les sondes ODYSSEY, n'impacte pas les autres marques de sondes)
   cal.bulleur.list.appendd[[2]] <- tidy.bulleur.data
   {
+    # update 16 mars 2026, je comprends pas ma note...
     # OK / idée : revenir à cal.bulleur.list.appendd[[1]] et [[2]] (ce dernier à la place de tidy.bulleur.data) 
     # toutes données répétées autrement, juste garder bulleur vs cal data séparées pour l'instant
     # parce que la version finale de cal.data est celle qui comportera les valeurs ODYSSEY finales...
     # il faudrait que mes fonctions et le résultat ne soit pas impacté si juste sondes HOBO... pour passer au suivant
     # pour cela, voir format final si contient des colonnes inutiles -> demander à FRancis un argument pour les enlever automatiquement selon type de sondes utilisées
-  } # notes à supprimer
+  } # note à supprimer
   return(cal.bulleur.list.appendd)
 }
 
@@ -893,7 +916,7 @@ dual.axis.calculation <- function(yaxis.left, yaxis.right, abs.ratio = NULL) {
   return(parameters.list)
 }
 
-# theme.Aliz ----
+# theme.Aliz
 {
   # https://rfortherestofus.com/2025/04/ggplot2-theme
   # theme.Aliz <- function() {
@@ -990,8 +1013,6 @@ zone.tz <- function(zone.shp) {
 
 date.time_manips <- function(data, date.col, time.col) {} 
 # ABANDON 30 déc 2025
-
-
 
 
 # ============================================================================= /
