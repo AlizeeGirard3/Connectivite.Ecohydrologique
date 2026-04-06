@@ -301,6 +301,7 @@ uid.to.columns <- function(file.to.restructure = NULL, type = NULL, path = NULL)
 ## data.metadata
 # path <- "connectivite/data/raw/10279769_INK_20250106_hobo.csv"
 # path <- "connectivite/data/raw/barometric.station.22063156_20251202.csv"
+# path <- raw.ll.files[i]
 # data.metadata(raw.ll.files[i])
 data.metadata <- function(path) { # type = odyssey vs  EST DANS MON PATH pas besoin de l'argument je vais lui dire
   if (grepl("odyssey", path)) { # début de la loop pour les ODYSSEY
@@ -317,6 +318,7 @@ data.metadata <- function(path) { # type = odyssey vs  EST DANS MON PATH pas bes
   if (grepl("hobo|barometric.station", path)) { # début de la loop pour les ODYSSEY
     # k <- i
     raw.ll.files.init <- readLines(path) # lire en format texte
+    raw.ll.files.init[1] <- gsub('"', '', raw.ll.files.init[1])
     # ** tz orig mentionnée dans la colonne ll.pre.0.metadata[2], coder pour l'obtenir au besoin
     # Warning message: [...] incomplete final line found on 'connectivite/data/raw/..._hobo.csv' -> OK
     ### création des subsets data & metadata ----
@@ -376,7 +378,10 @@ files.uid <- function(x) { # création du fichier.uid.i, nom unique du FICHIER q
     numbers <- gregexpr("[0-9]+", texte)
     result <- regmatches(texte, numbers)
     fichier <- as.numeric(unlist(result))
+    site.uid.pre <- sub("SiteName,","", raw.ll.files.i[[2]][1])
+    site.uid <- substr(gsub("[^[:alnum:]]", "", site.uid.pre) , 1, 3)
     files.uid.df[i,1:4] <- c(paste0(unlist(result)[1], "_", unlist(result)[2]), raw.ll.files[i], probe.uid.i, as.numeric(unlist(result)[2])) # ceci sera gardé en mémoire (doit être identique à la colonne fichier.uid dans cal.data)
+    files.uid.df[i,6] <- site.uid
     return(files.uid.df)}
   if (grepl("hobo|barometric.station", raw.ll.files[i])) {
     texte <- as.data.frame(str_match(x[[2]], "(?s)LGR S/N: \\s*(.*?)\\s*,")) # extraire tout ce qui se trouve après LGR S/N:... / "x" objet mis dans la fonction
@@ -632,15 +637,41 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
       file.to.calibrate$calibrated.value.cm.blo <- round(unique(tidy.cal.bulleur.data$mean_offset_cm) + file.to.calibrate$calibrated.value.cm.lin, 2)
     } # Calibration avec le bulleur (offset; Odyssey seulement)
     
+      #### ajout précipitations (MeteoStat) ----
+      pattern <- paste0("hourly*.", files.uid.df$site.uid[i]) # ici on ne veut que les fichiers qui ont des données horaire (pas les daily, le cas échéant)
+      meteoStat.data.pre.0 <- read.csv(paste0("connectivite/data/raw/", list.files(path = "connectivite/data/raw", pattern = pattern)))
+      meteoStat.data.pre.1 <- meteoStat.data.pre.0 %>% mutate(date.time = paste(year, month, day, hour)) %>% mutate(pressure.kPa = pres * 0.1) # pression donnée en hPa (hectopascal). 1 hPa = 0,1 kPa. Example: convert 15 hPa to kPa: 15 hPa = 15 × 0.1 kPa = 1.5 kPa
+      meteoStat.data.pre.1$date.time <- ymd_h(meteoStat.data.pre.1$date.time, tz = tz) + 1
+      meteoStat.data.pre.1 <- meteoStat.data.pre.1 %>%  select(date.time, everything(), -c("year", month, day, hour, X, pres, "wdir","wdir_source","wspd","wspd_source","cldc","cldc_source","coco","coco_source")) # ajuster la date et l'heure et ajout d'une seconde, sinon, les données 00:00:00 étaient effacées !
+      # changement de nom pour identifier quelles colonnes du futur cal.meteoStat.data proviennent de meteoStat
+      colnames(meteoStat.data.pre.1) <- paste0(colnames(meteoStat.data.pre.1), ".ms") # ajout de ".ms" pour identifier les colonnes issues de MeteoStat
+      # convertir au bon format de date et manip de colonnes (idem aux infos temporelles de fichier de sonde) / date.time.UTC selon norme iso
+      meteoStat.data.pre.2 <- meteoStat.data.pre.1 %>%
+        mutate(date.time.UTC.0.pre = with_tz(ymd_hms(meteoStat.data.pre.1$date.time.ms, tz = tz), tzone = "GMT")) # les heures sont ainsi ramenées à UTC +0 / ceci écrase la colonne du mm nom
+      meteoStat.data.pre.3 <- meteoStat.data.pre.2 %>%  # enlever l'espace entre date et heure (ISO 8601)
+        mutate(date.time.UTC.0.pre.1 = str_replace(meteoStat.data.pre.2$date.time.UTC.0.pre, " ", "T")) %>%
+        select(date.time.ms, date.time.UTC.0.pre, date.time.UTC.0.pre.1, everything())
+      meteoStat.data.pre.3$date.time.UTC.0 <- str_replace_all(meteoStat.data.pre.3$date.time.UTC.0.pre.1, "00:01","00:01Z") # ajouter le Z à la fin (ISO 8601)
+      meteoStat.data <- meteoStat.data.pre.3 %>% select(date.time.ms, date.time.UTC.0, everything()) %>% select(!c(date.time.UTC.0.pre, date.time.UTC.0.pre.1))
+      
+      #### assembler données du HOBO et données de MeteoStat selon la date et l'heure ----
+      file.to.calibrate.meteo <- left_join(file.to.calibrate, meteoStat.data, by = join_by(date.time.UTC.0)) %>%
+        select("scan.id", "date.time.UTC.0","raw.value.mm", contains("calibrated.value.cm"),
+              `date.time.tz.orig`, "date.time.ms", pressure.kPa.ms, everything()) # enlever les nombreuses colonnes qui n'ont pas rapport dans ces démarches
+
     # format final -> nom final et ajout de métadonnées
     files.uid.df$well.uid[i] <- unique(tidy.cal.bulleur.data$well.uid)
-    file.to.calibrate$well.uid <- rep(files.uid.df$well.uid[i], times = nrow(file.to.calibrate))
-    file.to.calibrate <- file.to.calibrate %>% rename(raw.value = raw.value.mm)
-    file.to.calibrate$file.uid <- rep(files.uid.df$file.uid[i], times = nrow(file.to.calibrate))
-    ll.cal <- file.to.calibrate # ceci est donc le format final, à intégrer dans la liste tidy.WTD.data
+    file.to.calibrate.meteo$well.uid <- rep(files.uid.df$well.uid[i], times = nrow(file.to.calibrate.meteo))
+    site.pre <- sub("SiteName,","", raw.ll.files.i[[2]][1])
+    file.to.calibrate.meteo$site <- str_to_title(site.pre)
+    file.to.calibrate.meteo <- file.to.calibrate.meteo %>% rename(raw.value = raw.value.mm)
+    file.to.calibrate.meteo$file.uid <- rep(files.uid.df$file.uid[i], times = nrow(file.to.calibrate.meteo))
+    ll.cal <- file.to.calibrate.meteo %>% # ceci est donc le format final, à intégrer dans la liste ll.clean
+      select(scan.id, raw.value, contains("calibrated.value.cm"), date.time.UTC.0, `date.time.tz.orig`, "prcp.ms", well.uid, site, file.uid) # retirer des colonnes intermédiaires et mm format que ll.clean[[i]]$data
     
     ### création de la liste dans la liste [[i]]  ----
-    tidy.WTD.data.i <- list("data" = ll.cal, "metadata" = raw.ll.files.i[[2]], "verif.data" = tidy.cal.bulleur.data)
+    tidy.WTD.data.i <- list("data" = ll.cal, "metadata" = raw.ll.files.i[[2]], 
+                            "verif.data" = tidy.cal.bulleur.data) #, tidy.weather.data = NULL)
   } # le fichier du level logger correspondant à la position i; [1] : data (dataframe), [2] : metadata (character string)
   if (grepl("hobo", raw.ll.files[i])) {
     # D'abord, tidy.cal.bulleur.data, utilisé dans certaines calibrations 
@@ -693,13 +724,14 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
       # Jutras&Bourgault V2.0, 2024; étape c)
       # Jutras&Bourgault V2.0, 2024; étape c.i)	La profondeur de la nappe phréatique par rapport à la surface du sol =
       # ((La longueur du fil + La constante CDS) – La longueur du puits d’observation qui dépasse la surface du sol) – La hauteur d’eau au-dessus de la sonde
-      # c. Convertir la hauteur d’eau au-dessus de la sonde en profondeur de la nappe phréatique par rapport à la surface du sol
-      cal.meteoStat.data$calibrated.value.cm.ms <- round(x = (cal.meteoStat.data$long.fil.CDS.cm - cal.meteoStat.data$out.mean.cm - cal.meteoStat.data$hauteur.eau.cm), digits = 2)
+      # c. Convertir la hauteur d’eau au-dessus de la sonde en profondeur de la nappe phréatique par rapport à la surface du sol, puis en valeur relative au sol (*-1)
+      cal.meteoStat.data$calibrated.value.cm.ms <- round(x = (cal.meteoStat.data$long.fil.CDS.cm - cal.meteoStat.data$out.mean.cm - cal.meteoStat.data$hauteur.eau.cm), digits = 2) * -1
       
     }  # Calibration MeteoStat
     
     # si sonde barométrique LA BONNE ANNÉE, calibration / barometric station (bs)
-    if (any(grepl(files.uid.df$site.uid[i], barometric.station) & unique(lubridate::year(cal.meteoStat.data$date.time.UTC.0)) %in% barometric.station)) {
+    annee <- as.character(unique(lubridate::year(cal.meteoStat.data$date.time.UTC.0)))
+    if (any(grepl(files.uid.df$site.uid[i], barometric.station) & any(grepl(annee, barometric.station)))) {
       # ouverture des données de la station appropriée ----
       barometric.data <- read_rds(paste0("connectivite/data/raw/barometric.station.", files.uid.df$site.uid[i],".RDS")) # enregistré lors de l'exécution de la fonction : raw.to.clean_ll()
       
@@ -712,31 +744,31 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
       # Jutras&Bourgault V2.0, 2024; étape b)	Calculer la hauteur d’eau au-dessus de la sonde par la soustraction de la pression atmosphérique, convertie en cm d’eau, à la pression mesurée par la sonde
       # Jutras&Bourgault V2.0, 2024; étape b.i)	La conversion de kPa en cm d’eau est : 1 kPa = 10,1972 cm d’eau
       cal.meteoStat.baro.data$pression.eau.kPa.bs <- cal.meteoStat.baro.data$raw.value.kPa_pres.abs - cal.meteoStat.baro.data$pressure.kPa.bs
-      cal.meteoStat.baro.data$hauteur.eau.cm.pre.bs <- cal.meteoStat.baro.data$pression.eau.kPa * 10.197162129779 # règle de trois
-      cal.meteoStat.baro.data$hauteur.eau.cm.bs <- cal.meteoStat.baro.data$hauteur.eau.cm.pre.bs # dépend de la façon dont les mesures de longueurs en cm sont prises
-      # cal.meteoStat.baro.data <- cal.meteoStat.baro.data %>% select("scan.id", "date.time.UTC.0","raw.value.kPa_pres.abs", pression.eau.kPa.bs, , hauteur.eau.cm, everything())
+      cal.meteoStat.baro.data$hauteur.eau.cm.bs <- cal.meteoStat.baro.data$pression.eau.kPa.bs * 10.197162129779 # règle de trois
       
       # Jutras&Bourgault V2.0, 2024; étape c)
       # Jutras&Bourgault V2.0, 2024; étape c.i)	La profondeur de la nappe phréatique par rapport à la surface du sol =
       # ((La longueur du fil + La constante CDS) – La longueur du puits d’observation qui dépasse la surface du sol) – La hauteur d’eau au-dessus de la sonde
-      # c. Convertir la hauteur d’eau au-dessus de la sonde en profondeur de la nappe phréatique par rapport à la surface du sol
-      cal.meteoStat.baro.data$calibrated.value.cm.bs <- round(x = (cal.meteoStat.baro.data$long.fil.CDS.cm - cal.meteoStat.baro.data$out.mean.cm - cal.meteoStat.baro.data$hauteur.eau.cm.bs), digits = 2)
+      # c. Convertir la hauteur d’eau au-dessus de la sonde en profondeur de la nappe phréatique par rapport à la surface du sol, puis en valeur relative au sol (*-1)
+      cal.meteoStat.baro.data$calibrated.value.cm.bs <- round(x = (cal.meteoStat.baro.data$long.fil.CDS.cm - cal.meteoStat.baro.data$out.mean.cm - cal.meteoStat.baro.data$hauteur.eau.cm.bs), digits = 2) * -1
       
       # format final -> nom final (et ajout de métadonnées plus bas)
       ll.cal <- cal.meteoStat.baro.data %>% # ceci est donc le format final, à intégrer dans la liste ll.clean
-        select(scan.id, raw.value = raw.value.kPa_pres.abs, contains("calibrated.value.cm"), date.time.UTC.0, `date.time.tz.orig`) # retirer des colonnes intermédiaires et mm format que ll.clean[[i]]$data
+        select(scan.id, raw.value = raw.value.kPa_pres.abs, contains("calibrated.value.cm"), date.time.UTC.0, `date.time.tz.orig`, "prcp.ms") # retirer des colonnes intermédiaires et mm format que ll.clean[[i]]$data
       # enlevé aussi : `date.AAAA-MM-JJ`, time.HH.MM.SS, date.time.tz.orig, long.fil.CDS.cm, out.mean.cm, hauteur.eau.cm 
+      
     } else { # Calibration sonde barométrique / barometric station (bs)
+      
       # Si aucune station barométrique, enregistrement final
       # si pas de sonde barométrique, juste enregistrer ll.cal (nom final, ll.cal <- cal.meteoStat.data) sans autre modification
       # format final -> nom final
       ll.cal <- cal.meteoStat.data %>% # ceci est donc le format final, à intégrer dans la liste ll.clean
-        select(scan.id, raw.value = raw.value.kPa_pres.abs, contains("calibrated.value.cm"), date.time.UTC.0, `date.time.tz.orig`) # retirer des colonnes intermédiaires et mm format que ll.clean[[i]]$data
+        select(scan.id, raw.value = raw.value.kPa_pres.abs, contains("calibrated.value.cm"), date.time.UTC.0, `date.time.tz.orig`, "prcp.ms") # retirer des colonnes intermédiaires et mm format que ll.clean[[i]]$data
       # enlevé aussi : `date.AAAA-MM-JJ`, time.HH.MM.SS, date.time.tz.orig, long.fil.CDS.cm, out.mean.cm, hauteur.eau.cm 
       files.uid.df$well.uid[i] <- unique(tidy.cal.bulleur.data$well.uid)
       ll.cal$well.uid <- rep(files.uid.df$well.uid[i], times = nrow(file.to.calibrate))
       ll.cal$file.uid <- rep(files.uid.df$file.uid[i], times = nrow(ll.cal))
-    }
+          }
     
     { # Vérification avec le bulleur, lorsque disponible
       ll.cal$calibrated.value.cm.blo <- map_dbl( # merci à GoogleIA, j'apprends à utiliser la programmation fonctionnelle (l'univers PURRR)
@@ -753,10 +785,13 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
     # ajout de métadonnées
     files.uid.df$well.uid[i] <- unique(tidy.cal.bulleur.data$well.uid)
     ll.cal$well.uid <- rep(files.uid.df$well.uid[i], times = nrow(ll.cal))
+    ll.cal$site <- sub("Titre de tracé : ","",raw.ll.files.i[[2]][1])
     ll.cal$file.uid <- rep(files.uid.df$file.uid[i], times = nrow(ll.cal))
     
     ### création de la liste dans la liste [[i]]  ----
-    tidy.WTD.data.i <- list("data" = ll.cal, "metadata" = raw.ll.files.i[[2]], "verif.data" = tidy.cal.bulleur.data) 
+    tidy.WTD.data.i <- list("data" = ll.cal, "metadata" = raw.ll.files.i[[2]], 
+                            "verif.data" = tidy.cal.bulleur.data) # , "tidy.weather.data" = tidy.weather.data.i) 
+
   } # le fichier du level logger correspondant à la position i; [1] : data (dataframe), [2] : metadata (character string)
   return(tidy.WTD.data.i)
 }

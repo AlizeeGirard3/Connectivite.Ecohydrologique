@@ -5,8 +5,9 @@
 ##########################################################################-
 # Fait par :      Alizée Girard
 # Affiliation :   ULaval
-# Date création initiale : 2025-05-025
+# Date création initiale : 2025-05-25
 # Date mise à jour : 22 janvier 2026
+# Caduque : 6 avril 2026
 # Pourquoi : afficher données de MétéoStat
 # Structure :
 # —— connectivite
@@ -39,12 +40,12 @@ if (!require("ggplot2")) install.packages("ggplot2")
 if (!require("grDevices")) install.packages("grDevices") # pdf()
 # if (!require("gridExtra")) install.packages("gridExtra") # multiplot()
 if (!require("patchwork")) install.packages("patchwork")
-
+if (!require("slider")) install.packages("slider") # sélection d'une fenêtre glissante
 
 # Données, dossier directeur fonctions et à charger directement
 # .rs.restartR()
-setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
-source("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/connectivite/scripts/fonctions_phd_v3.0.R")
+setwd("~/Documents/Doctorat/_R_Stats_PhD")
+source("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/connectivite/scripts/fonctions_phd_v3.1.R")
 # source("general.scripts/scripts/fonctions_generales.R") # CADUQUE ? appel du fichier de métadonnées de projet
 
 # ============================================================================= /
@@ -58,7 +59,7 @@ weather.files <- list.files(path = "connectivite/data/raw", pattern = "meteoStat
 zones <- read_sf("~Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectitite_PhD_Mergin_26nov24/Ecotone.restauration.zone.pt.shp") %>% # couche géomatique (QGIS) à laquelle référer avec la fonction read_sf("")
   as.data.frame(zones) %>% 
   dplyr::filter(descriptio == "Site confirmé")
-station_id.phd <- read.csv("data/raw/station_id.phd.csv") # issu du script "Recherche_station_meteo_ID_v2.0.r", trouver "station.name"
+station_id.phd <- read.csv("connectivite/data/raw/station_id.phd.csv") # issu du script "Recherche_station_meteo_ID_v2.0.r", trouver "station.name"
 
 # consigne de données
 weather.data.list <- list()
@@ -142,30 +143,7 @@ tidy.weather.data <- weather.data.list %>%
 if("tidy.weather.data.RDS" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
 } else { saveRDS(tidy.weather.data, file = "connectivite/data/clean/tidy.weather.data.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
-
-
-# RNEDUE LÀ
-# SUITE DU NETTOYAGE ***!
-# joindre les données horaires et journalières
-tidy.weather.data <- weather.data.list %>%
-  map(~ .x %>% mutate(across(everything(), as.character))) %>% # d'abord, tout en caractères, car classe des NA en arrière plan posait problème
-  reduce(full_join, na_matches = "na") # %>% # précision de la gestion des NA pour débugger (voir code débuggage ci-dessous), cela ajoutait 13 lignes autrement; merci à GoogleIA pour l'aide au débuggage
-
-# ICI,  SPÉCIFIER CE QUE JE VEUX... ou avant
-# √ supprimer temp du df daily
-# √ vérifier si temp max et min hour == daily
-# √ pluvio vérifier, je croyais que je ne l'avais pas dans hourly mais il y a des données... comprendre
-# ce qu'elles représentent
-# comprendre ce que veut dire "pres"... 
-
-
-# TEMP À 20H issue de daily data n'est pas valide... 
-# en fait, il faut prendre les données de daily et les coller à chaque ligne de horaire, en spécifiant 
-# moyenne du jour ou NA ou garder juste les valeurs que j'ai pas dans horaire (pluvio, ex.)
-
-# ultimement : je veux afficher données horaire de barométrie et TROUVER LE MOYEN D'ENLEVER LA VARIATION DE PRESSION journalière !! 
-
-
+s
 # ============================================================================= /
 #  Examination des données bruttes ----
 # ============================================================================= /
@@ -199,6 +177,49 @@ mes_graphiques
 #   theme(plot.title = element_text(hjust = 0.5))
 # tidy.weather.data.graph
 
+
+# ============================================================================= /
+# Relation pression atmophérique ~ température ambiante ----
+# ============================================================================= /
+tidy.weather.data <- readRDS(file = "connectivite/data/clean/tidy.weather.data.RDS") 
+
+# analyse de corrélation sur l'ensemble du jeux de données
+tidy.weather.data$temp <- as.numeric(tidy.weather.data$temp)
+tidy.weather.data$pres <- as.numeric(tidy.weather.data$pres.kpa)
+cor.test(tidy.weather.data$temp, tidy.weather.data$pres, method = "spearman")
+# Spearman's rank correlation rho
+# 
+# data:  tidy.weather.data$temp and tidy.weather.data$pres
+# S = 5.3203e+13, p-value < 2.2e-16
+# alternative hypothesis: true rho is not equal to 0
+# sample estimates:
+#         rho 
+# -0.03509721 
+# Un rho de -0,035 signifie que la température n'explique quasiment aucune variation de la pression dans ce jeu de données précis
+
+## test du 24h  ----
+# Dans votre boucle, après avoir nettoyé vos données :
+df_24h <- tidy.weather.data %>%
+  arrange(date.time.UTC.0) %>%
+  mutate(
+    # Calcule la corrélation sur une fenêtre glissante de 24h
+    cor_glissante = slide2_dbl(
+      .x = temp, 
+      .y = pres, 
+      .f = ~cor(.x, .y, method = "spearman"),
+      .before = 24,
+      .complete = TRUE
+    )
+  )
+summary(df_24h$cor_glissante)
+# Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+#   -1.00   -0.71   -0.33   -0.22    0.23    1.00   37748 
+#     Médiane à -0.33 : La relation est globalement négative (la pression baisse quand il fait chaud), ce qui valide votre capteur.
+#     Min à -1.00 : Certains jours, la corrélation est parfaite (thermique pure).
+#     Max à +1.00 : Certains jours, la pression monte avec la température 
+#     Moyenne à -0.22 : C'est bien plus significatif que votre -0.03 global, car cela montre l'effet thermique quotidien moyen
+
+
 # ============================================================================= /
 # autres tests
 # ============================================================================= /
@@ -209,17 +230,3 @@ tidy.weather.data.beauport.oct.2025 <- tidy.weather.data %>%
                 date.time.SiteTZ <= "2025-10-30") # mm valeurs que sur Environnement Canada mm date (26 janvier 2026)
                                                   # différence que sur ECCC pas de données de pression...
 # oui..
-
-# analyse de corrélation sur l'ensemble du jeux de données ----
-tidy.weather.data$temp <- as.numeric(tidy.weather.data$temp)
-tidy.weather.data$pres <- as.numeric(tidy.weather.data$pres)
-cor.test(tidy.weather.data$temp, tidy.weather.data$pres, method = "pearson")
-# Pearson's product-moment correlation
-# data:  tidy.weather.data$temp and tidy.weather.data$pres
-# t = -8.3754, df = 67560, p-value < 2.2e-16
-# alternative hypothesis: true correlation is not equal to 0
-# 95 percent confidence interval:
-#  -0.03973658 -0.02467128
-# sample estimates:
-#         cor 
-# -0.03220576 

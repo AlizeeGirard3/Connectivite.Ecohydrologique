@@ -27,43 +27,27 @@ Sometimes you may want to use another directory as the working directory. The us
 
 \newpage
 
-# Aperçu de la répartition des données tidy.WTD.data.df
-```{r eval=FALSE, message=FALSE, include=FALSE}
-```
+## réparer ce chunk : une fois que j'aurai épluché les problèmes
+<!-- # Aperçu des offets - Sondes Odyssey -->
+<!-- ```{r, message = FALSE, echo = FALSE} -->
+<!-- #### bibliothèques à charger -->
+<!-- setwd("~/Documents/Doctorat/_R_Stats_PhD") # fonctions utiles et working directory -->
+<!-- if (!require("dplyr")) install.packages("dplyr") # pour manipulation donnees (pipe, etc) -->
+<!-- if (!require("ggplot2")) install.packages("ggplot2") -->
 
-# Aperçu du code de calibration - Sonde Odyssey
+<!-- tidy.cal.data <- readRDS("connectivite/data/clean/tidy.cal.data.RDS") -->
+<!-- vérif.1 <- tidy.cal.data%>% dplyr::filter(cal.no == "3") -->
+<!-- vérif.1 = vérif.1[-which(is.na(vérif.1$offset_cm)),] -->
+<!-- vérif.1$probe.uid <- as.character(vérif.1$probe.uid) -->
 
-```         
-# Sondes ODYSSEY
-[...]
-```
-# Aperçu du code de calibration - Sonde HOBO
-
-```         
-# Sondes HOBO
-[...]
-```
-
-# Aperçu des offets - Sondes Odyssey
-```{r, message = FALSE, echo = FALSE}
-#### bibliothèques à charger
-setwd("~/Documents/Doctorat/_R_Stats_PhD") # fonctions utiles et working directory
-if (!require("dplyr")) install.packages("dplyr") # pour manipulation donnees (pipe, etc)
-if (!require("ggplot2")) install.packages("ggplot2")
-
-tidy.cal.data <- readRDS("connectivite/data/clean/tidy.cal.data.RDS")
-vérif.1 <- tidy.cal.data%>% dplyr::filter(cal.no == "3")
-vérif.1 = vérif.1[-which(is.na(vérif.1$offset_cm)),]
-vérif.1$probe.uid <- as.character(vérif.1$probe.uid)
-
-graph.odyssey <- ggplot(vérif.1, aes(x = probe.uid, y = offset_cm)) +
-  scale_y_continuous(breaks = seq(-160, 160, by = 20)) +
-  geom_segment(aes(x=probe.uid, xend=probe.uid, y=0, yend=offset_cm)) +
-  geom_point(size=1, color="red", fill=alpha("orange", 0.3), alpha=0.7, shape=21, stroke=2) +
-  theme_bw() + theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
-  labs(title = "Offsets des sondes Odyssey,\npar identifiant unique de sonde\n(années confondues)")
-print(graph.odyssey)
-```
+<!-- graph.odyssey <- ggplot(vérif.1, aes(x = probe.uid, y = offset_cm)) + -->
+<!--   scale_y_continuous(breaks = seq(-160, 160, by = 20)) + -->
+<!--   geom_segment(aes(x=probe.uid, xend=probe.uid, y=0, yend=offset_cm)) + -->
+<!--   geom_point(size=1, color="red", fill=alpha("orange", 0.3), alpha=0.7, shape=21, stroke=2) + -->
+<!--   theme_bw() + theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) + -->
+<!--   labs(title = "Offsets des sondes Odyssey,\npar identifiant unique de sonde\n(années confondues)") -->
+<!-- print(graph.odyssey) -->
+<!-- ``` -->
 
 
 # Visualisation de la variation de la nappe phréatique et du positionnement du puits le long du transect
@@ -84,82 +68,103 @@ if (!require("withr")) install.packages("withr") # T'o Québec icitte (date-time
 ```
 
 ```{r, echo = FALSE}
-setwd("~/Documents/Doctorat/_R_Stats_PhD") # fonctions utiles et working directory
-tidy.WTD.data <- readRDS("connectivite/data/clean/tidy.WTD.data.RDS")
-for (i in 1:length(tidy.WTD.data)) {
-  if (!is.null(tidy.WTD.data[[i]])) {
+# setwd("~/Documents/Doctorat/_R_Stats_PhD") # fonctions utiles et working directory
+tidy.WTD.data.df <- readRDS("connectivite/data/clean/tidy.WTD.data.df.RDS")
+well.uid.sequence <- unique(tidy.WTD.data.df$well.uid)
+for (y in 1:length(well.uid.sequence)) {
+  # i<-5
+  paste(y)
+  well.uid.sequence[y]
+  tidy.WTD.data.df.i <- tidy.WTD.data.df %>% 
+    dplyr::filter(well.uid == well.uid.sequence[y])
+
+  # graphiques de nappe phréatique
+  graph.wt <- tidy.WTD.data.df.i %>%
+    ggplot(mapping = aes(y = calibrated.value.cm, x = date.time.tz.orig, color = source_calib)) + 
+    geom_line(data = subset(tidy.WTD.data.df.i, source_calib %in% c("bs", "ms"))) + # geom_line(group = 1) +
+    geom_point(data = subset(tidy.WTD.data.df.i, source_calib == "blo")) +
+    scale_x_datetime(date_breaks = "2 weeks", date_labels = "%y/%b/%d") + 
+    scale_color_manual(values = c("bs" = "hotpink", "ms" = "seagreen")) +
+    ggtitle(paste0(tidy.WTD.data.df.i$site, ", no unique de sonde : ", tidy.WTD.data.df.i$file.uid, 
+                   ",\n à l'emplacement ", tidy.WTD.data.df.i$well.uid, "\n",
+                   "nombre de ligne du fichier : ", nrow(tidy.WTD.data.df.i))) +
+    labs(y = "Hauteur de nappe phréatique (cm)\nrelative à la surface", x = "Date") +
+    theme_bw() + theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 45, hjust = 1, vjust = 0.5))
+  print(graph.wt) # imprimer dans R
+# tidy.WTD.data <- readRDS("connectivite/data/clean/tidy.WTD.data.RDS")
+# for (i in 1:length(tidy.WTD.data)) {
+  # if (!is.null(tidy.WTD.data[[i]])) { 
     # i<-5
-    paste(i)
-    tidy.WTD.data[[i]]
-    # bouble pour les ODYSSEY
-    if (grepl("odyssey", tidy.WTD.data[[i]]$metadata[11])) { #}
-    # extraire no de sonde
-    file.uid.i <- gsub(".*: ", "", tidy.WTD.data[[i]]$metadata[10])
-    # extraire nom de transect/puits
-    cal.data <- read.csv("connectivite/data/raw/level_logger_calibration_all.csv", sep = ";")
-    colnames(cal.data)
-    well.uid <- cal.data %>% dplyr::filter(file.uid == file.uid.i) %>% distinct(well.uid)
-    
-    texte <- tidy.WTD.data[[i]]$metadata[4]
-    numbers <- gregexpr("[0-9]+", texte)
-    result <- regmatches(texte, numbers)
-    (probe.serial.no.i <- as.numeric(unlist(result)[1]))
-    
-    # extraire nom de site
-    site.name.pre <- sub("SiteName","",tidy.WTD.data[[i]]$metadata[1])
-    site.name.pre.1 <- gsub(",", "", site.name.pre) # ici ce serait ST-HENRI, ça me gosse
-    site.name <- str_to_title(site.name.pre.1)
-    
-    # créer objet contenant les données
-    ll.cal <- tidy.WTD.data[[i]]$data # ll.cal ce sont les données calibrées finales, reprise du nom dans le script d'origine "data_water.table.all.R"
-    # class(ll.cal); head(ll.cal); str(ll.cal); colnames(ll.cal)
-    ll.cal$date.time.tz.orig <- as.POSIXct(ll.cal$date.time.tz.orig)
-    
-    # graphiques de nappe phréatique
-    graph.wt <- ll.cal %>% ggplot(mapping = aes(y = calibrated.value.cm.lin, x = date.time.tz.orig)) + # ici HOBO je dois faire *-1 pour avoir la hauteur relative (nég si en dessous de surface)
-      geom_line(group = 1) +
-      scale_x_datetime(date_breaks = "2 weeks", date_labels = "%y/%b/%d") + 
-      ggtitle(paste0(site.name, ", sonde no ", probe.serial.no.i, " à l'emplacement\n", well.uid, "\n",
-                     "nombre de ligne du fichier : ", nrow(ll.cal))) +
-      labs(y = "Hauteur de nappe phréatique (cm)\nrelative à la surface", x = "Date") +
-      theme_bw() + theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 45, hjust = 1, vjust = 0.5))
-    print(graph.wt) # imprimer dans R
-
-    }  
-    if (grepl("hobo", tidy.WTD.data[[i]]$metadata[4])) { #}
-      # extraire no de sonde
-      file.uid.i <- gsub(".*: ", "", tidy.WTD.data[[i]]$metadata[3])
-      # extraire nom de transect/puits
-      cal.data <- read.csv("connectivite/data/raw/level_logger_calibration_all.csv", sep = ";")
-      colnames(cal.data)
-      well.uid <- cal.data %>% dplyr::filter(file.uid == file.uid.i) %>% distinct(well.uid)
-      
-      texte <- tidy.WTD.data[[i]]$metadata[5]
-      numbers <- gregexpr("[0-9]+", texte)
-      result <- regmatches(texte, numbers)
-      (probe.serial.no.i <- as.numeric(unlist(result)[1]))
-      
-      # extraire nom de site
-      site.name <- gsub(".*: ", "", tidy.WTD.data[[i]]$metadata[1])
-
-      # créer objet contenant les données
-      ll.cal <- tidy.WTD.data[[i]]$data # ll.cal ce sont les données calibrées finales, reprise du nom dans le script d'origine "data_water.table.all.R"
-      # class(ll.cal); head(ll.cal); str(ll.cal); colnames(ll.cal)
-      ll.cal$date.time.tz.orig <- as.POSIXct(ll.cal$date.time.tz.orig)
-      
-      graph.wt <- ll.cal %>% ggplot(mapping = aes(y = calibrated.value.cm.ms*-1, x = date.time.tz.orig)) + # ici HOBO je dois faire *-1 pour avoir la hauteur relative (nég si en dessous de surface)
-        geom_line(group = 1) +
-        scale_x_datetime(date_breaks = "2 weeks", date_labels = "%y/%b/%d") + 
-        ggtitle(paste0(site.name, ", sonde no ", probe.serial.no.i, " à l'emplacement\n", well.uid, "\n",
-                       "nombre de ligne du fichier : ", nrow(ll.cal))) +
-        labs(y = "Hauteur de nappe phréatique (cm)\nrelative à la surface", x = "Date") +
-        theme_bw() + theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 45, hjust = 1, vjust = 0.5))
-      print(graph.wt) # imprimer dans R
-      
-      # ATTENTION !! surpasser consciemment dans la boucle
-      # ggsave(paste0("connectivite/output/figures/",site.name, "_", probe.serial.no.i, "_", transect.id.i,".pdf"), graph.wt, width = 12, height = 8)
-  }
-  } 
+    # paste(i)
+    # tidy.WTD.data[[i]]
+    # # bouble pour les ODYSSEY
+    # if (grepl("odyssey", tidy.WTD.data[[i]]$metadata[11])) { #}
+    # # extraire no de sonde
+    # file.uid.i <- gsub(".*: ", "", tidy.WTD.data[[i]]$metadata[10])
+    # # extraire nom de transect/puits
+    # cal.data <- read.csv("connectivite/data/raw/level_logger_calibration_all.csv", sep = ";")
+    # colnames(cal.data)
+    # well.uid <- cal.data %>% dplyr::filter(file.uid == file.uid.i) %>% distinct(well.uid)
+    # 
+    # texte <- tidy.WTD.data[[i]]$metadata[4]
+    # numbers <- gregexpr("[0-9]+", texte)
+    # result <- regmatches(texte, numbers)
+    # (probe.serial.no.i <- as.numeric(unlist(result)[1]))
+    # 
+    # # extraire nom de site
+    # site.name.pre <- sub("SiteName","",tidy.WTD.data[[i]]$metadata[1])
+    # site.name.pre.1 <- gsub(",", "", site.name.pre) # ici ce serait ST-HENRI, ça me gosse
+    # site.name <- str_to_title(site.name.pre.1)
+    # 
+    # # créer objet contenant les données
+    # ll.cal <- tidy.WTD.data[[i]]$data # ll.cal ce sont les données calibrées finales, reprise du nom dans le script d'origine "data_water.table.all.R"
+    # # class(ll.cal); head(ll.cal); str(ll.cal); colnames(ll.cal)
+    # ll.cal$date.time.tz.orig <- as.POSIXct(ll.cal$date.time.tz.orig)
+    # 
+    # # graphiques de nappe phréatique
+    # graph.wt <- ll.cal %>% ggplot(mapping = aes(y = calibrated.value.cm.lin, x = date.time.tz.orig)) + # ici HOBO je dois faire *-1 pour avoir la hauteur relative (nég si en dessous de surface)
+    #   geom_line(group = 1) +
+    #   scale_x_datetime(date_breaks = "2 weeks", date_labels = "%y/%b/%d") + 
+    #   ggtitle(paste0(site.name, ", sonde no ", probe.serial.no.i, " à l'emplacement\n", well.uid, "\n",
+    #                  "nombre de ligne du fichier : ", nrow(ll.cal))) +
+    #   labs(y = "Hauteur de nappe phréatique (cm)\nrelative à la surface", x = "Date") +
+    #   theme_bw() + theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 45, hjust = 1, vjust = 0.5))
+    # print(graph.wt) # imprimer dans R
+    # 
+    # }  
+    # if (grepl("hobo", tidy.WTD.data[[i]]$metadata[4])) { #}
+    #   # extraire no de sonde
+    #   file.uid.i <- gsub(".*: ", "", tidy.WTD.data[[i]]$metadata[3])
+    #   # extraire nom de transect/puits
+    #   cal.data <- read.csv("connectivite/data/raw/level_logger_calibration_all.csv", sep = ";")
+    #   colnames(cal.data)
+    #   well.uid <- cal.data %>% dplyr::filter(file.uid == file.uid.i) %>% distinct(well.uid)
+    #   
+    #   texte <- tidy.WTD.data[[i]]$metadata[5]
+    #   numbers <- gregexpr("[0-9]+", texte)
+    #   result <- regmatches(texte, numbers)
+    #   (probe.serial.no.i <- as.numeric(unlist(result)[1]))
+    #   
+    #   # extraire nom de site
+    #   site.name <- gsub(".*: ", "", tidy.WTD.data[[i]]$metadata[1])
+    #   # créer objet contenant les données
+    #   ll.cal <- tidy.WTD.data[[i]]$data # ll.cal ce sont les données calibrées finales, reprise du nom dans le script d'origine "data_water.table.all.R"
+    #   # class(ll.cal); head(ll.cal); str(ll.cal); colnames(ll.cal)
+    #   ll.cal$date.time.tz.orig <- as.POSIXct(ll.cal$date.time.tz.orig)
+    #   
+    #   graph.wt <- ll.cal %>% ggplot(mapping = aes(y = calibrated.value.cm.ms*-1, x = date.time.tz.orig)) + # ici HOBO je dois faire *-1 pour avoir la hauteur relative (nég si en dessous de surface)
+    #     geom_line(group = 1) +
+    #     scale_x_datetime(date_breaks = "2 weeks", date_labels = "%y/%b/%d") + 
+    #     ggtitle(paste0(site.name, ", sonde no ", probe.serial.no.i, " à l'emplacement\n", well.uid, "\n",
+    #                    "nombre de ligne du fichier : ", nrow(ll.cal))) +
+    #     labs(y = "Hauteur de nappe phréatique (cm)\nrelative à la surface", x = "Date") +
+    #     theme_bw() + theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 45, hjust = 1, vjust = 0.5))
+    #   print(graph.wt) # imprimer dans R
+    #   
+    #   # ATTENTION !! surpasser consciemment dans la boucle
+    #   # ggsave(paste0("connectivite/output/figures/",site.name, "_", probe.serial.no.i, "_", transect.id.i,".pdf"), graph.wt, width = 12, height = 8)
+  # }
+  # } 
 }
 
 ```
