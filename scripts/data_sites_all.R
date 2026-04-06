@@ -37,8 +37,8 @@ if (!require("openxlsx")) install.packages("openxlsx") # lire/écrire les excel
 # Données, dossier directeur fonctions et à charger directement
 # .rs.restartR()
 # setwd("/Users/Aliz/Library/CloudStorage/OneDrive-UniversitéLaval/_FIELD.LAB WORK 2025/Laboratoire/LOI")
-setwd("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite")
-source("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/connectivite/scripts/fonctions_phd_v3.0.R")
+setwd("~/Documents/Doctorat/_R_Stats_PhD/connectivite")
+source("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/scripts/fonctions_phd_v3.0.R")
 
 # ============================================================================= /
 # Nettoyage et enregistrement en RDS ----
