@@ -367,7 +367,8 @@ metadata <- function(x) {
 
 ## files.uids
 # x <- raw.ll.files.i.init
-files.uid.df <- data.frame(file.uid = NA, file.name = NA, probe.uid = NA, "extraction.data.aaaammjj" = NA, "tz_orig" = NA, site.uid = NA,  probe.brand = NA, well.uid = NA) # pour stocker les fichier.uid (aussi première colonne de cal.data) et autres données intérimaires
+files.uid.df <- data.frame(file.uid = NA, file.name = NA, probe.uid = NA, "extraction.data.aaaammjj" = NA, 
+                           "tz_orig" = NA, site.uid = NA,  probe.brand = NA, well.uid = NA) # pour stocker les fichier.uid (aussi première colonne de cal.data) et autres données intérimaires
 files.uid <- function(x) { # création du fichier.uid.i, nom unique du FICHIER qui ne pourra JAMAIS être dupliqué (utile dans section début et fin des mesures par périodes, pour un mm FICHIER)
   if (grepl("odyssey", raw.ll.files[i])) {
     texte <- x[[2]][4] # logger serial no, en base R
@@ -666,8 +667,10 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
     file.to.calibrate.meteo$site <- str_to_title(site.pre)
     file.to.calibrate.meteo <- file.to.calibrate.meteo %>% rename(raw.value = raw.value.mm)
     file.to.calibrate.meteo$file.uid <- rep(files.uid.df$file.uid[i], times = nrow(file.to.calibrate.meteo))
+    file.to.calibrate.meteo$probe.brand <- files.uid.df$probe.brand[i]
     ll.cal <- file.to.calibrate.meteo %>% # ceci est donc le format final, à intégrer dans la liste ll.clean
-      select(scan.id, raw.value, contains("calibrated.value.cm"), date.time.UTC.0, `date.time.tz.orig`, "prcp.ms", well.uid, site, file.uid) # retirer des colonnes intermédiaires et mm format que ll.clean[[i]]$data
+      select(scan.id, raw.value, contains("calibrated.value.cm"), date.time.UTC.0, `date.time.tz.orig`,
+             "prcp.ms", well.uid, site, file.uid, probe.brand) # retirer des colonnes intermédiaires et mm format que ll.clean[[i]]$data
     
     ### création de la liste dans la liste [[i]]  ----
     tidy.WTD.data.i <- list("data" = ll.cal, "metadata" = raw.ll.files.i[[2]], 
@@ -765,7 +768,6 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
       ll.cal <- cal.meteoStat.data %>% # ceci est donc le format final, à intégrer dans la liste ll.clean
         select(scan.id, raw.value = raw.value.kPa_pres.abs, contains("calibrated.value.cm"), date.time.UTC.0, `date.time.tz.orig`, "prcp.ms") # retirer des colonnes intermédiaires et mm format que ll.clean[[i]]$data
       # enlevé aussi : `date.AAAA-MM-JJ`, time.HH.MM.SS, date.time.tz.orig, long.fil.CDS.cm, out.mean.cm, hauteur.eau.cm 
-      files.uid.df$well.uid[i] <- unique(tidy.cal.bulleur.data$well.uid)
       ll.cal$well.uid <- rep(files.uid.df$well.uid[i], times = nrow(file.to.calibrate))
       ll.cal$file.uid <- rep(files.uid.df$file.uid[i], times = nrow(ll.cal))
           }
@@ -787,6 +789,7 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
     ll.cal$well.uid <- rep(files.uid.df$well.uid[i], times = nrow(ll.cal))
     ll.cal$site <- sub("Titre de tracé : ","",raw.ll.files.i[[2]][1])
     ll.cal$file.uid <- rep(files.uid.df$file.uid[i], times = nrow(ll.cal))
+    ll.cal$probe.brand <- files.uid.df$probe.brand[i]
     
     ### création de la liste dans la liste [[i]]  ----
     tidy.WTD.data.i <- list("data" = ll.cal, "metadata" = raw.ll.files.i[[2]], 
@@ -813,8 +816,7 @@ raw.to.clean_cal.data <- function(cal.data.file, time.zone) { # ne calibre pas e
     mutate_at('constante', as.numeric) # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque/modèle" (type) est traitée de façon différente
   brand.i <-  ifelse(length(cal.data.0$probe.brand[which(grepl(files.uid.df[i,1], cal.data.0$file.uid))])==0,"other", cal.data.0$probe.brand[which(grepl(files.uid.df[i,1], cal.data.0$file.uid))])
   cal.data.0$long.fil.CDS.cm <- cal.data.0$long.fil.cm + CDS$constante[CDS$type == brand.i]
-  files.uid.df$probe.brand[i] <- brand.i
-  
+
   # vérification de valeurs OUT
   cal.data.0 <- cal.data.0 %>% 
     mutate(out.R = ifelse(is.na(out.1.a.cm), round((out.1.a.cm + out.1.b.cm + out.1.c.cm)/3, digits = 1), as.numeric(out.mean.cm)))

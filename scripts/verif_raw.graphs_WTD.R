@@ -23,10 +23,10 @@ if (!require("tidyverse")) install.packages("tidyverse") # méta package // goss
 if (!require("ggplot2")) install.packages("ggplot2")
 
 # Fichiers à charger directement ----
-setwd("~/Documents/Doctorat/_R.&.Stats_PhD")
-# tidy.cal.data <- readRDS("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/clean/tidy.cal.data.RDS") # issu du code "data_water.table_all_v3.0"
-tidy.WTD.data.df <- readRDS("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/clean/tidy.WTD.data.df.RDS") # issu du code "data_water.table_all_v3.0"
-# tidy.WTD.data <- readRDS("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/clean/tidy.WTD.data.RDS") # issu du code "data_water.table_all_v3.0"
+setwd("~/Documents/Doctorat/_R_Stats_PhD")
+tidy.cal.data <- readRDS("connectivite/data/clean/archive_v3.0/tidy.cal.data.RDS") # issu du code "data_water.table_all_v3.0"
+tidy.WTD.data.df <- readRDS("connectivite/data/clean/archive_v3.0/tidy.WTD.data.df.RDS") # issu du code "data_water.table_all_v3.0"
+tidy.WTD.data <- readRDS("connectivite/data/clean/archive_v3.0/tidy.WTD.data.RDS") # issu du code "data_water.table_all_v3.0"
 extracted.list_data <- lapply(tidy.WTD.data, `[[`, 4)
 tidy.WTD.data.df.9janv <- do.call(rbind, extracted.list_data)
 

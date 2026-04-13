@@ -82,6 +82,7 @@ for (i in 1:length(raw.ll.files)) {
   ##### cal.bulleur.list.appendd (liste des cal.data, séparées en bulleur et en données de calibration Odyssey. Si autre marque, la l'élément [[2]] donne juste des NA)
   if (!grepl("barometric.station", raw.ll.files[i])) {
     cal.bulleur.list.appendd <- raw.to.clean_cal.data(cal.data.file, time.zone = tz) # import et nettoyage, bon format de date
+    files.uid.df$probe.brand[i] <- cal.bulleur.list.appendd[[1]]$probe.brand
   }
     
   #### créer le level.logger propre 
@@ -94,6 +95,7 @@ for (i in 1:length(raw.ll.files)) {
     ll.cal.pre.i <- concatenate.ll(ll.clean)
     #### calibration des sondes
     tidy.WTD.data[[i]] <- clean.to.calibrated_ll(ll.cal.pre.i)
+    files.uid.df$well.uid[i] <- unique(tidy.WTD.data[[i]]$verif.data$well.uid)
   }
   # rm(tz)
 }
@@ -101,6 +103,11 @@ Sys.time()-s # temps d'exécution de la boucle
 # warnings() # vérifier que les erreurs sont tjrs la meme affaire inutile -> incomplete final line, tenté de régler le problème, mais sans succès; 
 
 ## stockage des résultats (écrase version précédante) ====
+# format .csv du files.uid.df (metadonnées, utile pour des joins)
+if("files.uid.df.csv" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
+  stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
+} else { write_csv(files.uid.df, file = "connectivite/data/clean/files.uid.df.csv") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
+
 # format R des tidy.WTD.data (une liste)
 if("tidy.WTD.data.RDS" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
@@ -130,7 +137,7 @@ tidy.WTD.data.df <- tidy.WTD.data.df.large %>%
 } ## enregistrement en RDS de la légende pour les graphiques et tableaux ----
 # format RDS des tidy.WTD.data.df (formaté en wide-to-long)
 if("tidy.WTD.data.df.RDS" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
-  stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
+  stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancien sera effacé et remplacé.")
 } else { saveRDS(tidy.WTD.data.df, file = "connectivite/data/clean/tidy.WTD.data.df.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
 
 # format tidy des cal.data (formaté en wide-to-long)

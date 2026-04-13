@@ -72,25 +72,45 @@ if (!require("withr")) install.packages("withr") # T'o Québec icitte (date-time
 tidy.WTD.data.df <- readRDS("connectivite/data/clean/tidy.WTD.data.df.RDS")
 well.uid.sequence <- unique(tidy.WTD.data.df$well.uid)
 for (y in 1:length(well.uid.sequence)) {
-  # i<-5
+  # y<-5
   paste(y)
   well.uid.sequence[y]
   tidy.WTD.data.df.i <- tidy.WTD.data.df %>% 
     dplyr::filter(well.uid == well.uid.sequence[y])
+  
+  # graphiques de nappe phréatique pour les Odyssey
+  if (any(grepl("ODYSSEY", tidy.WTD.data.df.i$probe.brand))) {
+    # graphiques de nappe phréatique
+    graph.wt <- tidy.WTD.data.df.i %>%
+      ggplot(mapping = aes(y = calibrated.value.cm, x = date.time.tz.orig, color = source_calib)) +
+      geom_line(data = subset(tidy.WTD.data.df.i, source_calib %in% c("bs", "ms"))) +
+      geom_point(data = subset(tidy.WTD.data.df.i, source_calib == "blo")) +
+      scale_x_datetime(date_breaks = "2 weeks", date_labels = "%y/%b/%d") +
+      scale_color_manual(values = c("bs" = "hotpink", "ms" = "seagreen")) +
+      ggtitle(paste0(tidy.WTD.data.df.i$site, ", no unique de sonde : ", tidy.WTD.data.df.i$file.uid,
+                     ",\n à l'emplacement ", tidy.WTD.data.df.i$well.uid, "\n",
+                     "nombre de ligne du fichier : ", nrow(tidy.WTD.data.df.i))) +
+      labs(y = "Hauteur de nappe phréatique (cm)\nrelative à la surface", x = "Date") +
+      theme_bw() + theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 45, hjust = 1, vjust = 0.5))
+  }
 
-  # graphiques de nappe phréatique
-  graph.wt <- tidy.WTD.data.df.i %>%
-    ggplot(mapping = aes(y = calibrated.value.cm, x = date.time.tz.orig, color = source_calib)) + 
-    geom_line(data = subset(tidy.WTD.data.df.i, source_calib %in% c("bs", "ms"))) + # geom_line(group = 1) +
-    geom_point(data = subset(tidy.WTD.data.df.i, source_calib == "blo")) +
-    scale_x_datetime(date_breaks = "2 weeks", date_labels = "%y/%b/%d") + 
-    scale_color_manual(values = c("bs" = "hotpink", "ms" = "seagreen")) +
-    ggtitle(paste0(tidy.WTD.data.df.i$site, ", no unique de sonde : ", tidy.WTD.data.df.i$file.uid, 
-                   ",\n à l'emplacement ", tidy.WTD.data.df.i$well.uid, "\n",
-                   "nombre de ligne du fichier : ", nrow(tidy.WTD.data.df.i))) +
-    labs(y = "Hauteur de nappe phréatique (cm)\nrelative à la surface", x = "Date") +
-    theme_bw() + theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 45, hjust = 1, vjust = 0.5))
-  print(graph.wt) # imprimer dans R
+  # graphiques de nappe phréatique pour les Hobo
+    if (any(grepl("HOBO", tidy.WTD.data.df.i$probe.brand))) {
+      graph.wt <- tidy.WTD.data.df.i %>%
+        ggplot(mapping = aes(y = calibrated.value.cm, x = date.time.tz.orig, color = source_calib)) + 
+        geom_line(data = subset(tidy.WTD.data.df.i, source_calib %in% c("bs", "ms"))) +
+        geom_point(data = subset(tidy.WTD.data.df.i, source_calib == "blo")) +
+        scale_x_datetime(date_breaks = "2 weeks", date_labels = "%y/%b/%d") + 
+        scale_color_manual(values = c("bs" = "hotpink", "ms" = "seagreen")) +
+        ggtitle(paste0(tidy.WTD.data.df.i$site, ", no unique de sonde : ", tidy.WTD.data.df.i$file.uid, 
+                       ",\n à l'emplacement ", tidy.WTD.data.df.i$well.uid, "\n",
+                       "nombre de ligne du fichier : ", nrow(tidy.WTD.data.df.i))) +
+        labs(y = "Hauteur de nappe phréatique (cm)\nrelative à la surface", x = "Date") +
+        theme_bw() + theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 45, hjust = 1, vjust = 0.5))
+      print(graph.wt) # imprimer dans R
+    }
+ 
+  
 # tidy.WTD.data <- readRDS("connectivite/data/clean/tidy.WTD.data.RDS")
 # for (i in 1:length(tidy.WTD.data)) {
   # if (!is.null(tidy.WTD.data[[i]])) { 
