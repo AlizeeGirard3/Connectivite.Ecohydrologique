@@ -57,6 +57,9 @@ weather.files <- list.files(path = "connectivite/data/raw", pattern = "meteoStat
 # https://dev.meteostat.net/parameters
 # https://dev.meteostat.net/formats.html
 # https://dev.meteostat.net/faq.html
+zones <- read_sf("~Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectitite_PhD_Mergin_26nov24/Ecotone.restauration.zone.pt.shp") %>% # couche géomatique (QGIS) à laquelle référer avec la fonction read_sf("")
+  as.data.frame(zones) %>% 
+  dplyr::filter(descriptio == "Site confirmé")
 station_id.phd <- read.csv("connectivite/data/raw/station_id.phd.csv") # issu du script "Recherche_station_meteo_ID_v2.0.r", trouver "station.name"
 
 # consigne de données
@@ -66,11 +69,14 @@ weather.data.list <- list()
 for(file.no in 1:length(weather.files)) {
   file.step <- weather.files[file.no]
   site.uid <- iconv(str_extract(file.step, "(?<=(hourly|daily)\\.).*(?=\\.csv)"), to = "UTF-8-MAC") # merci à Google IA... C'est compliqué les regex /  # merci google IA pour m'aider à traiter mes noms de site avec un accent francophone...
+  coords <- c(zones$latitude[zones$site.uid==site.uid], zones$longitude[zones$site.uid==site.uid]) # extraire la bonne lat, long selon le nom du site
+  tz <- tz_lookup_coords(coords[1], coords[2], method = "fast", warn = FALSE) # trouver le UTC selon la lat long
   
   weather.pre <- read.csv(file.step)
   weather <- weather.pre %>% 
     mutate(station.name = station_id.phd$station_name[station_id.phd$phd.site.UID == site.uid],
-           "site.uid" = site.uid)
+           "site.uid" = site.uid,
+           "tz" = tz)
   
   weather.data.list[[file.no]] <- weather # placer dans la liste de recueil des fichiers, à l'endroit "file.no"
 }
@@ -226,7 +232,19 @@ skewness(na.omit(residuals(mod.climate.1))) # asymétrie modérée
 # signifie pression non-expliquée par le modèle mod.climate.1, comportant l'effet de la station ou de la température) 
 # calibration des sondes, voir les fonctions (fonctions_phs_v3.1.R) et le traitement complet des sondes 
 # (data_water.table_all_v3.1.R) pour la calibration utilisant ces données corrigée (implantée 13 avril 2026)
-tidy.weather.data <- tidy.weather.data.raw.1 %>% 
+# tidy.weather.data.raw.2 <- tidy.weather.data.raw.1 %>% 
+#   mutate(pres.kpa.res = 
+#            (residuals(mod.climate.1) * 
+#               sd(tidy.weather.data.raw.1$pres.kpa, na.rm = T)) +
+#            mean(tidy.weather.data.raw.1$pres.kpa, na.rm = T)) %>%
+#   # vérif : données originales donnent la même valeur (pres.kpa.res et pres.kpa.res.2)
+#   # mutate(pres.kpa.res.2 =
+#   #          (residuals(mod.climate.1) * pres.kpa.sd) + pres.kpa.mean)
+#   select(site.uid, station.name, pres.kpa, pres.kpa.res, everything(), -c(temp.std, pres.kpa.std)) # enlever colonnes inutiles (temporaires, utilisées pour la régression linéaire seulement)
+# voir résultat -> output/documents/20260414_tests.pres.res.kpa/water.table_visualisation_resMOD.1.pdf
+# pas super satisfaisant, test mod.3
+
+tidy.weather.data.raw.2 <- tidy.weather.data.raw.1 %>% 
   mutate(pres.kpa.res = 
            (residuals(mod.climate.1) * 
               sd(tidy.weather.data.raw.1$pres.kpa, na.rm = T)) +
@@ -236,22 +254,45 @@ tidy.weather.data <- tidy.weather.data.raw.1 %>%
   #          (residuals(mod.climate.1) * pres.kpa.sd) + pres.kpa.mean)
   select(site.uid, station.name, pres.kpa, pres.kpa.res, everything(), -c(temp.std, pres.kpa.std)) # enlever colonnes inutiles (temporaires, utilisées pour la régression linéaire seulement)
 
-### vi. enregistrement ----
+
+# ============================================================================= /
+# Nettoyage final ----
+# ============================================================================= /
+# nettoyage de date et heures, préparation pour ouvrir données propres dans fonctions_phd_v3.2.R direct (usage dans data_WT_all_v3.1.R)
+tidy.weather.data.raw.3 <- tidy.weather.data.raw.2 %>% 
+  mutate(date.time = paste(year, month, day, hour))
+tidy.weather.data.raw.3$date.time <- ymd_h(tidy.weather.data.raw.3$date.time, tz = tz) + 1
+tidy.weather.data.raw.4 <- tidy.weather.data.raw.3 %>%
+  select(date.time, everything(), -c("year", month, day, hour, "wdir","wdir_source","wspd","wspd_source","cldc","cldc_source","coco","coco_source")) %>%  # ajuster la date et l'heure et ajout d'une seconde, sinon, les données 00:00:00 étaient effacées !
+  rename_all(~ paste0(.x, ".ms")) %>% # ajout de ".ms" pour identifier les colonnes issues de MeteoStat
+  # convertir au bon format de date et manip de colonnes (idem aux infos temporelles de fichier de sonde) / date.time.UTC selon norme iso
+  mutate(date.time.UTC.0.pre = with_tz(ymd_hms(date.time.ms, tz = tz), tzone = "GMT")) # les heures sont ainsi ramenées à UTC +0 / ceci écrase la colonne du mm nom
+tidy.weather.data.raw.5 <- tidy.weather.data.raw.4 %>%  # enlever l'espace entre date et heure (ISO 8601)
+  mutate(date.time.UTC.0.pre.1 = str_replace(date.time.UTC.0.pre, " ", "T")) %>%
+  select(date.time.ms, date.time.UTC.0.pre, date.time.UTC.0.pre.1, everything())
+tidy.weather.data.raw.5$date.time.UTC.0 <- str_replace_all(tidy.weather.data.raw.5$date.time.UTC.0.pre.1, "00:01","00:01Z") # ajouter le Z à la fin (ISO 8601)
+tidy.weather.data.res <- tidy.weather.data.raw.5 %>% select(date.time.ms, date.time.UTC.0, everything()) %>% select(!c(date.time.UTC.0.pre, date.time.UTC.0.pre.1))
+
+# ============================================================================= /
+# Enregistrement final ----
+# ============================================================================= /
 # si fichier n'existe pas déjà :
 # filter la base de données, recréer des fichier distincts par site.uid, stocker dans data/clean
 # sinon, arrêt et avertissement
 URLs.list <- vector()
-for (site in 1:length(unique(tidy.weather.data$site.uid))) {
-  URLs.list[site] <- paste0("meteoStat.data.hourly.res.", unique(tidy.weather.data$site.uid)[site], ".csv")
+site.uids <- unique(tidy.weather.data.res$site.uid.ms)
+for (site in 1:length(site.uids)) {
+  URLs.list[site] <- paste0("meteoStat.data.hourly.res.", unique(tidy.weather.data.res$site.uid.ms)[site], ".csv")
 }
 if(any(URLs.list %in% list.files("connectivite/data/clean")))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
 } else { 
-  for (i in 1:length(unique(tidy.weather.data$site.uid))) {
-    # i<-1
-    tidy.weather.data.i <- tidy.weather.data %>% 
-      dplyr::filter(site.uid == unique(tidy.weather.data$site.uid)[i])
-    write.csv(tidy.weather.data.i,  paste0("connectivite/data/clean/meteoStat.data.hourly.res.", unique(tidy.weather.data$site.uid)[i], ".csv"), row.names = FALSE)
+  for (j in 1:length(site.uids)) {
+    # j<-1
+    tidy.weather.data.j <- tidy.weather.data.res %>% 
+      dplyr::filter(site.uid.ms == site.uids[j]) %>% 
+      select(-site.uid.ms)
+    write.csv(tidy.weather.data.j,  paste0("connectivite/data/clean/meteoStat.data.hourly.res.", site.uids[j], ".csv"), row.names = FALSE)
   }
 }
 

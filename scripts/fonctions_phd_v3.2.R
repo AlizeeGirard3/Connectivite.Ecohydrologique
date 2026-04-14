@@ -7,11 +7,12 @@
 # Fait par :      Alizée Girard
 # Affiliation :   ULaval
 # Date création : 2025-01-09
-# Date mise à jour : 2026-03-11
+# Date mise à jour : 2026-04-14
 # Pourquoi : 
 # Pour charger les fonctions utiles à traiter données de SHN
 # NOTES : 
 # V3.1 ajout de la calibration avec SONDES BAROMÉTRIQUES dans FONCTIONS V3.1
+# V3.2 nettoyage des données de MeteoStat HORS de ce script-ci, fait dans daily_weather_v2.0.R
 
 # SNH : sondes de niveau hydrostatique
 
@@ -639,26 +640,13 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
     } # Calibration avec le bulleur (offset; Odyssey seulement)
     
     #### ajout précipitations (MeteoStat) ----
-    pattern <- paste0("hourly*.res.", files.uid.df$site.uid[i]) # ici on ne veut que les fichiers qui ont des données horaire (pas les daily, le cas échéant)
-    
-    meteoStat.data.pre.0 <- read.csv(paste0("connectivite/data/clean/", list.files(path = "connectivite/data/clean", pattern = pattern)))
-    meteoStat.data.pre.1 <- meteoStat.data.pre.0 %>% mutate(date.time = paste(year, month, day, hour))
-    meteoStat.data.pre.1$date.time <- ymd_h(meteoStat.data.pre.1$date.time, tz = tz) + 1
-    meteoStat.data.pre.1 <- meteoStat.data.pre.1 %>%  
-      select(date.time, everything(), -c("year", month, day, hour, "wdir","wdir_source","wspd","wspd_source","cldc","cldc_source","coco","coco_source")) # ajuster la date et l'heure et ajout d'une seconde, sinon, les données 00:00:00 étaient effacées !
-    # changement de nom pour identifier quelles colonnes du futur cal.meteoStat.data proviennent de meteoStat
-    colnames(meteoStat.data.pre.1) <- paste0(colnames(meteoStat.data.pre.1), ".ms") # ajout de ".ms" pour identifier les colonnes issues de MeteoStat
-    # convertir au bon format de date et manip de colonnes (idem aux infos temporelles de fichier de sonde) / date.time.UTC selon norme iso
-    meteoStat.data.pre.2 <- meteoStat.data.pre.1 %>%
-      mutate(date.time.UTC.0.pre = with_tz(ymd_hms(meteoStat.data.pre.1$date.time.ms, tz = tz), tzone = "GMT")) # les heures sont ainsi ramenées à UTC +0 / ceci écrase la colonne du mm nom
-    meteoStat.data.pre.3 <- meteoStat.data.pre.2 %>%  # enlever l'espace entre date et heure (ISO 8601)
-      mutate(date.time.UTC.0.pre.1 = str_replace(meteoStat.data.pre.2$date.time.UTC.0.pre, " ", "T")) %>%
-      select(date.time.ms, date.time.UTC.0.pre, date.time.UTC.0.pre.1, everything())
-    meteoStat.data.pre.3$date.time.UTC.0 <- str_replace_all(meteoStat.data.pre.3$date.time.UTC.0.pre.1, "00:01","00:01Z") # ajouter le Z à la fin (ISO 8601)
-    meteoStat.data <- meteoStat.data.pre.3 %>% select(date.time.ms, date.time.UTC.0, everything()) %>% select(!c(date.time.UTC.0.pre, date.time.UTC.0.pre.1))
+    pattern <- paste0("hourly*.res.", files.uid.df$site.uid[i]) # **
+    # ** donnée de météo, avec seule modification = pression atm résiduelle après régression linéaire ~ température et effet aléatoire de station météo
+    # voir script daily_weather_v2.0.R, créé vers avril 2026
+    tidy.weather.data.res <- read.csv(paste0("connectivite/data/clean/", list.files(path = "connectivite/data/clean", pattern = pattern)))
     
     #### assembler données de sonde et données de MeteoStat selon la date et l'heure ----
-    file.to.calibrate.meteo <- left_join(file.to.calibrate, meteoStat.data, by = join_by(date.time.UTC.0))
+    file.to.calibrate.meteo <- left_join(file.to.calibrate, tidy.weather.data.res, by = join_by(date.time.UTC.0))
     
     # format final -> nom final et ajout de métadonnées
     files.uid.df$well.uid[i] <- unique(tidy.cal.bulleur.data$well.uid)
@@ -697,34 +685,18 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
       #### extraction des données de METEOSTAT //[auparavant : ECCC/CCCS] et ménage ----
       pattern <- paste0("hourly*.res.", files.uid.df$site.uid[i]) # **
       # ** donnée de météo, avec seule modification = pression atm résiduelle après régression linéaire ~ température et effet aléatoire de station météo
-      # voir script daily_weather_v2.0.R, créé evrs avril 2026
-      
-      meteoStat.data.pre.0 <- read.csv(paste0("connectivite/data/clean/", list.files(path = "connectivite/data/clean", pattern = pattern)))
-      meteoStat.data.pre.1 <- meteoStat.data.pre.0 %>% 
-        mutate(date.time = paste(year, month, day, hour))
-      meteoStat.data.pre.1$date.time <- ymd_h(meteoStat.data.pre.1$date.time, tz = tz) + 1
-      meteoStat.data.pre.1 <- meteoStat.data.pre.1 %>%  
-        select(date.time, everything(), -c("year", month, day, hour, "wdir","wdir_source","wspd","wspd_source","cldc","cldc_source","coco","coco_source")) # ajuster la date et l'heure et ajout d'une seconde, sinon, les données 00:00:00 étaient effacées !
-      # changement de nom pour identifier quelles colonnes du futur cal.meteoStat.data proviennent de meteoStat
-      colnames(meteoStat.data.pre.1) <- paste0(colnames(meteoStat.data.pre.1), ".ms") # ajout de ".ms" pour identifier les colonnes issues de MeteoStat
-      # convertir au bon format de date et manip de colonnes (idem aux infos temporelles de fichier de sonde) / date.time.UTC selon norme iso
-      meteoStat.data.pre.2 <- meteoStat.data.pre.1 %>%
-        mutate(date.time.UTC.0.pre = with_tz(ymd_hms(meteoStat.data.pre.1$date.time.ms, tz = tz), tzone = "GMT")) # les heures sont ainsi ramenées à UTC +0 / ceci écrase la colonne du mm nom
-      meteoStat.data.pre.3 <- meteoStat.data.pre.2 %>%  # enlever l'espace entre date et heure (ISO 8601)
-        mutate(date.time.UTC.0.pre.1 = str_replace(meteoStat.data.pre.2$date.time.UTC.0.pre, " ", "T")) %>%
-        select(date.time.ms, date.time.UTC.0.pre, date.time.UTC.0.pre.1, everything())
-      meteoStat.data.pre.3$date.time.UTC.0 <- str_replace_all(meteoStat.data.pre.3$date.time.UTC.0.pre.1, "00:01","00:01Z") # ajouter le Z à la fin (ISO 8601)
-      meteoStat.data <- meteoStat.data.pre.3 %>% select(date.time.ms, date.time.UTC.0, everything()) %>% select(!c(date.time.UTC.0.pre, date.time.UTC.0.pre.1))
-      
+      # voir script daily_weather_v2.0.R, créé vers avril 2026
+      meteoStat.data.hourly.res.site <- read.csv(paste0("connectivite/data/clean/", list.files(path = "connectivite/data/clean", pattern = pattern)))
+
       #### assembler données du HOBO et données de MeteoStat selon la date et l'heure ----
       # Jutras&Bourgault V2.0, 2024; étape a) Associer par dates et par heures les données mesurées par les sondes de niveau hydrostatique et la pression atmosphérique
-      cal.meteoStat.data <- left_join(file.to.calibrate, meteoStat.data, by = join_by(date.time.UTC.0)) %>%
+      cal.meteoStat.data <- left_join(file.to.calibrate, meteoStat.data.hourly.res.site, by = join_by(date.time.UTC.0)) %>%
         select("scan.id", "date.time.UTC.0","raw.value.kPa_pres.abs", "temperature_dC", contains("calibrated.value.cm"),
-               `date.AAAA-MM-JJ`, "time.HH.MM.SS", `date.time.tz.orig`, "date.time.ms", pressure.kPa.ms, everything()) # enlever les nombreuses colonnes qui n'ont pas rapport dans ces démarches
+               `date.AAAA-MM-JJ`, "time.HH.MM.SS", `date.time.tz.orig`, "date.time.ms", pres.kpa.res.ms, everything()) # enlever les nombreuses colonnes qui n'ont pas rapport dans ces démarches
       
       # Jutras&Bourgault V2.0, 2024; étape b)	Calculer la hauteur d’eau au-dessus de la sonde par la soustraction de la pression atmosphérique, convertie en cm d’eau, à la pression mesurée par la sonde
       # Jutras&Bourgault V2.0, 2024; étape b.i)	La conversion de kPa en cm d’eau est : 1 kPa = 10,1972 cm d’eau
-      cal.meteoStat.data$pression.eau.kPa <- cal.meteoStat.data$raw.value.kPa_pres.abs - cal.meteoStat.data$pressure.kPa.ms
+      cal.meteoStat.data$pression.eau.kPa <- cal.meteoStat.data$raw.value.kPa_pres.abs - cal.meteoStat.data$pres.kpa.res.ms
       cal.meteoStat.data$hauteur.eau.cm.pre <- cal.meteoStat.data$pression.eau.kPa * 10.197162129779 # règle de trois
       cal.meteoStat.data$hauteur.eau.cm <- cal.meteoStat.data$hauteur.eau.cm.pre # dépend de la façon dont les mesures de longueurs en cm sont prises
       cal.meteoStat.data <- cal.meteoStat.data %>% select("scan.id", "date.time.UTC.0","raw.value.kPa_pres.abs", pression.eau.kPa, hauteur.eau.cm, everything())
@@ -747,7 +719,7 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
       # Jutras&Bourgault V2.0, 2024; étape a) Associer par dates et par heures les données mesurées par les sondes de niveau hydrostatique et la pression atmosphérique
       cal.meteoStat.baro.data <- full_join(cal.meteoStat.data, barometric.data) %>% 
         select("scan.id", "date.time.UTC.0","raw.value.kPa_pres.abs", "temperature_dC", contains("calibrated.value.cm"),
-               `date.AAAA-MM-JJ`, "time.HH.MM.SS", `date.time.tz.orig`, "date.time.ms", pressure.kPa.ms, pressure.kPa.bs, everything()) # enlever les nombreuses colonnes qui n'ont pas rapport dans ces démarches
+               `date.AAAA-MM-JJ`, "time.HH.MM.SS", `date.time.tz.orig`, "date.time.ms", pres.kpa.res.ms, pressure.kPa.bs, everything()) # enlever les nombreuses colonnes qui n'ont pas rapport dans ces démarches
       
       # Jutras&Bourgault V2.0, 2024; étape b)	Calculer la hauteur d’eau au-dessus de la sonde par la soustraction de la pression atmosphérique, convertie en cm d’eau, à la pression mesurée par la sonde
       # Jutras&Bourgault V2.0, 2024; étape b.i)	La conversion de kPa en cm d’eau est : 1 kPa = 10,1972 cm d’eau
