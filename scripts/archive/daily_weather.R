@@ -6,9 +6,9 @@
 # Fait par :      Alizée Girard
 # Affiliation :   ULaval
 # Date création initiale : 2025-05-25
-# Date mise à jour : 22 janvier 2026
-# Caduque : 6 avril 2026
-# Pourquoi : afficher données de MétéoStat et faire des analuses sur le jeu de données
+# Date mise à jour : 10 avril janvier 2026
+# caduque (création v2.0) : 14 avril 2026 -> enlevé données journalières et nettoyages pour fitter le data_water.table_all_v3.1.R
+# Pourquoi : afficher données de MétéoStat et faire des analyses sur le jeu de données (corriger pour l'scillation quotidienne)
 # Structure :
 # —— connectivite
 #         |—— archive
@@ -21,7 +21,7 @@
 #                     |—— figures
 #         |—— scripts
 # NOTES : 
-# on sait que la pression ne change pas à l’échlle régionale, mais capteurs mauvais a une erreur à cause de la température // 
+# on sait que la pression ne change pas à l’échelle régionale, mais capteurs mauvais a une erreur à cause de la température // 
 # et voir les articles sur l’ÉT horaire
 
 # LEXIQUE :
@@ -30,7 +30,6 @@
 # tz : time zone, syn. fuseau horaire
 
 ##########################################################################-
-
 
 # ============================================================================= /
 # Initialisation ----
@@ -145,14 +144,14 @@ tidy.weather.data.raw <- weather.data.list %>%
 
 ## stockage des résultats (écrase version précédante) ====
 # format R des tidy.weather.data (une liste)
-if("tidy.weather.data.raw.RDS" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
+if("tidy.weather.data.raw.RDS" %in% list.files("connectivite/data/raw"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
-} else { saveRDS(tidy.weather.data.raw, file = "connectivite/data/clean/tidy.weather.data.raw.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
+} else { saveRDS(tidy.weather.data.raw, file = "connectivite/data/raw/tidy.weather.data.raw.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
 
 # ============================================================================= /
 # Relation pression atmophérique ~ température ambiante ----
 # ============================================================================= /
-tidy.weather.data.raw <- readRDS(file = "connectivite/data/clean/tidy.weather.data.raw.RDS") 
+tidy.weather.data.raw <- readRDS(file = "connectivite/data/raw/tidy.weather.data.raw.RDS") 
 
 ## transformations ----
 tidy.weather.data.raw.1 <- tidy.weather.data.raw %>% 
@@ -160,6 +159,9 @@ tidy.weather.data.raw.1 <- tidy.weather.data.raw %>%
   mutate(across(c(temp, pres.kpa),
          ~ as.numeric(scale(.x)),
          .names = "{.col}.std")) %>% 
+  # # vérfication, standardisation manuelle, sans scale(), donne mm chose 14 avril 2026 √
+  # mutate(pres.kpa.mean = mean(pres.kpa, na.rm = T)) %>% 
+  # mutate(pres.kpa.sd = sd(pres.kpa, na.rm = T)) %>% 
   mutate(across(station.name, as.factor)) %>% 
   mutate(hour = lubridate::hour(date.time.SiteTZ))
 
@@ -251,7 +253,7 @@ summary(mod.climate.1)
 #                             REML = T)
 # isSingular
 mod.climate.3 <- lm(pres.kpa.std ~ temp.std + hour,
-                    data = tidy.weather.data.tr, 
+                    data = tidy.weather.data.raw.1, 
                     na.action = na.exclude)
 # Call: ----
 #   lm(formula = pres.kpa.std ~ temp.std + hour, data = tidy.weather.data.tr)
@@ -292,10 +294,23 @@ skewness(na.omit(residuals(mod.climate.1))) # asymétrie modérée
 # calibration des sondes, voir les fonctions (fonctions_phs_v3.1.R) et le traitement complet des sondes 
 # (data_water.table_all_v3.1.R) pour la calibration utilisant ces données corrigée (implantée 13 avril 2026)
 tidy.weather.data <- tidy.weather.data.raw.1 %>% 
-  mutate(pres.kpa.res = (residuals(mod.climate.1) * sd(tidy.weather.data.raw.1$pres.kpa, na.rm = T)) + mean(tidy.weather.data.raw.1$pres.kp, na.))
+  mutate(pres.kpa.res = 
+           (residuals(mod.climate.1) * 
+              sd(tidy.weather.data.raw.1$pres.kpa, na.rm = T)) +
+                    mean(tidy.weather.data.raw.1$pres.kpa, na.rm = T)) %>%
+           # vérif : données originales donnent la même valeur (pres.kpa.res et pres.kpa.res.2)
+  # mutate(pres.kpa.res.2 =
+  #          (residuals(mod.climate.1) * pres.kpa.sd) + pres.kpa.mean)
+  select(date.time.SiteTZ, tz.col, date.time.UTC.0, station.name, pres.kpa, pres.kpa.res, everything(), -c(hour, temp.std, pres.kpa.std)) # enlever colonnes inutiles (temporaires, utilisées pour la régression linéaire seulement)
+  
+## vi. stockage des résultats (écrase version précédante) ====
+# format R des tidy.weather.data (une liste)
+if("tidy.weather.data.RDS" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
+  stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
+} else { saveRDS(tidy.weather.data, file = "connectivite/data/clean/tidy.weather.data.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
 
 # ============================================================================= /
-# autres tests
+# Autres tests ----
 # ============================================================================= /
 # mm données que sur ECCC en ligne ?
 tidy.weather.data.beauport.oct.2025 <- tidy.weather.data %>% 

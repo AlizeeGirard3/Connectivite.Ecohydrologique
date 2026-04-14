@@ -8,6 +8,7 @@
 # Affiliation :   ULaval
 # Date création initiale : 2025-04-16
 # Date mise à jour : 2025-12-01
+# Caduque : mars 2026 -> fonctions utiles intégrées à fonctions_phd_v3.1.R
 # Pourquoi : Rechercher les stations pour inscrire dans le cal_data (corriger HOBO avec pression atmosphérique)
 # Structure :
 # —— connectivite
@@ -55,14 +56,14 @@ head(zones); str(zones)
 # ============================================================================= /
 # source : package weathercan et meteoStat
 #### MANUELLEMENT : trouvé la station ID (canada+(lat, long) et la distance du site de recherche et trouver le station ID sur MeteoStat[-> sur le site de MétéoStat])
-# station_id.phd <- data.frame("phd.site.UID" = NA, "phd.site.name"= NA,"station_name" = NA, "station_id_canada" = NA, "station_id_MeteoStat" = NA, 
+# station_id.phd <- data.frame("phd.site.UID" = NA, "phd.site.name"= NA,"station_name" = NA, "station_id_canada" = NA, "station_id_MeteoStat" = NA,
 #                              "lat.station" = NA, "long.station" = NA, "dist_from_zone" = NA, "start.hourly" = NA, "end.hourly" = NA) # start et end à jour : 1ier décembre
 # station_id.phd[1,1:10] <- c("STH", "St-Henri","BEAUPORT",27803,71578,46.8,-71.2,18.14627, "2003", "2025-11-22")
 # station_id.phd[2,1:10] <- c("INK", "Inkerman","TRACADIE",6205,71719,48.01,-64.49, 49.50673, "1977", "2025-04-27") # MISCOU ISLAND (AUT)
 # station_id.phd[3,1:10] <- c("BRNTC", "Burnt Church","MIRAMICHI RCS", 10808,"AOYMS",47.01,-65.47,27.63049, "2020", "2022-12-14")
 # station_id.phd[4,1:10] <- c("PRO", "Président-Ouest","RIVIERE-DU-LOUP",8539,71578,47.81,-69.55,3.021966, "2003", "2025-11-22")
-# station_id.phd[5,1:10] <- c("GPB", "Grande Plée Bleue", "BEAUPORT",27803,71578,46.8,-71.2,12.499890, "2003", "2025-11-22")
-# write.csv(station_id.phd, file = "connectivite/data/raw/station_id.phd.csv")
+# # station_id.phd[5,1:10] <- c("GPB", "Grande Plée Bleue", "BEAUPORT",27803,71578,46.8,-71.2,12.499890, "2003", "2025-11-22")
+# write.csv(station_id.phd, file = "connectivite/data/raw/station_id.phd.csv",  row.names = FALSE)
 # ok (1ier déc. 2025), ajouter des sites au besoin
 
 

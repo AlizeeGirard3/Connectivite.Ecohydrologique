@@ -27,14 +27,15 @@
 
 # LEXIQUE :
 { 
-  # SNH : sonde de niveau hydrostatique / synonymes : LL : level logger; sonde, probe
-  # ll : level logger; sonde de niveau hydrostatique / synonymes : sonde, probe, SNH
-  # NP : Nappe phréatique / synonymes : water table
-  # tz : time zone, syn. fuseau horaire
-  # cal.data, syn. connectivite/data/raw/level_logger_calibration_all.csv
-  # patron universel d'appellation des fichiers de SNH : probe.uid_site.uid_datedextraction_probe.brand.csv
-  # ms : MeteoStat
   # bs : barometric station
+  # cal.data : syn. connectivite/data/raw/level_logger_calibration_all.csv
+  # ll : level logger; sonde de niveau hydrostatique / synonymes : sonde, probe, SNH
+  # ms : MeteoStat
+  # NP : Nappe phréatique / synonymes : water table
+  # patron universel d'appellation des fichiers de SNH : probe.uid_site.uid_datedextraction_probe.brand.csv
+  # res : residuals/résidus (résidus de la pression non-expliqué par la régression linéaire ~ température et effet aléatoire de site)
+  # SNH : sonde de niveau hydrostatique / synonymes : LL : level logger; sonde, probe
+  # tz : time zone, syn. fuseau horaire
 }
 ##########################################################################-
 
@@ -138,7 +139,7 @@ tidy.WTD.data.df <- tidy.WTD.data.df.large %>%
 # format RDS des tidy.WTD.data.df (formaté en wide-to-long)
 if("tidy.WTD.data.df.RDS" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancien sera effacé et remplacé.")
-} else { saveRDS(tidy.WTD.data.df, file = "connectivite/data/clean/tidy.WTD.data.df.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
+} else { saveRDS(tidy.WTD.data.df, file = "connectivite/data/clean/tidy.WTD.data.df.RES.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
 
 # format tidy des cal.data (formaté en wide-to-long)
 extracted.list_verif.data <- lapply(tidy.WTD.data, `[[`, 3) # tidy.WTD.data[[3]] -> verif.data
@@ -148,24 +149,3 @@ tidy.cal.data <- do.call(rbind, extracted.list_verif.data)    #   / archive (lig
 if("tidy.cal.data.RDS" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
 } else { saveRDS(tidy.cal.data, file = "connectivite/data/clean/tidy.cal.data.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
-
-# 
-# # format tidy des weather data
-# extracted.list_verif.data.weather <- lapply(tidy.WTD.data, `[[`, 4) # tidy.WTD.data[[4]] -> verif.data
-# tidy.weather.data <- do.call(rbind, extracted.list_verif.data.weather)    #   / archive (ligne suivante) : # tidy.cal.data <- tidy.cal.data %>% dplyr::filter(is.na(tidy.cal.data) %>% rowSums() != length(tidy.cal.data)) # enlever les lignes complètement composées de NA (tous les hobo en date du 7 janvier)
-# tidy.weather.data.df <- tidy.weather.data %>%
-#   pivot_longer(cols = contains("pressure"),
-#                names_to = "source_calib.pressure",
-#                values_to = "pressure.kPa") %>%
-#   mutate(source_calib.pressure = as.factor(gsub(".*kPa.","", source_calib.pressure))) %>%
-#   dplyr::filter(!is.na(pressure.kPa)) %>% 
-#   pivot_longer(cols = contains("temp"),
-#                names_to = "source_calib.temp",
-#                values_to = "temperature.dC") %>%
-#   mutate(source_calib.temp = as.factor(str_sub(source_calib.temp, -2))) %>%
-#   str_sub("Inkerman25", -2) 
-#   dplyr::filter(!is.na(temperature.dC))
-# # format RDS des tidy.cal.data (formaté en wide-to-long)
-# if("tidy.cal.data.RDS" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
-#   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
-# } else { saveRDS(tidy.cal.data, file = "connectivite/data/clean/tidy.cal.data.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }

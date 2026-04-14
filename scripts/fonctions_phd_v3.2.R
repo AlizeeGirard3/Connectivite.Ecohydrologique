@@ -632,15 +632,15 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
     
     { # Calibration linéaire (Odyssey seulement)
       file.to.calibrate$calibrated.value.cm.lin = round( x = (((file.to.calibrate$raw.value.mm*a.slope) + b.verticalIntercept)/10) + unique(tidy.cal.bulleur.data$out.mean.cm - tidy.cal.bulleur.data$mean_offset_cm), digits = 2)
-    } # Calibration linéaire (Odyssey seulement)
+      } # Calibration linéaire (Odyssey seulement)
     
     { # Calibration avec le offset moyen à partir du bulleur (Odyssey seulement)
       file.to.calibrate$calibrated.value.cm.blo <- round(unique(tidy.cal.bulleur.data$mean_offset_cm) + file.to.calibrate$calibrated.value.cm.lin, 2)
     } # Calibration avec le bulleur (offset; Odyssey seulement)
     
-      #### ajout précipitations (MeteoStat) ----
-      pattern <- paste0("hourly*.res.", files.uid.df$site.uid[i]) # ici on ne veut que les fichiers qui ont des données horaire (pas les daily, le cas échéant)
-      
+    #### ajout précipitations (MeteoStat) ----
+    pattern <- paste0("hourly*.res.", files.uid.df$site.uid[i]) # ici on ne veut que les fichiers qui ont des données horaire (pas les daily, le cas échéant)
+    
     meteoStat.data.pre.0 <- read.csv(paste0("connectivite/data/clean/", list.files(path = "connectivite/data/clean", pattern = pattern)))
     meteoStat.data.pre.1 <- meteoStat.data.pre.0 %>% mutate(date.time = paste(year, month, day, hour))
     meteoStat.data.pre.1$date.time <- ymd_h(meteoStat.data.pre.1$date.time, tz = tz) + 1
@@ -775,7 +775,7 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
       # enlevé aussi : `date.AAAA-MM-JJ`, time.HH.MM.SS, date.time.tz.orig, long.fil.CDS.cm, out.mean.cm, hauteur.eau.cm 
       ll.cal$well.uid <- rep(files.uid.df$well.uid[i], times = nrow(file.to.calibrate))
       ll.cal$file.uid <- rep(files.uid.df$file.uid[i], times = nrow(ll.cal))
-          }
+    }
     
     { # Vérification avec le bulleur, lorsque disponible
       ll.cal$calibrated.value.cm.blo <- map_dbl( # merci à GoogleIA, j'apprends à utiliser la programmation fonctionnelle (l'univers PURRR)
@@ -799,7 +799,7 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
     ### création de la liste dans la liste [[i]]  ----
     tidy.WTD.data.i <- list("data" = ll.cal, "metadata" = raw.ll.files.i[[2]], 
                             "verif.data" = tidy.cal.bulleur.data) # , "tidy.weather.data" = tidy.weather.data.i) 
-
+    
   } # le fichier du level logger correspondant à la position i; [1] : data (dataframe), [2] : metadata (character string)
   return(tidy.WTD.data.i)
 }
@@ -821,7 +821,7 @@ raw.to.clean_cal.data <- function(cal.data.file, time.zone) { # ne calibre pas e
     mutate_at('constante', as.numeric) # liste des types de SNH avec lesquelles j'ai pris des données; chaque "marque/modèle" (type) est traitée de façon différente
   brand.i <-  ifelse(length(cal.data.0$probe.brand[which(grepl(files.uid.df[i,1], cal.data.0$file.uid))])==0,"other", cal.data.0$probe.brand[which(grepl(files.uid.df[i,1], cal.data.0$file.uid))])
   cal.data.0$long.fil.CDS.cm <- cal.data.0$long.fil.cm + CDS$constante[CDS$type == brand.i]
-
+  
   # vérification de valeurs OUT
   cal.data.0 <- cal.data.0 %>% 
     mutate(out.R = ifelse(is.na(out.1.a.cm), round((out.1.a.cm + out.1.b.cm + out.1.c.cm)/3, digits = 1), as.numeric(out.mean.cm)))
