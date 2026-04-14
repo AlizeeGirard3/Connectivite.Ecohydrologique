@@ -250,7 +250,7 @@ skewness(na.omit(residuals(mod.climate.1))) # asymétrie modérée
 
 tidy.weather.data.raw.2 <- tidy.weather.data.raw.1 %>% 
   mutate(pres.kpa.res = 
-           (residuals(mod.climate.1) * 
+           (residuals(mod.climate.3) * 
               sd(tidy.weather.data.raw.1$pres.kpa, na.rm = T)) +
            mean(tidy.weather.data.raw.1$pres.kpa, na.rm = T)) %>%
   # vérif : données originales donnent la même valeur (pres.kpa.res et pres.kpa.res.2)

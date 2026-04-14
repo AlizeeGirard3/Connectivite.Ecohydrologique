@@ -69,8 +69,10 @@ if (!require("withr")) install.packages("withr") # T'o Québec icitte (date-time
 
 ```{r, echo = FALSE}
 # setwd("~/Documents/Doctorat/_R_Stats_PhD") # fonctions utiles et working directory
-tidy.WTD.data.df <- readRDS("connectivite/data/clean/tidy.WTD.data.df.RDS")
-tidy.WTD.data.df <- readRDS("connectivite/data/clean/tidy.WTD.data.df.RES.RDS")
+tidy.WTD.data.df <- readRDS("connectivite/data/clean//tidy.WTD.data.df.RDS")
+# tidy.WTD.data.df <- readRDS("connectivite/data/clean/20260414_tests.pres.res.kpa/tidy.WTD.data.df.RES.3.RDS")
+# tidy.WTD.data.df <- readRDS("connectivite/data/clean/20260414_tests.pres.res.kpa/tidy.WTD.data.df.RES.1.RDS")
+
 well.uid.sequence <- unique(tidy.WTD.data.df$well.uid)
 for (y in 1:length(well.uid.sequence)) {
   # y<-5
