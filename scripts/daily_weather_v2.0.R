@@ -34,8 +34,6 @@
 # Initialisation ----
 # ============================================================================= /
 # Librairies (autres initialisées dans le script sourcé)
-if (!require("ggplot2")) install.packages("ggplot2")
-# if (!require("grDevices")) install.packages("grDevices") # pdf()
 if (!require("lubridate")) install.packages("lubridate") # hour()
 if (!require("nlme")) install.packages("nlme") # lme()
 if (!require("slider")) install.packages("slider") # sélection d'une fenêtre glissante
@@ -76,7 +74,8 @@ for(file.no in 1:length(weather.files)) {
   weather <- weather.pre %>% 
     mutate(station.name = station_id.phd$station_name[station_id.phd$phd.site.UID == site.uid],
            "site.uid" = site.uid,
-           "tz" = tz)
+           "tz" = tz,
+           date.time = make_datetime(year, month, day, hour, tz = tz)+1)
   
   weather.data.list[[file.no]] <- weather # placer dans la liste de recueil des fichiers, à l'endroit "file.no"
 }
@@ -186,13 +185,18 @@ summary(mod.climate.1)
 # Number of Groups: 4 
 #### fin summary mod.climate.1 ----
 
-# mod.climate.2 <- lme4::lmer(pres.kpa.std ~ temp.std + hour + 1 | station.name, 
-#                             data = tidy.weather.data.tr, 
-#                             REML = T)
-# isSingular
-mod.climate.3 <- lm(pres.kpa.std ~ temp.std + as.numeric(hour),
+mod.climate.2 <- lm(pres.kpa.std ~ temp.std + 
+                      as.factor(hour) +
+                      station.name,
+                    data = tidy.weather.data.raw.1,
+                    na.action = na.exclude)
+
+mod.climate.3 <- lm(pres.kpa.std ~ 
+                      temp.std + 
+                      as.factor(hour),
                     data = tidy.weather.data.raw.1, 
                     na.action = na.exclude)
+summary(mod.climate.3)
 #### summary mod.climate.3 ----
 # Call:
 #   lm(formula = pres.kpa.std ~ temp.std + hour, data = tidy.weather.data.tr)
@@ -216,11 +220,11 @@ mod.climate.3 <- lm(pres.kpa.std ~ temp.std + as.numeric(hour),
 #### fin summary mod.climate.3 ----
 
 ### iii. sélection de modèle ----
-AIC(mod.climate.0, mod.climate.1, mod.climate.3)
-# df      AIC
-# mod.climate.0  3 191667.5
-# mod.climate.1  5 191262.0 # meilleur
-# mod.climate.3  4 191653.7
+AIC(mod.climate.0, mod.climate.1, mod.climate.2, mod.climate.3)
+# df       AIC
+# mod.climate.0  3 191667.54
+# mod.climate.1  4 191262.04
+# mod.climate.3 26 191572.58
 
 ### iv. vérification des suppositions ----
 plot(mod.climate.1) # pas tant hétéroscédastique
@@ -253,7 +257,6 @@ tidy.weather.data.raw.2 <- tidy.weather.data.raw.1 %>%
   # mutate(pres.kpa.res.2 =
   #          (residuals(mod.climate.1) * pres.kpa.sd) + pres.kpa.mean)
   select(site.uid, station.name, pres.kpa, pres.kpa.res, everything(), -c(temp.std, pres.kpa.std)) # enlever colonnes inutiles (temporaires, utilisées pour la régression linéaire seulement)
-
 
 # ============================================================================= /
 # Nettoyage final ----

@@ -45,7 +45,7 @@
 
 # Données, dossier directeur fonctions et à charger directement
 # .rs.restartR()
-source("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/scripts/fonctions_phd_v3.1.R")
+source("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/scripts/fonctions_phd_v3.2.R")
 setwd("~/Documents/Doctorat/_R_Stats_PhD")
 
 # fichiers "R data serialized" (RDS) à charger directement
