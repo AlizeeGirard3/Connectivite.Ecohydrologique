@@ -149,3 +149,12 @@ tidy.cal.data <- do.call(rbind, extracted.list_verif.data)    #   / archive (lig
 if("tidy.cal.data.RDS" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
 } else { saveRDS(tidy.cal.data, file = "connectivite/data/clean/tidy.cal.data.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
+
+# 16 avril 2026; examination des offsets
+extracted.list_verif.data <- lapply(tidy.WTD.data, `[[`, 4) # tidy.WTD.data[[4]] -> offsets Odyssey
+offsets <- do.call(rbind, extracted.list_verif.data)
+offsets.all <- unnest(offsets, cols = c(offsets, time))
+# format RDS des tidy.cal.data (formaté en wide-to-long)
+if("20260416_offsets.all.RDS" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
+  stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
+} else { saveRDS(offsets.all, file = "connectivite/data/clean/20260416_offsets.all.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }

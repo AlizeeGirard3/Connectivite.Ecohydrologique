@@ -576,6 +576,7 @@ concatenate.ll <- function(file.to.concat) {
 
 # clean.to.calibrated_ll
 # file.to.calibrate <- ll.cal.pre.i
+offset.all <- tibble(offsets = list(), file.uid = character(), time = list())
 clean.to.calibrated_ll <- function(file.to.calibrate) {
   # boucles
   if(grepl("odyssey", raw.ll.files[i])) {     # i<-84 # exemple avec plusieurs mesures de bulleur 
@@ -617,8 +618,16 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
              prof_nappe_bulleur_cm = (bulleur.rel.to.surface.mm/10), # en cm // ok -> le out déjà retiré dans raw.to.clean_cal.data, c'est pourquoi on a bulleur au lieu de in.bulleur (valeur brutte)
              offset_cm = prof_nappe_odyssey_cm_plus.out - prof_nappe_bulleur_cm)
     
-    # calcul du mean_offset, en enlevant les outliers + de 4 cm d'écart (vérifier avec Sylvain)
-    offset.all <- tidy.cal.bulleur.data$offset_cm[tidy.cal.bulleur.data$cal.no == "3" & abs(tidy.cal.bulleur.data$offset_cm) <= 5]
+    # vérfication des offsets
+    nouvelle.ligne <- tibble(
+        offsets = list(tidy.cal.bulleur.data$offset_cm[tidy.cal.bulleur.data$cal.no == "3"]), # & abs(tidy.cal.bulleur.data$offset_cm) <= 5]
+        file.uid = files.uid.df$file.uid[i],
+        time = list(tidy.cal.bulleur.data$date.time.UTC.0[tidy.cal.bulleur.data$cal.no == "3"]))
+    offset.all <- bind_rows(offset.all, nouvelle.ligne)
+    # si j'élimine des données, transformer cal.data : dupliquer ligne, celle avec valeur erronnée = measure.status == rejected, puis
+    # ligne dupliquée enlever la valeur aberrante (manière la plus simple)   
+    # calcul du mean_offset // CADUQUE (16 avril 2026) : en enlevant les outliers + de 4 cm d'écart (vérifier avec Sylvain)
+    offset.all <- tidy.cal.bulleur.data$offset_cm[tidy.cal.bulleur.data$cal.no == "3"] # & abs(tidy.cal.bulleur.data$offset_cm) <= 5]    tidy.cal.bulleur.data$mean_offset_cm <- mean(offset.all) # ici ça devrait faire la moyenne sur les données, mais le tableur filtré pour conserver ligne approuvées (measure.status !== rejected)
     tidy.cal.bulleur.data$mean_offset_cm <- mean(offset.all)
     
     # tidy.cal.bulleur.data, pour les autres calibrations 
@@ -662,7 +671,7 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
     
     ### création de la liste dans la liste [[i]]  ----
     tidy.WTD.data.i <- list("data" = ll.cal, "metadata" = raw.ll.files.i[[2]], 
-                            "verif.data" = tidy.cal.bulleur.data) #, tidy.weather.data = NULL)
+                            "verif.data" = tidy.cal.bulleur.data, "odyssey.mean" = offset.all) 
   } # le fichier du level logger correspondant à la position i; [1] : data (dataframe), [2] : metadata (character string)
   if (grepl("hobo", raw.ll.files[i])) {
     # D'abord, tidy.cal.bulleur.data, utilisé dans certaines calibrations 
@@ -759,7 +768,7 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
           if (!is.na(idx)) round(tidy.cal.bulleur.data$bulleur.rel.to.surface.mm[idx]/10, 2) else NA_real_
         }
       )
-    } # Vérification avec le bulleur, lorsque disponible
+    } # vérification avec le bulleur, lorsque disponible
     
     # ajout de métadonnées
     files.uid.df$well.uid[i] <- unique(tidy.cal.bulleur.data$well.uid)
@@ -768,9 +777,12 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
     ll.cal$file.uid <- rep(files.uid.df$file.uid[i], times = nrow(ll.cal))
     ll.cal$probe.brand <- files.uid.df$probe.brand[i]
     
+    # pour que la boucle fonctionne, 16 avril 2026
+    offset.all <- matrix(NA)
+    
     ### création de la liste dans la liste [[i]]  ----
     tidy.WTD.data.i <- list("data" = ll.cal, "metadata" = raw.ll.files.i[[2]], 
-                            "verif.data" = tidy.cal.bulleur.data) # , "tidy.weather.data" = tidy.weather.data.i) 
+                            "verif.data" = tidy.cal.bulleur.data, "odyssey.mean" = offset.all) 
     
   } # le fichier du level logger correspondant à la position i; [1] : data (dataframe), [2] : metadata (character string)
   return(tidy.WTD.data.i)

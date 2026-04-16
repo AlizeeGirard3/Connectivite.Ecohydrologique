@@ -94,7 +94,7 @@ for (tidy.cal.data.line in 1:nrow(tidy.cal.data)) {
 
 # ODYSSEY ----
 # tous les offsets
-tidy.cal.data.v3.0 <- readRDS("connectivite/data/clean/v3.0/tidy.cal.data.RDS")
+tidy.cal.data.v3.0 <- readRDS("connectivite/data/clean/archive_v3.0/tidy.cal.data.RDS")
 tidy.cal.data <- tidy.cal.data.v3.0
 vérif.1 <- tidy.cal.data %>% 
   dplyr::filter(cal.no == "3",
@@ -130,7 +130,7 @@ hist(vérif.1$offset_cm, nclass = length(unique(vérif.1$offset_cm)))
 # exclure certaines données abérrantes ? Quel seuil ? J'ai choisi quantile de 70 % puisque respecte le 4 cm mentionné par Sylvain
 
 # #### 42564_20241125 ----
-# water.table.verif$donnée.aberrente[water.table.verif$probe.uid == 42564 & water.table.verif$file.extraction.date == "20241125"] <- "aberrent"
+water.table.verif$donnée.aberrente[water.table.verif$probe.uid == 42564 & water.table.verif$file.extraction.date == "20241125"] <- "aberrent"
 # #### 42564_20241125 ----
 # water.table.verif$donnée.aberrente[water.table.verif$probe.uid == 42564 & water.table.verif$file.extraction.date == "20251203"] <- "aberrent"
 ### 42565_20251203 ----
