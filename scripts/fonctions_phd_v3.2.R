@@ -632,7 +632,7 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
     
     # tidy.cal.bulleur.data, pour les autres calibrations 
     tidy.cal.bulleur.data <- tidy.cal.bulleur.data %>% 
-      select("file.uid", "lat.garmin.dms", "long.garmin.dms", "measure_status", "site.uid", "chapter", "type", "relative.distance", "year", "well.uid", "trmnt.uid", 
+      select("file.uid", "lat", "long", "measure_status", "site.uid", "chapter", "type", "relative.distance", "year", "well.uid", "trmnt.uid", 
              "lab.probe.id", "probe.uid", "probe.brand", "comment", "day.begining.aaaa.mm.dd.hh.mm", "day.end.aaaa.mm.dd.hh.mm", 
              "out.mean.cm", "bulleur.no",  "bulleur.prof.mm", "bulleur.rel.to.surface.mm", 
              "in.bulleur.date.time.UTC.0" = "date.time.UTC.0", "date.time.tz.orig", "in.bulleur.date.aaaammdd", "in.bulleur.time.tz.orig", "in.bulleur.obs", 
@@ -682,7 +682,7 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
     # créer mm colonnes que pour les Odyssey en prévision du rbind
     tidy.cal.bulleur.data <- tidy.cal.bulleur.data.pre %>% 
       mutate(prof_nappe_odyssey_cm_plus.out = NA, prof_nappe_bulleur_cm = NA, offset_cm = NA, mean_offset_cm = NA)
-    tidy.cal.bulleur.data <- tidy.cal.bulleur.data %>% select("file.uid", "lat.garmin.dms", "long.garmin.dms", "measure_status", "site.uid", "chapter", "type", "relative.distance", "year", "well.uid", "trmnt.uid", 
+    tidy.cal.bulleur.data <- tidy.cal.bulleur.data %>% select("file.uid", "lat", "long", "measure_status", "site.uid", "chapter", "type", "relative.distance", "year", "well.uid", "trmnt.uid", 
                                                               "lab.probe.id", "probe.uid", "probe.brand", "comment", "day.begining.aaaa.mm.dd.hh.mm", "day.end.aaaa.mm.dd.hh.mm", 
                                                               "out.mean.cm", "bulleur.no",  "bulleur.prof.mm", "bulleur.rel.to.surface.mm", 
                                                               "in.bulleur.date.time.UTC.0" = "date.time.UTC.0", "in.bulleur.date.aaaammdd", "in.bulleur.time.tz.orig", "in.bulleur.obs", 
