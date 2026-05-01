@@ -19,6 +19,7 @@
 # A: abrupte (exp.unit, treatment)
 # D: douce (exp.unit, treatment)
 # C: contrôle (exp.unit, treatment)
+# slope : slope-type of treatement (A, D, C)
 
 ###########################################################################-
 
@@ -34,6 +35,7 @@ if (!require("stringr")) install.packages("stringr") # str_to_title
 if (!require("grDevices")) install.packages("grDevices") # pdf()
 if (!require("gridExtra")) install.packages("gridExtra") # multiplot()
 # if (!require("withr")) install.packages("withr") # T'o Québec icitte (date-time en français)
+if (!require("DHARMa")) install.packages("DHARMa") # linear mixed models diagnostiques
 
 # Dossier de travail et fonctions
 # .rs.restartR()
@@ -70,33 +72,47 @@ table(tidy.WTD.INK.pre$well.uid)
 
 ## tidy.cal.data ----
 # concat.colnames(tidy.cal.data.pre)
-tidy.cal.data <- tidy.cal.data.pre %>% 
-  select('file.uid', 'lat', 'long', 'measure_status', 'site.uid', 'type', 'relative.distance', 
+table(tidy.cal.data.pre$type)
+tidy.cal.data <- tidy.cal.data.pre %>%
+  dplyr::filter(site.uid == "INK", 
+                !stringr::str_detect(well.uid, "^INK\\.ch2\\.E"), # enlever les puits hors écotone
+                !stringr::str_detect(well.uid, "^INK\\.ch3")) %>% # enlever chapitre 3 (routes)
+  select('file.uid', 'lat', 'long', 'measure_status', 'site.uid', "type", 'relative.distance', 
          'year', 'well.uid', 'trmnt.uid', 'lab.probe.id', 'probe.uid', 'probe.brand') %>% 
   # conserver uniquement les colonnes utiles (autrement chaque métadonnée est répliquée, lignes réplquée pour chaque mesure de bulleur)
-  dplyr::filter(!well.uid == "INK.ch2.MareD1_A1.m9,8m.pre") %>% # puits hors design (extra)
-  dplyr::distinct()
+  dplyr::filter(well.uid != "INK.ch2.MareD1_A1.m9,8m.pre") %>% # puits hors design (extra)
+  dplyr::distinct() %>% # enlever les lignes répétées (dûes aux bulleurs)
+  separate(type, into = c("exp.unit_trmnt", "replicate"), sep = -1) %>% # ajouter à la source : fonction uid.to.columns **
+  separate(exp.unit_trmnt, into = c("trmnt", "slope"), sep = -1) # ajouter à la source : fonction uid.to.columns **
+table(tidy.cal.data$type)
+colnames(tidy.cal.data)
 
 ## grouper ou créer groupes pour les compilation par réplicats (fonctions_phd_v3.2.R) ----
-# uid.to.columns(tidy.WTD.INK) # fonction mésadaptée après traitement, ajuster... ()
-# -> idée : inclure ces colonnes dans le df tidy...
 tidy.WTD.INK <- left_join(tidy.WTD.INK.pre, tidy.cal.data, by = c("well.uid", "file.uid", "probe.brand"))
 colnames(tidy.WTD.INK)
 table(tidy.WTD.INK$well.uid)
 table(tidy.WTD.INK$measure_status)
-table(tidy.WTD.INK$type)
-# je vais groupper par : exp.unit (ex. MareA) & distance
+table(tidy.WTD.INK$exp.unit)
+# je vais groupper par : exp.unit (ex. MareA -> moyenne des réplicats) & distance
 groupes <- tidy.WTD.INK %>%
   group_by(exp.unit, relative.distance) %>% 
   group_keys()
 
 tidy.WTD.INK %>%
-  group_by(type, relative.distance) %>% 
+  group_by(exp.unit, relative.distance) %>% 
   n_groups()
-# 38 groupes
+# 22 groupes
 
 ## calcul des stats par groupe ----
-tidy.WTD.INK.compld <- tidy.WTD.INK <- tidy.WTD.INK %>%
+# pasMare et Mare différents ? -> ANOVA
+set.seed(3)
+mod.anova <- lm(calibrated.value.cm ~ trmnt, data = tidy.WTD.INK)
+anova(mod.anova) # significatif mais j'ai tlmnt de données...
+residus_sim <- simulateResiduals(fittedModel = mod.anova, n = 250)
+plot(residus_sim)
+
+## calcul des stats par groupe ----
+tidy.WTD.INK.compld <- tidy.WTD.INK %>%
   group_by(date.time.UTC.0, type, relative.distance, source_calib) %>% 
   mutate(
     mean.WTD = mean(calibrated.value.cm, na.rm = TRUE),
@@ -104,7 +120,6 @@ tidy.WTD.INK.compld <- tidy.WTD.INK <- tidy.WTD.INK %>%
   distinct(date.time.UTC.0, type, relative.distance, source_calib, 
            .keep_all = TRUE) %>% 
   ungroup() %>% 
-  separate(type, into = c("exp.unit", "replicate"), sep = -1) # ajouter à la source : fonction uid.to.columns **
 colnames(tidy.WTD.INK.compld)
 
 
