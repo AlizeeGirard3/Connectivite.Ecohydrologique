@@ -30,12 +30,14 @@
 library(conflicted) # ℹ Use the conflicted package to force all conflicts to become errors    ---->>>>  devtools::install_github("r-lib/conflicted")
 if (!require("dplyr")) install.packages("dplyr") # pour manipulation donnees (pipe, etc)
 if (!require("ggplot2")) install.packages("ggplot2")
+if (!require("plotly")) install.packages("plotly")
 # if (!require("ggpubr")) install.packages("ggpubr") # ggarrange()
 if (!require("stringr")) install.packages("stringr") # str_to_title
-if (!require("grDevices")) install.packages("grDevices") # pdf()
-if (!require("gridExtra")) install.packages("gridExtra") # multiplot()
+# if (!require("grDevices")) install.packages("grDevices") # pdf()
+# if (!require("gridExtra")) install.packages("gridExtra") # multiplot()
 # if (!require("withr")) install.packages("withr") # T'o Québec icitte (date-time en français)
 if (!require("DHARMa")) install.packages("DHARMa") # linear mixed models diagnostiques
+if (!require("slider")) install.packages("slider") # moyenne mobiles : slider_dbl()
 
 # Dossier de travail et fonctions
 # .rs.restartR()
@@ -64,8 +66,14 @@ str(tidy.cal.data.pre)
 tidy.WTD.INK.pre <- tidy.WTD.data.df %>% 
   dplyr::filter(site == "Inkerman", 
                 !stringr::str_detect(well.uid, "^INK\\.ch2\\.E"), # enlever les puits hors écotone
-                !stringr::str_detect(well.uid, "^INK\\.ch3")) # enlever chapitre 3 (routes)
-  # mutate(probe.uid = as.integer(gsub("_.*", "", file.uid)))  # caduque utiliser le file.uid # créer colonne probe.uid
+                !stringr::str_detect(well.uid, "^INK\\.ch3"),  # enlever chapitre 3 (routes)
+                # date.time.tz.orig > "2024-07-01 00:00:01", 
+                # date.time.tz.orig <= "2024-08-30 23:00:01")
+                date.time.tz.orig %within% interval("2025-07-01 00:00:01", # conserver juillet et août uniquement
+                                                    "2025-08-30 23:00:01"),
+                source_calib %in% "ms") %>% # 4 mai : choix de "ms" ("blo" == métavalidation, exclue pour graph de poster) / graphique en ggplot : on voit que source_calib "bs" donne une courbe bizarre, je filtre out
+  mutate(temp.mean = slide_dbl(temp.ms, mean, .before = 24, .complete = FALSE))
+  # mutate(probe.uid = as.integtemp.ms# mutate(probe.uid = as.integer(gsub("_.*", "", file.uid)))  # caduque utiliser le file.uid # créer colonne probe.uid
 head(tidy.WTD.INK.pre, n = 3)
 # table(tidy.WTD.INK.pre$probe.uid)
 table(tidy.WTD.INK.pre$well.uid)
@@ -80,11 +88,13 @@ tidy.cal.data <- tidy.cal.data.pre %>%
   select('file.uid', 'lat', 'long', 'measure_status', 'site.uid', "type", 'relative.distance', 
          'year', 'well.uid', 'trmnt.uid', 'lab.probe.id', 'probe.uid', 'probe.brand') %>% 
   # conserver uniquement les colonnes utiles (autrement chaque métadonnée est répliquée, lignes réplquée pour chaque mesure de bulleur)
-  dplyr::filter(well.uid != "INK.ch2.MareD1_A1.m9,8m.pre") %>% # puits hors design (extra)
+  dplyr::filter(!well.uid %in% c("INK.ch2.MareD1_A1.m9,8m.pre", "INK.ch2.MareC1.p7m.2025")) %>% # INK.ch2.MareD1_A1.m9,8m.pre -> puits hors design (opportuniste) et INK.ch2.MareC1.p7m.2025 -> je suis le C de pasMare à la place (2025 pas assez de sonde pour les deux)
   dplyr::distinct() %>% # enlever les lignes répétées (dûes aux bulleurs)
-  separate(type, into = c("exp.unit_trmnt", "replicate"), sep = -1) %>% # ajouter à la source : fonction uid.to.columns **
-  separate(exp.unit_trmnt, into = c("trmnt", "slope"), sep = -1) # ajouter à la source : fonction uid.to.columns **
-table(tidy.cal.data$type)
+  separate(type, into = c("exp.unit_trmnt", "replicate"), sep = -1, remove = FALSE) %>% # ajouter à la source : fonction uid.to.columns **
+  separate(exp.unit_trmnt, into = c("trmnt", "slope"), sep = -1, remove = FALSE) # ajouter à la source : fonction uid.to.columns **
+table(tidy.cal.data$type) # MareA1    MareA2    MareC1    MareD1    MareD2 pasMareA1 pasMareA2 pasMareC2 pasMareD1 pasMareD2 
+table(tidy.cal.data$exp.unit_trmnt) # MareA    MareC    MareD pasMareA pasMareC pasMareD 
+table(tidy.cal.data$trmnt) # Mare pasMare
 colnames(tidy.cal.data)
 
 ## grouper ou créer groupes pour les compilation par réplicats (fonctions_phd_v3.2.R) ----
@@ -92,236 +102,244 @@ tidy.WTD.INK <- left_join(tidy.WTD.INK.pre, tidy.cal.data, by = c("well.uid", "f
 colnames(tidy.WTD.INK)
 table(tidy.WTD.INK$well.uid)
 table(tidy.WTD.INK$measure_status)
-table(tidy.WTD.INK$exp.unit)
+table(tidy.WTD.INK$exp.unit_trmnt)
 # je vais groupper par : exp.unit (ex. MareA -> moyenne des réplicats) & distance
 groupes <- tidy.WTD.INK %>%
-  group_by(exp.unit, relative.distance) %>% 
+  group_by(exp.unit_trmnt, relative.distance) %>% 
   group_keys()
 
 tidy.WTD.INK %>%
-  group_by(exp.unit, relative.distance) %>% 
+  group_by(exp.unit_trmnt, relative.distance) %>% 
   n_groups()
-# 22 groupes
+# 20 groupes
 
-## calcul des stats par groupe ----
-# pasMare et Mare différents ? -> ANOVA
+## sous-groupe (Mare/pasMare) utiles ? ----
+### ANOVA -> colonne "trmnt" (pasMare et Mare) différents ? ----
 set.seed(3)
 mod.anova <- lm(calibrated.value.cm ~ trmnt, data = tidy.WTD.INK)
 anova(mod.anova) # significatif mais j'ai tlmnt de données...
 residus_sim <- simulateResiduals(fittedModel = mod.anova, n = 250)
-plot(residus_sim)
+# plot(residus_sim) # lent
+
+#### violon plot (chavauchements) puisque trop d'observations, p-value perd sa pertinence; ----
+# transformer le résultat en dataframe
+df_res <- data.frame(
+  residus = resid(mod.anova),
+  groupe = factor(mod.anova$model$trmnt))
+
+ggplot(df_res, aes(x = "Tous les Groupes", y = residus, fill = groupe)) +
+  geom_violin(position  = "identity", alpha = 0.5) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") + 
+  theme_minimal() + 
+  labs(title = "Superposition directe des résidus",
+       x = "",
+       y = "Valeur des résidus")
+# se chavauchent, selon Google IA :
+# violons se superposent et forment une masse commune autour de la ligne 0, cela confirme que
+# résidus respectent les deux hypothèses fondamentales de l'ANOVA (homoscédasticité et indépendance des erreurs par groupe)
+# ANOVA est significative, mais on ne sait pas l'ampleur de l'effet donc
+
+### quelle moyenne pour chaque groupe ? ----
+moyennes_base <- aggregate(calibrated.value.cm ~ trmnt, 
+                           data = tidy.WTD.INK, 
+                           FUN = mean, 
+                           na.rm = TRUE)
+print(moyennes_base) # 4 mai 2026
+# trmnt calibrated.value.cm
+# 1    Mare           -74.01516
+# 2 pasMare           -81.52380
+# interprétation : pasMare a une moyenne de nappe plus BASSE de 
+abs(moyennes_base$calibrated.value.cm[2] - moyennes_base$calibrated.value.cm[1])
+# [1] 7.508643
+# ça correspond à la présomption que les mares sont des "réserves" d'eau ou que ce côté de l'expérience reçoit plus d'eau de l'amont
+## CONCLUSION ----
+# on conserve les groupes Mare / pasMare
 
 ## calcul des stats par groupe ----
+# vérification des moyennes
+tidy.WTD.INK.compld.summry <- tidy.WTD.INK %>%
+  mutate(exp.unit_trmnt_dist = paste0(exp.unit_trmnt, ".", relative.distance)) %>% 
+  group_by(date.time.UTC.0, exp.unit_trmnt_dist, source_calib) %>% 
+  # tableur "groupes" = exp.unit_trmnt, relative.distance -> combiné dans exp.unit_trmnt_dist
+  # source_calib =  choisir éventuellement, (caduque 4 mai : choix de "ms" //), mais pour l'instant les deux valeurs sont considérées)
+  # moyenne + sd à chaque heure
+  summarize(
+    mean.WTD = mean(calibrated.value.cm, na.rm = TRUE),
+    sd.WTD = sd(calibrated.value.cm, na.rm = TRUE))
+
 tidy.WTD.INK.compld <- tidy.WTD.INK %>%
-  group_by(date.time.UTC.0, type, relative.distance, source_calib) %>% 
+  mutate(exp.unit_trmnt_dist = paste0(exp.unit_trmnt, ".", relative.distance)) %>% 
+  group_by(date.time.UTC.0, exp.unit_trmnt_dist, source_calib) %>% 
+  # tableur "groupes" = exp.unit_trmnt, relative.distance -> combiné dans exp.unit_trmnt_dist
+  # source_calib =  choisir éventuellement, (caduque 4 mai : choix de "ms" //), mais pour l'instant les deux valeurs sont considérées)
+  # moyenne + sd à chaque heure
   mutate(
     mean.WTD = mean(calibrated.value.cm, na.rm = TRUE),
-    sd.WTD = sd(calibrated.value.cm, na.rm = TRUE)) %>%
-  distinct(date.time.UTC.0, type, relative.distance, source_calib, 
-           .keep_all = TRUE) %>% 
+    sd.WTD = sd(calibrated.value.cm, na.rm = TRUE),
+    ymin_WTD = mean.WTD - sd.WTD,
+    ymax_WTD = mean.WTD + sd.WTD) %>%
   ungroup() %>% 
+  distinct(date.time.UTC.0, exp.unit_trmnt_dist, source_calib, .keep_all = TRUE)
 colnames(tidy.WTD.INK.compld)
-
+table(tidy.WTD.INK.compld$type)
+table(tidy.WTD.INK.compld$exp.unit_trmnt) # combiner exp.unit_trmnt + relative.distance pour afficher les courbes de WTD ~ temps
+table(tidy.WTD.INK.compld$exp.unit_trmnt_dist)
 
 # ============================================================================= /
 # Graphique ----
 # ============================================================================= /
-tidy.WTD.INK.compld %>% dplyr::filter(well.uid == )
-graph.example <- tidy.WTD.INK.compld %>% 
-  group_by(date.time.UTC.0, type, relative.distance, source_calib) %>% 
-  ggplot(aes(y = mean.WTD, x = date.time.tz.orig)) +
-  geom_line() +
-  scale_x_datetime(date_breaks = "2 weeks", date_labels = "%y/%b/%d") + 
-  ggtitle(paste0(site.name, ", sonde no ", probe.serial.no.i, " à l'emplacement\n", well.uid, "\n",
-                 "nombre de ligne du fichier : ", nrow(ll.cal))) +
-  labs(y = "Hauteur de nappe phréatique (cm)\nrelative à la surface", x = "Date") +
-  theme_bw() + theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 45, hjust = 1, vjust = 0.5))
-print(graph.wt)
+## data subset : ajustements ----
+MareD.p30m.data <- tidy.WTD.INK.compld %>% 
+  dplyr::filter(exp.unit_trmnt_dist == "MareD.p30m") %>% # ajuster un graphique exemple 
+  subset(source_calib %in% "ms") ## graphique en ggplot : on voit que source_calib "bs" donne une courbe bizarre, je filtre out
+
+### (caduque) graphique en ggplot ----
+# MareD.p30m.graph <- ggplot(MareD.p30m.data) +
+#   geom_line(
+#     data = subset(MareD.p30m.data, source_calib %in% "ms"),
+#     aes(x = date.time.tz.orig, y = mean.WTD)) +
+#   geom_bar(aes(x = date.time.tz.orig, y = -1*prcp.ms), stat = "identity", fill = "lightblue", alpha = 0.5) +
+#   scale_x_datetime(date_breaks = "2 weeks", date_labels = "%y/%b/%d") +
+#   ggtitle(paste0("Inkerman, à l'emplacement MareD.p30m")) +
+#   labs(y = "Hauteur de nappe phréatique (cm)\nrelative à la surface", 
+#        x = "Date") +
+#   theme_bw() + 
+#   theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 45, hjust = 1, vjust = 0.5))
+# print(MareD.p30m.graph)
+# # on voit ici que source_calib "bs" donne une courbe bizarre, je filtre out
+
+## séquence de couleurs ----
+pal_sequence <- c("#1b019b", "#FF6B6B", "#FFB04FFF", "#679C35FF")
+# "#6497B1FF", "#6A359CFF", "#FFB04FFF", "#679C35FF", "#CD1076FF" # autres idées
+
+## m1m ----
+# comment transposer en boucle ??
+
+## p7m ----
+
+## p14m ----
+
+## p30m ----
+### data subset (pasMareDvsC.p30m.data) : ajustements ----
+pasMareDvsC.p30m.data <- tidy.WTD.INK.compld %>% 
+  dplyr::filter(exp.unit_trmnt_dist %in% c("pasMareD.p30m", "pasMareC.p30m")) %>% # ajuster un graphique exemple 
+  mutate(exp.unit_trmnt_dist = fct_recode(factor(exp.unit_trmnt_dist),
+                                          "Gentle slope (+30 m; n = 2)" = "pasMareD.p30m",
+                                          "Control treatment (+30 m, n = 1)" = "pasMareC.p30m"))
+table(pasMareDvsC.p30m.data$exp.unit_trmnt_dist)
+
+### graphique en plotly ----
+pasMareDvsC.p30m.data.plotly <- plot_ly() %>%
+  add_ribbons(
+    data = pasMareDvsC.p30m.data,
+    x = ~ date.time.tz.orig,
+    ymin = ~ ymin_WTD,
+    ymax = ~ ymax_WTD,
+    color = ~ exp.unit_trmnt_dist,  # On lie à la colonne de traitement
+    colors = pal_sequence[3:4], 
+    opacity = 0.2, # Ruban très transparent
+    inherit = FALSE,
+    legendgroup = ~ exp.unit_trmnt_dist,
+    showlegend = FALSE) %>% # On ne l'affiche pas dans la légende pour ne pas faire doublon
+  add_lines( # axe Y principal
+    data = pasMareDvsC.p30m.data,
+    x = ~ date.time.tz.orig,
+    y = ~ mean.WTD,
+    color = ~ exp.unit_trmnt_dist,
+    line = list(width = 1.5), 
+    inherit = FALSE,
+    legendgroup = ~ exp.unit_trmnt_dist) %>%
+  add_bars( # axe Y secondaire inversé
+    data = pasMareDvsC.p30m.data,
+    x = ~ date.time.tz.orig,
+    y = ~ prcp.ms,
+    yaxis = "y2",
+    name = "Precipitations (mm)", # name = "Précipitations",
+    marker = list(color = "#1b019b", opacity = 0.5),
+    inherit = FALSE) %>%
+  add_lines( # axe Y tertiaire (nouveau)
+    data = pasMareDvsC.p30m.data,
+    x = ~ date.time.tz.orig,
+    y = ~ temp.mean, # Adaptez le nom de votre colonne de température ici
+    yaxis = "y3",
+    name = "Temperature (°C)",
+    line = list(color = "#FF6B6B", width = 1.2),
+    inherit = FALSE) %>%
+  plotly::layout(
+    title = "", # titre programmé manuellement
+    margin = list(r = 60, l = 60, b = 80, t = 60), # marges; hauteur globale
+    # width = 700,  # largeur fixe pour forcer l'espace
+    # margin = list(r = 200, l = 60, b = 80, t = 60), # marges; largeur globale
+    plot_bgcolor = "white",
+    paper_bgcolor = "white",
+    xaxis = list(
+      title = "Date",
+      type = "date",
+      tickformat = "%y/%b/%d",
+      tickangle = -45,
+      showgrid = TRUE,
+      # marges (r = droite, l = gauche, b = bas, t = haut)
+      autosize = FALSE,
+      gridcolor = "#f0f0f0",
+      linecolor = "black",
+      mirror = FALSE,
+      showline = FALSE,
+      domain = c(0, 0.98)),
+    yaxis = list(
+      title = "Water table height (cm)",
+      domain = c(0, 0.62),
+      showgrid = TRUE,
+      gridcolor = "#f0f0f0",
+      linecolor = "black",
+      mirror = FALSE,
+      showline = FALSE),
+    yaxis2 = list(
+      title = "Precipitations (mm)",
+      domain = c(0.67, 1.0),
+      side = "left",
+      autorange = "reversed", # inversé pour que la pluie tombe du haut
+      showgrid = FALSE,
+      linecolor = "black",
+      showgrid = FALSE,
+      showline = FALSE),
+    yaxis3 = list(
+      title = "Moving average temperature\n(°C, 24h window)",
+      domain = c(0.67, 1.0),
+      overlaying = "y2",       # superposé à l'axe de pluie en haut
+      side = "right",          # placé à droite pour ne pas gêner la pluie
+      showgrid = FALSE,
+      linecolor = "black",
+      showgrid = FALSE,
+      showline = FALSE), 
+    legend = list(orientation = "h", y = -0.20, x = 0.5, xanchor = "center"),
+    annotations = list( # simule le titre via une annotation positionnée dans le vide supérieur
+      list( # titre principal
+        text = "<b>Ecotone experimental units at Inkerman (N.-B., Canada)",
+        xref = "paper", yref = "paper",
+        x = 0.5, 
+        y = 1.08,                  # Tout en haut du graphique
+        showarrow = FALSE,
+        font = list(size = 14, color = "black"),
+        xanchor = "center", yanchor = "bottom"),
+      list( # titre graph temp & préc
+        text = "Precipitations and temperature", # text = "Précipitations et Température"
+        xref = "paper", yref = "paper",
+        x = 0.5, 
+        y = 1.02,
+        showarrow = FALSE,
+        font = list(size = 12, color = "black"),
+        xanchor = "center", yanchor = "bottom"),
+      list( # titre water table
+        text = "Water table dynamic in reprofiled [gentle slope] vs control treatments\n(relative distance to main : +30 m)",
+        xref = "paper", yref = "paper",
+        x = 0.5,
+        y = 0.58,
+        showarrow = FALSE,
+        font = list(size = 12, color = "black", face = "bold"),
+        xanchor = "center",
+        yanchor = "bottom")))
+pasMareDvsC.p30m.data.plotly
+# pour enregistrer pas le choix d'utiliser le bouton dans la fenêtre Plotly parce que sinon Python et tout 
 
 
-
-# for 1 
-## Aperçu des offets - Sondes Odyssey ----
-for (j in 1:length(tidy.WTD.data)) {
-  print(j)
-  # j<-14
-  tidy.WTD.data.j <- tidy.WTD.data[[j]]
-  
-  if (!is.null(tidy.WTD.data.j)) {
-    if (grepl("odyssey", tidy.WTD.data.j$metadata[11])) {
-      # où trouver no de sonde dans ODYSSEY
-      metadata.line <- tidy.WTD.data.j$metadata[12] # probe.uid
-      numbers <- gregexpr("[0-9]+", metadata.line)
-      sonde <- regmatches(metadata.line, numbers)
-    } else if (grepl("hobo", tidy.WTD.data.j$metadata[4])) {
-      # où trouver no de sonde dans HOBO
-      metadata.line <- tidy.WTD.data.j$metadata[5] # probe.uid
-      numbers <- gregexpr("[0-9]+", metadata.line)
-      sonde <- regmatches(metadata.line, numbers)
-    }
-    # données à visualiser
-    data <- tidy.WTD.data[[j]]$data
-    if (length(data) > 0) {
-      hist(data$calibrated.value.cm, warn.unused = F, 
-           main = paste("Histograme des données de sonde no ", paste(sonde,"\n"))) # en cm
-    }
-  }
-
-}
-
-vérif.1 <- tidy.cal.data%>% dplyr::filter(cal.no == "3")
-vérif.1 = vérif.1[-which(is.na(vérif.1$offset_cm)),] # règle l'avertissement d'avoir retiré 22 lignes contenant des
-vérif.1$probe.uid <- as.character(vérif.1$probe.uid)
-
-ggplot(vérif.1, aes(x = probe.uid, y = offset_cm)) +
-  scale_y_continuous(breaks = seq(-160, 160, by = 20)) +
-  geom_segment(aes(x=probe.uid, xend=probe.uid, y=0, yend=offset_cm)) +
-  geom_point(size=1, color="red", fill=alpha("orange", 0.3), alpha=0.7, shape=21, stroke=2) +
-  theme_bw() + theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
-  labs(title = "Offsets des sondes Odyssey,\npar identifiant unique de sonde\n(années confondues)")
-
-# coord_cartesian() pour zoomer sur une fenetre dans le graph, sans enlever les données **
-# theme(xmin, xmax, ymin, ymax)
- 
-## Visualisation de la variation de la nappe phréatique et du positionnement du puits le long du transect ----
-for (i in 1:length(tidy.WTD.data)) {
-  if (!is.null(tidy.WTD.data[[i]])) {
-    # i<-5
-    paste(i)
-    tidy.WTD.data[[i]]
-    # bouble pour les ODYSSEY
-    if (grepl("odyssey", tidy.WTD.data[[i]]$metadata[11])) { #}
-      # extraire no de sonde
-      file.uid.i <- gsub(".*: ", "", tidy.WTD.data[[i]]$metadata[10])
-      # extraire nom de puits
-      cal.data <- read.csv("connectivite/data/raw/level_logger_calibration_all.csv", sep = ";")
-      colnames(cal.data)
-      well.uid <- cal.data %>% dplyr::filter(file.uid==file.uid.i) %>% distinct(well.uid)
-      # extraire nom de transect d'élévation
-      trmnt.uid.aaaa <- cal.data %>% 
-        dplyr::filter(file.uid==file.uid.i) %>% 
-        mutate(trmnt.uid.aaaa = paste0(trmnt.uid, ".", str_extract(file.uid.i, "(?<=_).{4}"))) %>% 
-        select(trmnt.uid.aaaa)
-      # trmnt.uid <- cal.data %>% 
-      #   dplyr::filter(file.uid==file.uid.i) %>% 
-      #   select(trmnt.uid)
-      
-      # extraire numéro de sonde
-      texte <- tidy.WTD.data[[i]]$metadata[4]
-      numbers <- gregexpr("[0-9]+", texte)
-      result <- regmatches(texte, numbers)
-      (probe.serial.no.i <- as.numeric(unlist(result)[1]))
-      # extraire nom de site
-      site.name.pre <- sub("SiteName","",tidy.WTD.data[[i]]$metadata[1])
-      site.name.pre.1 <- gsub(",", "", site.name.pre) # ici ce serait ST-HENRI, ça me gosse
-      site.name <- str_to_title(site.name.pre.1)
-      
-      # créer objet contenant les données
-      ll.cal <- tidy.WTD.data[[i]]$data # ll.cal ce sont les données calibrées finales, reprise du nom dans le script d'origine "data_water.table.all.R"
-      # class(ll.cal); head(ll.cal); str(ll.cal); colnames(ll.cal)
-      ll.cal$date.time.tz.orig <- as.POSIXct(ll.cal$date.time.tz.orig, tryFormats = )
-      
-      # graphiques de nappe phréatique
-      graph.wt <- ll.cal %>% ggplot(mapping = aes(y = calibrated.value.cm, x = date.time.tz.orig)) + # ici HOBO je dois faire *-1 pour avoir la hauteur relative (nég si en dessous de surface)
-        geom_line(group = 1) +
-        scale_x_datetime(date_breaks = "2 weeks", date_labels = "%y/%b/%d") + 
-        ggtitle(paste0(site.name, ", sonde no ", probe.serial.no.i, " à l'emplacement\n", well.uid, "\n",
-                       "nombre de ligne du fichier : ", nrow(ll.cal))) +
-        labs(y = "Hauteur de nappe phréatique (cm)\nrelative à la surface", x = "Date") +
-        theme_bw() + theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 45, hjust = 1, vjust = 0.5))
-      print(graph.wt) # imprimer dans R
-      
-      # graphiques de profil d'élévation
-      # graph.WTD.ele <- wrap_plots(GRAPH)
-      # d'abord créer le graph, puis l'arranger de la mm largeur et mettre une flèche à l'endroit du puits
-      # sélectionner les données à afficher
-      ele.profiles.sbset <- ele.profiles %>% 
-        dplyr::filter("trmnt.uid.aaaa" == trmnt.uid.aaaa)
-      GRAPH <- ggplot(ele.profiles, aes(distance.m, elevation.m)) +
-        geom_line() +
-        ggtitle(paste0("Transect et année :", trmnt.uid.aaaa)) +
-        theme_bw() +
-        theme(plot.title = element_text(hjust = 0.5))
-      GRAPH
-
-    }  
-    if (grepl("hobo", tidy.WTD.data[[i]]$metadata[4])) { #}
-      # extraire no de sonde
-      file.uid.i <- gsub(".*: ", "", tidy.WTD.data[[i]]$metadata[3])
-      # extraire nom de transect/puits
-      cal.data <- read.csv("connectivite/data/raw/level_logger_calibration_all.csv", sep = ";")
-      colnames(cal.data)
-      well.uid <- cal.data %>% dplyr::filter(file.uid==file.uid.i) %>% distinct(well.uid)
-      
-      texte <- tidy.WTD.data[[i]]$metadata[5]
-      numbers <- gregexpr("[0-9]+", texte)
-      result <- regmatches(texte, numbers)
-      (probe.serial.no.i <- as.numeric(unlist(result)[1]))
-      
-      # extraire nom de site
-      site.name <- gsub(".*: ", "", tidy.WTD.data[[i]]$metadata[1])
-      
-      # créer objet contenant les données
-      ll.cal <- tidy.WTD.data[[i]]$data # ll.cal ce sont les données calibrées finales, reprise du nom dans le script d'origine "data_water.table.all.R"
-      # class(ll.cal); head(ll.cal); str(ll.cal); colnames(ll.cal)
-      ll.cal$date.time.tz.orig <- as.POSIXct(ll.cal$date.time.tz.orig, tryFormats = )
-      
-      graph.wt <- ll.cal %>% ggplot(mapping = aes(y = calibrated.value.cm*-1, x = date.time.tz.orig)) + # ici HOBO je dois faire *-1 pour avoir la hauteur relative (nég si en dessous de surface)
-        geom_line(group = 1) +
-        scale_x_datetime(date_breaks = "2 weeks", date_labels = "%y/%b/%d") + 
-        ggtitle(paste0(site.name, ", sonde no ", probe.serial.no.i, " à l'emplacement\n", well.uid, "\n",
-                       "nombre de ligne du fichier : ", nrow(ll.cal))) +
-        labs(y = "Hauteur de nappe phréatique (cm)\nrelative à la surface", x = "Date") +
-        theme_bw() + theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 45, hjust = 1, vjust = 0.5))
-      print(graph.wt) # imprimer dans R
-      
-      # ATTENTION !! surpasser consciemment dans la boucle
-      # ggsave(paste0("connectivite/output/figures/",site.name, "_", probe.serial.no.i, "_", transect.id.i,".pdf"), graph.wt, width = 12, height = 8)
-    }
-  } 
-}
-
-
-
-# ============================================================================= /
-#  CHANTIER ----
-# ============================================================================= /
-
-
-# ÇA GOSSE ÇA ARRÊTE TOUTE LA BOUCLE !!!! j'ai essayé de mettre ça dans une liste, mais après ça bugait... je ne sais pas comment sortir ça de là donc.
-# plusieurs n'affichent rien, pourquoi ?
-# print dans RMarkdown (?), cela serait généré dans tout un seul pdf
-# ou à partir du terminal (je peux normalement passer de R studio au temrinal, mais puis-je le faire à paarti du même script ? sinon source()??)
-# https://apple.stackexchange.com/questions/230437/how-can-i-combine-multiple-pdfs-using-the-command-line
-
-# }
-# Afficher tous les graphiques
-
-# pdf("filename.pdf", width = 8, height = 12) # Open a new pdf file
-# n <- length(graph.wt)
-# nCol <- floor(sqrt(n))
-# do.call("grid.arrange", c(graph.wt, ncol=nCol))
-# dev.off() # Close the file
-
-
-# if(paste0('Elevation_Inkerman_graph', transect[i],'.png') %in% list.files("connectivite/output/figures"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
-
-
-#   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
-# } else { ggplot2::ggsave(paste0('output/figures/Elevation_Inkerman_graph',transect[i],'.png'), graph, width = 4.7, height = 2.4)  }
-
-
-
-# # Check if the file does not exist
-# file_to_check <- paste0('output/figures/Elevation_Inkerman_graph',transect[i],'.png')
-# if(!file.exists(file_to_check)){ # si c'est PAS VRAI (le file n'existe pas, on poursuit) = VRAI, si c'est VRAI = FAUX (else if -> message d'erreur, empêche d'écraser)
-#   ggplot2::ggsave(paste0('output/figures/Elevation_Inkerman_graph',transect[i],'.png'), graph, width = 4.7, height = 2.4)
-#   
-#   # otherwise print a message
-# }else if(file.exists(file_to_check)){
-#   
-#   stop("The file already exists in the current directory!")
-# }
-# Choix CONSCIENT d'écraser
-# ggplot2::ggsave(paste0('output/figures/Elevation_Inkerman_graph',transect[i],'.png'), graph, width = 4.7, height = 2.4)
 

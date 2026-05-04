@@ -697,7 +697,7 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
       #### extraction des données de METEOSTAT //[auparavant : ECCC/CCCS] et ménage ----
       pattern <- paste0("hourly*.res.", files.uid.df$site.uid[i]) # **
       # ** donnée de météo, avec seule modification = pression atm résiduelle après régression linéaire ~ température et effet aléatoire de station météo
-      # voir script daily_weather_v2.0.R, créé evrs avril 2026
+      # voir script daily_weather_v2.0.R, créé vers avril 2026
       
       meteoStat.data.pre.0 <- read.csv(paste0("connectivite/data/clean/", list.files(path = "connectivite/data/clean", pattern = pattern)))
       meteoStat.data.pre.1 <- meteoStat.data.pre.0 %>% 

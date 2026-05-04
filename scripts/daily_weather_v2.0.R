@@ -7,7 +7,7 @@
 # Affiliation :   ULaval
 # Date création initiale : 2025-05-25
 # Date mise à jour : 14 avril janvier 2026 -> MAJ : enlevé données journalières et nettoyages pour fitter le data_water.table_all_v3.1.R
-# Pourquoi : afficher données de MétéoStat et faire des analyses sur le jeu de données (corriger pour l'scillation quotidienne)
+# Pourquoi : afficher données de MétéoStat et faire des analyses sur le jeu de données (corriger pour l'oscillation quotidienne)
 # Structure :
 # —— connectivite
 #         |—— archive
@@ -45,7 +45,7 @@ if (!require("sf")) install.packages("sf") # GIS in R
 # .rs.restartR()
 setwd("~/Documents/Doctorat/_R_Stats_PhD")
 source("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/scripts/fonctions_phd_v3.1.R")
-source("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/general.scripts/scripts/fonctions.R") # month.df
+source("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/general.scripts/scripts/fonctions_generales.R") # month.df
 
 # ============================================================================= /
 # Lecture, agglomération des données ----
@@ -86,6 +86,7 @@ tidy.weather.data.raw <- weather.data.list %>%
   reduce(full_join, na_matches = "na") %>% # précision de la gestion des NA pour débugger (voir code débuggage ci-dessous), cela ajoutait 13 lignes autrement; merci à GoogleIA pour l'aide au débuggage
   mutate(pres.kpa = as.numeric(pres)/10) %>%  # pression donnée en hPa (hectopascal). 1 hPa = 0,1 kPa. Example: convert 15 hPa to kPa: 15 hPa = 15 × 0.1 kPa = 1.5 kPa
   select(site.uid, station.name, pres.kpa, pres_source, everything(), -"pres", -"X")
+
 
 # ============================================================================= /
 # Relation pression atmophérique ~ température ambiante ----
@@ -259,8 +260,9 @@ tidy.weather.data.raw.2 <- tidy.weather.data.raw.1 %>%
   select(site.uid, station.name, pres.kpa, pres.kpa.res, everything(), -c(temp.std, pres.kpa.std)) # enlever colonnes inutiles (temporaires, utilisées pour la régression linéaire seulement)
 
 # ============================================================================= /
-# Nettoyage final ----
+# Nettoyage final (originales et .res) ----
 # ============================================================================= /
+## .res ----
 # nettoyage de date et heures, préparation pour ouvrir données propres dans fonctions_phd_v3.2.R direct (usage dans data_WT_all_v3.1.R)
 tidy.weather.data.raw.3 <- tidy.weather.data.raw.2 %>% 
   mutate(date.time = paste(year, month, day, hour))
@@ -274,11 +276,32 @@ tidy.weather.data.raw.5 <- tidy.weather.data.raw.4 %>%  # enlever l'espace entre
   mutate(date.time.UTC.0.pre.1 = str_replace(date.time.UTC.0.pre, " ", "T")) %>%
   select(date.time.ms, date.time.UTC.0.pre, date.time.UTC.0.pre.1, everything())
 tidy.weather.data.raw.5$date.time.UTC.0 <- str_replace_all(tidy.weather.data.raw.5$date.time.UTC.0.pre.1, "00:01","00:01Z") # ajouter le Z à la fin (ISO 8601)
-tidy.weather.data.res <- tidy.weather.data.raw.5 %>% select(date.time.ms, date.time.UTC.0, everything()) %>% select(!c(date.time.UTC.0.pre, date.time.UTC.0.pre.1))
+tidy.weather.data.res <- tidy.weather.data.raw.5 %>% 
+  select(date.time.ms, date.time.UTC.0, everything()) %>% 
+  select(!c(date.time.UTC.0.pre, date.time.UTC.0.pre.1))
+
+## originales ----
+# nettoyage de date et heures, préparation pour ouvrir données propres dans fonctions_phd_v3.2.R direct (usage dans data_WT_all_v3.1.R)
+tidy.weather.data.raw.i <- tidy.weather.data.raw %>% 
+  mutate(date.time = paste(year, month, day, hour))
+tidy.weather.data.raw.i$date.time <- ymd_h(tidy.weather.data.raw.i$date.time, tz = tz) + 1
+tidy.weather.data.raw.ii <- tidy.weather.data.raw.i %>%
+  select(date.time, everything(), -c("year", month, day, hour, "wdir","wdir_source","wspd","wspd_source","cldc","cldc_source","coco","coco_source")) %>%  # ajuster la date et l'heure et ajout d'une seconde, sinon, les données 00:00:00 étaient effacées !
+  rename_all(~ paste0(.x, ".ms")) %>% # ajout de ".ms" pour identifier les colonnes issues de MeteoStat
+  # convertir au bon format de date et manip de colonnes (idem aux infos temporelles de fichier de sonde) / date.time.UTC selon norme iso
+  mutate(date.time.UTC.0.pre = with_tz(ymd_hms(date.time.ms, tz = tz), tzone = "GMT")) # les heures sont ainsi ramenées à UTC +0 / ceci écrase la colonne du mm nom
+tidy.weather.data.raw.iii <- tidy.weather.data.raw.ii %>%  # enlever l'espace entre date et heure (ISO 8601)
+  mutate(date.time.UTC.0.pre.1 = str_replace(date.time.UTC.0.pre, " ", "T")) %>%
+  select(date.time.ms, date.time.UTC.0.pre, date.time.UTC.0.pre.1, everything())
+tidy.weather.data.raw.iii$date.time.UTC.0 <- str_replace_all(tidy.weather.data.raw.iii$date.time.UTC.0.pre.1, "00:01","00:01Z") # ajouter le Z à la fin (ISO 8601)
+tidy.weather.data.originales <- tidy.weather.data.raw.iii %>% 
+  select(date.time.ms, date.time.UTC.0, everything()) %>% 
+  select(!c(date.time.UTC.0.pre, date.time.UTC.0.pre.1))
 
 # ============================================================================= /
-# Enregistrement final ----
+# Enregistrement final (originales et .res) ----
 # ============================================================================= /
+## version résiduelle (.res) ----
 # si fichier n'existe pas déjà :
 # filter la base de données, recréer des fichier distincts par site.uid, stocker dans data/clean
 # sinon, arrêt et avertissement
@@ -292,10 +315,28 @@ if(any(URLs.list %in% list.files("connectivite/data/clean")))  { # si TRUE = STO
 } else { 
   for (j in 1:length(site.uids)) {
     # j<-1
-    tidy.weather.data.j <- tidy.weather.data.res %>% 
+    tidy.weather.data.j <- tidy.weather.data.originales %>% 
       dplyr::filter(site.uid.ms == site.uids[j]) %>% 
       select(-site.uid.ms)
-    write.csv(tidy.weather.data.j,  paste0("connectivite/data/clean/meteoStat.data.hourly.res.", site.uids[j], ".csv"), row.names = FALSE)
+    write.csv(tidy.weather.data.j,  paste0("connectivite/data/clean/meteoStat.data.hourly.", site.uids[j], ".res.csv"), row.names = FALSE)
+  }
+}
+
+## version originale ----
+URLs.list <- vector()
+site.uids <- unique(tidy.weather.data.originales$site.uid.ms)
+for (site in 1:length(site.uids)) {
+  URLs.list[site] <- paste0("meteoStat.data.hourly.", unique(tidy.weather.data.originales$site.uid.ms)[site], ".csv")
+}
+if(any(URLs.list %in% list.files("connectivite/data/clean")))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
+  stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
+} else {
+  for (j in 1:length(site.uids)) {
+    # j<-1
+    tidy.weather.data.j <- tidy.weather.data.originales %>%
+      dplyr::filter(site.uid.ms == site.uids[j]) %>%
+      select(-site.uid.ms)
+    write.csv(tidy.weather.data.j,  paste0("connectivite/data/clean/meteoStat.data.hourly.", site.uids[j], ".csv"), row.names = FALSE)
   }
 }
 

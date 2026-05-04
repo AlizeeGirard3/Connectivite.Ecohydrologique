@@ -623,10 +623,11 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
         offsets = list(tidy.cal.bulleur.data$offset_cm[tidy.cal.bulleur.data$cal.no == "3"]), # & abs(tidy.cal.bulleur.data$offset_cm) <= 5]
         file.uid = files.uid.df$file.uid[i],
         time = list(tidy.cal.bulleur.data$date.time.UTC.0[tidy.cal.bulleur.data$cal.no == "3"]))
-    offset.all <- bind_rows(offset.all, nouvelle.ligne)
-    # si j'élimine des données, transformer cal.data : dupliquer ligne, celle avec valeur erronnée = measure.status == rejected, puis
-    # ligne dupliquée enlever la valeur aberrante (manière la plus simple)   
-    # calcul du mean_offset // CADUQUE (16 avril 2026) : en enlevant les outliers + de 4 cm d'écart (vérifier avec Sylvain)
+    # ne fonctionne pas !! il faut faire une référence relative
+    # offset.all <- bind_rows(offset.all, nouvelle.ligne)
+    # # si j'élimine des données, transformer cal.data : dupliquer ligne, celle avec valeur erronnée = measure.status == rejected, puis
+    # # ligne dupliquée enlever la valeur aberrante (manière la plus simple)   
+    # # calcul du mean_offset // CADUQUE (16 avril 2026) : en enlevant les outliers + de 4 cm d'écart (vérifier avec Sylvain)
     offset.all <- tidy.cal.bulleur.data$offset_cm[tidy.cal.bulleur.data$cal.no == "3"] # & abs(tidy.cal.bulleur.data$offset_cm) <= 5]    tidy.cal.bulleur.data$mean_offset_cm <- mean(offset.all) # ici ça devrait faire la moyenne sur les données, mais le tableur filtré pour conserver ligne approuvées (measure.status !== rejected)
     tidy.cal.bulleur.data$mean_offset_cm <- mean(offset.all)
     
@@ -649,13 +650,16 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
     } # Calibration avec le bulleur (offset; Odyssey seulement)
     
     #### ajout précipitations (MeteoStat) ----
-    pattern <- paste0("hourly*.res.", files.uid.df$site.uid[i]) # **
+    pattern <- paste0("hourly.", files.uid.df$site.uid[i], ".csv") # non-corrigé par régression linéaire
+    # pattern <- paste0("hourly*.res.", files.uid.df$site.uid[i])
     # ** donnée de météo, avec seule modification = pression atm résiduelle après régression linéaire ~ température et effet aléatoire de station météo
     # voir script daily_weather_v2.0.R, créé vers avril 2026
-    tidy.weather.data.res <- read.csv(paste0("connectivite/data/clean/", list.files(path = "connectivite/data/clean", pattern = pattern)))
+    tidy.weather.data <- read.csv(paste0("connectivite/data/clean/", list.files(path = "connectivite/data/clean", pattern = pattern))) # non-corrigé par régression linéaire
+    # tidy.weather.data.res <- read.csv(paste0("connectivite/data/clean/", list.files(path = "connectivite/data/clean", pattern = pattern)))
     
     #### assembler données de sonde et données de MeteoStat selon la date et l'heure ----
-    file.to.calibrate.meteo <- left_join(file.to.calibrate, tidy.weather.data.res, by = join_by(date.time.UTC.0))
+    file.to.calibrate.meteo <- left_join(file.to.calibrate, tidy.weather.data, by = join_by(date.time.UTC.0))
+    # file.to.calibrate.meteo <- left_join(file.to.calibrate, tidy.weather.data.res, by = join_by(date.time.UTC.0))
     
     # format final -> nom final et ajout de métadonnées
     files.uid.df$well.uid[i] <- unique(tidy.cal.bulleur.data$well.uid)
@@ -667,7 +671,7 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
     file.to.calibrate.meteo$probe.brand <- files.uid.df$probe.brand[i]
     ll.cal <- file.to.calibrate.meteo %>% # ceci est donc le format final, à intégrer dans la liste ll.clean
       select(scan.id, raw.value, contains("calibrated.value.cm"), date.time.UTC.0, `date.time.tz.orig`,
-             "prcp.ms", well.uid, site, file.uid, probe.brand) # retirer des colonnes intermédiaires et mm format que ll.clean[[i]]$data
+             "prcp.ms", "temp.ms", well.uid, site, file.uid, probe.brand) # retirer des colonnes intermédiaires et mm format que ll.clean[[i]]$data
     
     ### création de la liste dans la liste [[i]]  ----
     tidy.WTD.data.i <- list("data" = ll.cal, "metadata" = raw.ll.files.i[[2]], 
@@ -692,23 +696,31 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
     # Référence : Jutras et Bourgault, 2024, Version 2.0, section 7 (/Users/Aliz/Documents/Doctorat/_Connectivité/Protocoles (dossiers copiés du serveur A'24)/Leveloggers & Hauteur nappe phréatique/_HOBO_Protocole de mesure de nappe_2024-11-01_NE PAS DIFFUSER.docx)
     { # Calibration MeteoStat
       #### extraction des données de METEOSTAT //[auparavant : ECCC/CCCS] et ménage ----
-      pattern <- paste0("hourly*.res.", files.uid.df$site.uid[i]) # **
+      pattern <- paste0("hourly.", files.uid.df$site.uid[i], ".csv") # non-corrigé par régression linéaire
+      # pattern <- paste0("hourly*.res.", files.uid.df$site.uid[i]) # **
       # ** donnée de météo, avec seule modification = pression atm résiduelle après régression linéaire ~ température et effet aléatoire de station météo
       # voir script daily_weather_v2.0.R, créé vers avril 2026
-      meteoStat.data.hourly.res.site <- read.csv(paste0("connectivite/data/clean/", list.files(path = "connectivite/data/clean", pattern = pattern)))
+      meteoStat.data.hourly.site <- read.csv(paste0("connectivite/data/clean/", list.files(path = "connectivite/data/clean", pattern = pattern)))  # non-corrigé par régression linéaire
+      # meteoStat.data.hourly.res.site <- read.csv(paste0("connectivite/data/clean/", list.files(path = "connectivite/data/clean", pattern = pattern)))
 
       #### assembler données du HOBO et données de MeteoStat selon la date et l'heure ----
       # Jutras&Bourgault V2.0, 2024; étape a) Associer par dates et par heures les données mesurées par les sondes de niveau hydrostatique et la pression atmosphérique
-      cal.meteoStat.data <- left_join(file.to.calibrate, meteoStat.data.hourly.res.site, by = join_by(date.time.UTC.0)) %>%
+      cal.meteoStat.data <- left_join(file.to.calibrate, meteoStat.data.hourly.site, by = join_by(date.time.UTC.0)) %>%
         select("scan.id", "date.time.UTC.0","raw.value.kPa_pres.abs", "temperature_dC", contains("calibrated.value.cm"),
-               `date.AAAA-MM-JJ`, "time.HH.MM.SS", `date.time.tz.orig`, "date.time.ms", pres.kpa.res.ms, everything()) # enlever les nombreuses colonnes qui n'ont pas rapport dans ces démarches
+               `date.AAAA-MM-JJ`, "time.HH.MM.SS", `date.time.tz.orig`, "date.time.ms", pres.kpa.ms, everything()) # enlever les nombreuses colonnes qui n'ont pas rapport dans ces démarches
+      # cal.meteoStat.data <- left_join(file.to.calibrate, meteoStat.data.hourly.res.site, by = join_by(date.time.UTC.0)) %>%
+      #   select("scan.id", "date.time.UTC.0","raw.value.kPa_pres.abs", "temperature_dC", contains("calibrated.value.cm"),
+      #          `date.AAAA-MM-JJ`, "time.HH.MM.SS", `date.time.tz.orig`, "date.time.ms", pres.kpa.res.ms, everything()) # enlever les nombreuses colonnes qui n'ont pas rapport dans ces démarches
+      
       
       # Jutras&Bourgault V2.0, 2024; étape b)	Calculer la hauteur d’eau au-dessus de la sonde par la soustraction de la pression atmosphérique, convertie en cm d’eau, à la pression mesurée par la sonde
       # Jutras&Bourgault V2.0, 2024; étape b.i)	La conversion de kPa en cm d’eau est : 1 kPa = 10,1972 cm d’eau
-      cal.meteoStat.data$pression.eau.kPa <- cal.meteoStat.data$raw.value.kPa_pres.abs - cal.meteoStat.data$pres.kpa.res.ms
+      cal.meteoStat.data$pression.eau.kPa <- cal.meteoStat.data$raw.value.kPa_pres.abs - cal.meteoStat.data$pres.kpa.ms
+      # cal.meteoStat.data$pression.eau.kPa <- cal.meteoStat.data$raw.value.kPa_pres.abs - cal.meteoStat.data$pres.kpa.res.ms
       cal.meteoStat.data$hauteur.eau.cm.pre <- cal.meteoStat.data$pression.eau.kPa * 10.197162129779 # règle de trois
       cal.meteoStat.data$hauteur.eau.cm <- cal.meteoStat.data$hauteur.eau.cm.pre # dépend de la façon dont les mesures de longueurs en cm sont prises
-      cal.meteoStat.data <- cal.meteoStat.data %>% select("scan.id", "date.time.UTC.0","raw.value.kPa_pres.abs", pression.eau.kPa, hauteur.eau.cm, everything())
+      cal.meteoStat.data <- cal.meteoStat.data %>% 
+        select("scan.id", "date.time.UTC.0","raw.value.kPa_pres.abs", pression.eau.kPa, hauteur.eau.cm, everything())
       
       # Jutras&Bourgault V2.0, 2024; étape c)
       # Jutras&Bourgault V2.0, 2024; étape c.i)	La profondeur de la nappe phréatique par rapport à la surface du sol =
@@ -726,9 +738,12 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
       
       # assembler données du HOBO et données de la barometric station selon la date et l'heure ----
       # Jutras&Bourgault V2.0, 2024; étape a) Associer par dates et par heures les données mesurées par les sondes de niveau hydrostatique et la pression atmosphérique
-      cal.meteoStat.baro.data <- full_join(cal.meteoStat.data, barometric.data) %>% 
+      cal.meteoStat.baro.data <- full_join(cal.meteoStat.data, barometric.data) %>%
         select("scan.id", "date.time.UTC.0","raw.value.kPa_pres.abs", "temperature_dC", contains("calibrated.value.cm"),
-               `date.AAAA-MM-JJ`, "time.HH.MM.SS", `date.time.tz.orig`, "date.time.ms", pres.kpa.res.ms, pressure.kPa.bs, everything()) # enlever les nombreuses colonnes qui n'ont pas rapport dans ces démarches
+               `date.AAAA-MM-JJ`, "time.HH.MM.SS", `date.time.tz.orig`, "date.time.ms", pres.kpa.ms, pressure.kPa.bs, everything()) # enlever les nombreuses colonnes qui n'ont pas rapport dans ces démarches
+      # cal.meteoStat.baro.data <- full_join(cal.meteoStat.data, barometric.data) %>% 
+      #   select("scan.id", "date.time.UTC.0","raw.value.kPa_pres.abs", "temperature_dC", contains("calibrated.value.cm"),
+      #          `date.AAAA-MM-JJ`, "time.HH.MM.SS", `date.time.tz.orig`, "date.time.ms", pres.kpa.res.ms, pressure.kPa.bs, everything()) # enlever les nombreuses colonnes qui n'ont pas rapport dans ces démarches
       
       # Jutras&Bourgault V2.0, 2024; étape b)	Calculer la hauteur d’eau au-dessus de la sonde par la soustraction de la pression atmosphérique, convertie en cm d’eau, à la pression mesurée par la sonde
       # Jutras&Bourgault V2.0, 2024; étape b.i)	La conversion de kPa en cm d’eau est : 1 kPa = 10,1972 cm d’eau
@@ -743,7 +758,8 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
       
       # format final -> nom final (et ajout de métadonnées plus bas)
       ll.cal <- cal.meteoStat.baro.data %>% # ceci est donc le format final, à intégrer dans la liste ll.clean
-        select(scan.id, raw.value = raw.value.kPa_pres.abs, contains("calibrated.value.cm"), date.time.UTC.0, `date.time.tz.orig`, "prcp.ms") # retirer des colonnes intermédiaires et mm format que ll.clean[[i]]$data
+        select(scan.id, raw.value = raw.value.kPa_pres.abs, contains("calibrated.value.cm"), 
+               date.time.UTC.0, `date.time.tz.orig`, "prcp.ms", "temp.ms") # retirer des colonnes intermédiaires et mm format que ll.clean[[i]]$data
       # enlevé aussi : `date.AAAA-MM-JJ`, time.HH.MM.SS, date.time.tz.orig, long.fil.CDS.cm, out.mean.cm, hauteur.eau.cm 
       
     } else { # Calibration sonde barométrique / barometric station (bs)
@@ -752,7 +768,8 @@ clean.to.calibrated_ll <- function(file.to.calibrate) {
       # si pas de sonde barométrique, juste enregistrer ll.cal (nom final, ll.cal <- cal.meteoStat.data) sans autre modification
       # format final -> nom final
       ll.cal <- cal.meteoStat.data %>% # ceci est donc le format final, à intégrer dans la liste ll.clean
-        select(scan.id, raw.value = raw.value.kPa_pres.abs, contains("calibrated.value.cm"), date.time.UTC.0, `date.time.tz.orig`, "prcp.ms") # retirer des colonnes intermédiaires et mm format que ll.clean[[i]]$data
+        select(scan.id, raw.value = raw.value.kPa_pres.abs, contains("calibrated.value.cm"), 
+               date.time.UTC.0, `date.time.tz.orig`, "prcp.ms", "temp.ms") # retirer des colonnes intermédiaires et mm format que ll.clean[[i]]$data
       # enlevé aussi : `date.AAAA-MM-JJ`, time.HH.MM.SS, date.time.tz.orig, long.fil.CDS.cm, out.mean.cm, hauteur.eau.cm 
       ll.cal$well.uid <- rep(files.uid.df$well.uid[i], times = nrow(file.to.calibrate))
       ll.cal$file.uid <- rep(files.uid.df$file.uid[i], times = nrow(ll.cal))

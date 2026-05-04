@@ -7,7 +7,7 @@
 # Fait par :      Alizée Girard
 # Affiliation :   ULaval
 # Date création initiale : 2024-12-09
-# Date mise à jour : 2026-03-11
+# Date mise à jour : 2026-05-01 (2 versions, .res et originales)
 # Pourquoi : pour l'ensemble du traitement des données de nappe phréatique
 # Structure :
 # —— connectivite
@@ -112,7 +112,10 @@ if("files.uid.df.csv" %in% list.files("connectivite/data/clean"))  { # si TRUE =
 # format R des tidy.WTD.data (une liste)
 if("tidy.WTD.data.RDS" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
-} else { saveRDS(tidy.WTD.data, file = "connectivite/data/clean/tidy.WTD.data.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
+} else { 
+  saveRDS(tidy.WTD.data, file = "connectivite/data/clean/tidy.WTD.data.RDS") # données originales
+  # saveRDS(tidy.WTD.data, file = "connectivite/data/clean/tidy.WTD.data.res.RDS") # données résiduelles compensées pour la relation linéaire (temps ~ pressure)
+}
 
 # format tableur LONG des tidy.WTD.data
 extracted.list_data <- lapply(tidy.WTD.data, `[[`, 1) # tidy.WTD.data[[1]] -> data
@@ -139,8 +142,11 @@ tidy.WTD.data.df <- tidy.WTD.data.df.large %>%
 # format RDS des tidy.WTD.data.df (formaté en wide-to-long)
 if("tidy.WTD.data.df.RDS" %in% list.files("connectivite/data/clean"))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancien sera effacé et remplacé.")
-} else { saveRDS(tidy.WTD.data.df, file = "connectivite/data/clean/tidy.WTD.data.df.RDS") } # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
-
+} else { # RDS fonctionne mieux avec ma liste que RData// save(ll.clean, file = "connectivite/data/clean/ll.clean.RData") }
+  saveRDS(tidy.WTD.data.df, file = "connectivite/data/clean/tidy.WTD.data.df.RDS") # données originales
+  # saveRDS(tidy.WTD.data.df, file = "connectivite/data/clean/tidy.WTD.data.df.res.RDS") # données résiduelles compensées pour la relation linéaire (temps ~ pressure)
+}
+  
 # format tidy des cal.data (formaté en wide-to-long)
 extracted.list_verif.data <- lapply(tidy.WTD.data, `[[`, 3) # tidy.WTD.data[[3]] -> verif.data
 # colnames_verif.data <- map(extracted.list_verif.data, names) # tidy.WTD.data[[3]] -> verif.data
