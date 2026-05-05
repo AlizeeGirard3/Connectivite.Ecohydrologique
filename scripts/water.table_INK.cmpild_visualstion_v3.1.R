@@ -6,8 +6,8 @@
 ###########################################################################-
 # Fait par :      Alizée Girard
 # Affiliation :   ULaval
-# Date création : 2025-12-05-01
-# Date mise à jour :
+# Date création : 2026-05-01
+# Date mise à jour : 2026-05-05 (pour ANOVA Mare/pasMare par distance)
 # Pourquoi : pour visualiser les données de nappe phréatique compilées par réplicats en préparation de l'affiche
 # des conférences de mai et juin 2026 (Halifax, Nouvelle-Écosse et IPS - Irlande)
 # NOTES : 
@@ -67,8 +67,6 @@ tidy.WTD.INK.pre <- tidy.WTD.data.df %>%
   dplyr::filter(site == "Inkerman", 
                 !stringr::str_detect(well.uid, "^INK\\.ch2\\.E"), # enlever les puits hors écotone
                 !stringr::str_detect(well.uid, "^INK\\.ch3"),  # enlever chapitre 3 (routes)
-                # date.time.tz.orig > "2024-07-01 00:00:01", 
-                # date.time.tz.orig <= "2024-08-30 23:00:01")
                 date.time.tz.orig %within% interval("2025-07-01 00:00:01", # conserver juillet et août uniquement
                                                     "2025-08-30 23:00:01"),
                 source_calib %in% "ms") %>% # 4 mai : choix de "ms" ("blo" == métavalidation, exclue pour graph de poster) / graphique en ggplot : on voit que source_calib "bs" donne une courbe bizarre, je filtre out
@@ -95,7 +93,11 @@ tidy.cal.data <- tidy.cal.data.pre %>%
 table(tidy.cal.data$type) # MareA1    MareA2    MareC1    MareD1    MareD2 pasMareA1 pasMareA2 pasMareC2 pasMareD1 pasMareD2 
 table(tidy.cal.data$exp.unit_trmnt) # MareA    MareC    MareD pasMareA pasMareC pasMareD 
 table(tidy.cal.data$trmnt) # Mare pasMare
+table(tidy.cal.data$slope) # Mare pasMare
 colnames(tidy.cal.data)
+str(tidy.cal.data)
+# pour les fins de comparer les groupes entre par et pas mare par distance, utiliser exp.unit_trmnt
+# si non pertinents, ces groupes peuvent être rassemblés par slope_relative distance
 
 ## grouper ou créer groupes pour les compilation par réplicats (fonctions_phd_v3.2.R) ----
 tidy.WTD.INK <- left_join(tidy.WTD.INK.pre, tidy.cal.data, by = c("well.uid", "file.uid", "probe.brand"))
@@ -114,6 +116,12 @@ tidy.WTD.INK %>%
 # 20 groupes
 
 ## sous-groupe (Mare/pasMare) utiles ? ----
+# vérifications de structure & suppositions
+boxplot(calibrated.value.cm ~ tidy.WTD.INK$relative.distance, tidy.WTD.INK) # variation relativement homogène
+hist(tidy.WTD.INK$calibrated.value.cm) # on doit centrer réduire
+hist(scale(tidy.WTD.INK$calibrated.value.cm)) # mieux mais pas encore normal, left-skewed
+shapiro.test(sample(scale(tidy.WTD.INK$calibrated.value.cm), 5000))
+
 ### ANOVA -> colonne "trmnt" (pasMare et Mare) différents ? ----
 set.seed(3)
 mod.anova <- lm(calibrated.value.cm ~ trmnt, data = tidy.WTD.INK)
@@ -137,9 +145,8 @@ ggplot(df_res, aes(x = "Tous les Groupes", y = residus, fill = groupe)) +
 # se chavauchent, selon Google IA :
 # violons se superposent et forment une masse commune autour de la ligne 0, cela confirme que
 # résidus respectent les deux hypothèses fondamentales de l'ANOVA (homoscédasticité et indépendance des erreurs par groupe)
-# ANOVA est significative, mais on ne sait pas l'ampleur de l'effet donc
-
-### quelle moyenne pour chaque groupe ? ----
+# ANOVA est significative, mais on ne sait pas l'ampleur de l'effet donc...
+### ...quelle moyenne pour chaque groupe ? ----
 moyennes_base <- aggregate(calibrated.value.cm ~ trmnt, 
                            data = tidy.WTD.INK, 
                            FUN = mean, 
@@ -152,7 +159,7 @@ print(moyennes_base) # 4 mai 2026
 abs(moyennes_base$calibrated.value.cm[2] - moyennes_base$calibrated.value.cm[1])
 # [1] 7.508643
 # ça correspond à la présomption que les mares sont des "réserves" d'eau ou que ce côté de l'expérience reçoit plus d'eau de l'amont
-## CONCLUSION ----
+## ...CONCLUSION du 4 mai 2026: ----
 # on conserve les groupes Mare / pasMare
 
 ## calcul des stats par groupe ----
@@ -286,7 +293,7 @@ pasMareDvsC.p30m.data.plotly <- plot_ly() %>%
       showline = FALSE,
       domain = c(0, 0.98)),
     yaxis = list(
-      title = "Water table height (cm)",
+      title = "Water table depth (cm)",
       domain = c(0, 0.62),
       showgrid = TRUE,
       gridcolor = "#f0f0f0",
