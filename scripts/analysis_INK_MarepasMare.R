@@ -107,7 +107,7 @@ wilk.test <- wilcox.test(calibrated.value.cm ~ trmnt, data = tidy.WTD.INK)
 # version paramétrique, mais supposition de normalité non-respecté ***
 mod.anova <- lm(calibrated.value.cm ~ trmnt, data = tidy.WTD.INK)
 anova(mod.anova) # significatif mais j'ai tlmnt de données...
-residus_sim <- simulateResiduals(fittedModel = mod.anova, n = 250)
+# residus_sim <- simulateResiduals(fittedModel = mod.anova, n = 250) # lent
 # plot(residus_sim) # lent
 
 #### violon plot (chavauchements) puisque trop d'observations, p-value perd sa pertinence; ----
@@ -163,28 +163,28 @@ for(dist in 1:length(distances)) {
     statistic = res$statistic)
 }
 
-## par distance & traitement : sous-groupe (Mare/pasMare) utiles ? ----
-str(tidy.WTD.INK)
-
-# créer une colonne avec l'info (exp.unit_trmnt [ex. MareA], relative.distance)
-tidy.WTD.INK.dist.groupes <- tidy.WTD.INK %>% 
-  mutate(ldscape.dist = paste0(exp.unit_trmnt, ".", relative.distance)) %>% 
-  group_by(ldscape.dist) %>% 
-  group_keys()
-
-tidy.WTD.INK.dist.df.2 <- tidy.WTD.INK %>% 
-  dplyr::filter(slope != "C") %>% # enlever contrôles pas assez d'info
-  mutate(ldscape.dist.2 = paste0(exp.unit_trmnt, ".", relative.distance),
-         tmrnt.dist = paste0(exp.unit_trmnt, ".", relative.distance))
-
-# trouver le moyen de séparer en groupes **
-# tests.groups <- unique(tidy.WTD.INK.dist.df.2$tmrnt.dist)
+## ABANDON 5 MAI 2026 - par distance & traitement : sous-groupe (Mare/pasMare) utiles ? ----
+# str(tidy.WTD.INK)
+# 
+# # créer une colonne avec l'info (exp.unit_trmnt [ex. MareA], relative.distance)
+# tidy.WTD.INK.dist.groupes <- tidy.WTD.INK %>% 
+#   mutate(ldscape.dist = paste0(exp.unit_trmnt, ".", relative.distance)) %>% 
+#   group_by(ldscape.dist) %>% 
+#   group_keys()
+# 
+# tidy.WTD.INK.dist.df.2 <- tidy.WTD.INK %>% 
+#   dplyr::filter(slope != "C") %>% # enlever contrôles pas assez d'info
+#   mutate(ldscape.dist.2 = paste0(exp.unit_trmnt, ".", relative.distance),
+#          tmrnt.dist = paste0(trmnt, ".", relative.distance))
+# 
+# # trouver le moyen de séparer en groupes **
+# dists <- unique(tidy.WTD.INK.dist.df.2$relative.distance)
 # 
 # # une analyse par traitement (pasMare vs Mare) et par distance
 # results.2 <- list()
-# for(dist in 1:length(tests.groups)) {
-#   tidy.WTD.INK.dist.2 <- tidy.WTD.INK.dist.df.2 %>% 
-#     dplyr::filter(relative.distance == distances.2[dist])
+# for(dist in 1:length(dists)) {
+#   tidy.WTD.INK.dist.2 <- tidy.WTD.INK.dist.df.2 %>%
+#     dplyr::filter(grepl(dists[dist], ldscape.dist.2))
 #   res <- wilcox.test(calibrated.value.cm ~ ldscape.dist.2, tidy.WTD.INK.dist.df.2)
 #   results[[dist]] <- list(
 #     p.value = res$p.value,

@@ -71,7 +71,7 @@ tidy.WTD.INK.pre <- tidy.WTD.data.df %>%
                                                     "2025-08-30 23:00:01"),
                 source_calib %in% "ms") %>% # 4 mai : choix de "ms" ("blo" == métavalidation, exclue pour graph de poster) / graphique en ggplot : on voit que source_calib "bs" donne une courbe bizarre, je filtre out
   mutate(temp.mean = slide_dbl(temp.ms, mean, .before = 24, .complete = FALSE))
-  # mutate(probe.uid = as.integtemp.ms# mutate(probe.uid = as.integer(gsub("_.*", "", file.uid)))  # caduque utiliser le file.uid # créer colonne probe.uid
+# mutate(probe.uid = as.integtemp.ms# mutate(probe.uid = as.integer(gsub("_.*", "", file.uid)))  # caduque utiliser le file.uid # créer colonne probe.uid
 head(tidy.WTD.INK.pre, n = 3)
 # table(tidy.WTD.INK.pre$probe.uid)
 table(tidy.WTD.INK.pre$well.uid)
@@ -116,51 +116,7 @@ tidy.WTD.INK %>%
 # 20 groupes
 
 ## sous-groupe (Mare/pasMare) utiles ? ----
-# vérifications de structure & suppositions
-boxplot(calibrated.value.cm ~ tidy.WTD.INK$relative.distance, tidy.WTD.INK) # variation relativement homogène
-hist(tidy.WTD.INK$calibrated.value.cm) # on doit centrer réduire
-hist(scale(tidy.WTD.INK$calibrated.value.cm)) # mieux mais pas encore normal, left-skewed
-shapiro.test(sample(scale(tidy.WTD.INK$calibrated.value.cm), 5000))
-
-### ANOVA -> colonne "trmnt" (pasMare et Mare) différents ? ----
-set.seed(3)
-mod.anova <- lm(calibrated.value.cm ~ trmnt, data = tidy.WTD.INK)
-anova(mod.anova) # significatif mais j'ai tlmnt de données...
-residus_sim <- simulateResiduals(fittedModel = mod.anova, n = 250)
-# plot(residus_sim) # lent
-
-#### violon plot (chavauchements) puisque trop d'observations, p-value perd sa pertinence; ----
-# transformer le résultat en dataframe
-df_res <- data.frame(
-  residus = resid(mod.anova),
-  groupe = factor(mod.anova$model$trmnt))
-
-ggplot(df_res, aes(x = "Tous les Groupes", y = residus, fill = groupe)) +
-  geom_violin(position  = "identity", alpha = 0.5) +
-  geom_hline(yintercept = 0, linetype = "dashed", color = "red") + 
-  theme_minimal() + 
-  labs(title = "Superposition directe des résidus",
-       x = "",
-       y = "Valeur des résidus")
-# se chavauchent, selon Google IA :
-# violons se superposent et forment une masse commune autour de la ligne 0, cela confirme que
-# résidus respectent les deux hypothèses fondamentales de l'ANOVA (homoscédasticité et indépendance des erreurs par groupe)
-# ANOVA est significative, mais on ne sait pas l'ampleur de l'effet donc...
-### ...quelle moyenne pour chaque groupe ? ----
-moyennes_base <- aggregate(calibrated.value.cm ~ trmnt, 
-                           data = tidy.WTD.INK, 
-                           FUN = mean, 
-                           na.rm = TRUE)
-print(moyennes_base) # 4 mai 2026
-# trmnt calibrated.value.cm
-# 1    Mare           -74.01516
-# 2 pasMare           -81.52380
-# interprétation : pasMare a une moyenne de nappe plus BASSE de 
-abs(moyennes_base$calibrated.value.cm[2] - moyennes_base$calibrated.value.cm[1])
-# [1] 7.508643
-# ça correspond à la présomption que les mares sont des "réserves" d'eau ou que ce côté de l'expérience reçoit plus d'eau de l'amont
-## ...CONCLUSION du 4 mai 2026: ----
-# on conserve les groupes Mare / pasMare
+# voir scripts/analysis_INK_MarepasMare.R
 
 ## calcul des stats par groupe ----
 # vérification des moyennes
@@ -216,115 +172,71 @@ MareD.p30m.data <- tidy.WTD.INK.compld %>%
 # # on voit ici que source_calib "bs" donne une courbe bizarre, je filtre out
 
 ## séquence de couleurs ----
-pal_sequence <- c("#1b019b", "#FF6B6B", "#FFB04FFF", "#679C35FF")
+pal_sequence <- c("#1b019b", "#FF6B6B", "#FFB04FFF", "#679C35FF", "rgba(0,0,0,0)", "#6A359CFF","#CD1076FF")
 # "#6497B1FF", "#6A359CFF", "#FFB04FFF", "#679C35FF", "#CD1076FF" # autres idées
 
-## m1m ----
-# comment transposer en boucle ??
-
-## p7m ----
-
-## p14m ----
-
-## p30m ----
-### data subset (pasMareDvsC.p30m.data) : ajustements ----
-pasMareDvsC.p30m.data <- tidy.WTD.INK.compld %>% 
-  dplyr::filter(exp.unit_trmnt_dist %in% c("pasMareD.p30m", "pasMareC.p30m")) %>% # ajuster un graphique exemple 
-  mutate(exp.unit_trmnt_dist = fct_recode(factor(exp.unit_trmnt_dist),
-                                          "Gentle slope (+30 m; n = 2)" = "pasMareD.p30m",
-                                          "Control treatment (+30 m, n = 1)" = "pasMareC.p30m"))
-table(pasMareDvsC.p30m.data$exp.unit_trmnt_dist)
+## meteo.data (shared x axis) ----
 
 ### graphique en plotly ----
-pasMareDvsC.p30m.data.plotly <- plot_ly() %>%
-  add_ribbons(
-    data = pasMareDvsC.p30m.data,
-    x = ~ date.time.tz.orig,
-    ymin = ~ ymin_WTD,
-    ymax = ~ ymax_WTD,
-    color = ~ exp.unit_trmnt_dist,  # On lie à la colonne de traitement
-    colors = pal_sequence[3:4], 
-    opacity = 0.2, # Ruban très transparent
-    inherit = FALSE,
-    legendgroup = ~ exp.unit_trmnt_dist,
-    showlegend = FALSE) %>% # On ne l'affiche pas dans la légende pour ne pas faire doublon
-  add_lines( # axe Y principal
-    data = pasMareDvsC.p30m.data,
-    x = ~ date.time.tz.orig,
-    y = ~ mean.WTD,
-    color = ~ exp.unit_trmnt_dist,
-    line = list(width = 1.5), 
-    inherit = FALSE,
-    legendgroup = ~ exp.unit_trmnt_dist) %>%
+meteo <- plot_ly(
+  height = 250,
+  width = 700) %>%  # largeur fixe pour forcer l'espace
   add_bars( # axe Y secondaire inversé
-    data = pasMareDvsC.p30m.data,
+    data = tidy.WTD.INK.compld,
     x = ~ date.time.tz.orig,
     y = ~ prcp.ms,
     yaxis = "y2",
     name = "Precipitations (mm)", # name = "Précipitations",
-    marker = list(color = "#1b019b", opacity = 0.5),
+    marker = list(color = pal_sequence[1], opacity = 0.5),
     inherit = FALSE) %>%
   add_lines( # axe Y tertiaire (nouveau)
-    data = pasMareDvsC.p30m.data,
+    data = tidy.WTD.INK.compld,
     x = ~ date.time.tz.orig,
-    y = ~ temp.mean, # Adaptez le nom de votre colonne de température ici
+    y = ~ temp.mean,
     yaxis = "y3",
     name = "Temperature (°C)",
-    line = list(color = "#FF6B6B", width = 1.2),
+    line = list(color = pal_sequence[2], width = 1.2),
     inherit = FALSE) %>%
   plotly::layout(
     title = "", # titre programmé manuellement
-    margin = list(r = 60, l = 60, b = 80, t = 60), # marges; hauteur globale
-    # width = 700,  # largeur fixe pour forcer l'espace
+    margin = list(r = 60, l = 60, b = 20, t = 50), # marges; hauteur globale
     # margin = list(r = 200, l = 60, b = 80, t = 60), # marges; largeur globale
-    plot_bgcolor = "white",
-    paper_bgcolor = "white",
-    xaxis = list(
-      title = "Date",
-      type = "date",
-      tickformat = "%y/%b/%d",
-      tickangle = -45,
-      showgrid = TRUE,
-      # marges (r = droite, l = gauche, b = bas, t = haut)
-      autosize = FALSE,
-      gridcolor = "#f0f0f0",
-      linecolor = "black",
-      mirror = FALSE,
-      showline = FALSE,
-      domain = c(0, 0.98)),
-    yaxis = list(
-      title = "Water table depth (cm)",
-      domain = c(0, 0.62),
-      showgrid = TRUE,
-      gridcolor = "#f0f0f0",
-      linecolor = "black",
-      mirror = FALSE,
-      showline = FALSE),
+    plot_bgcolor = pal_sequence[5],
+    paper_bgcolor = pal_sequence[5],
+    showlegend = FALSE, # xaxis & legend shared with subsequent graphs
+    xaxis = list(title = "", 
+                 showticklabels = FALSE),
     yaxis2 = list(
-      title = "Precipitations (mm)",
-      domain = c(0.67, 1.0),
+      title = list(
+        text = "Precipitations (mm)", 
+        font = list(color = pal_sequence[1])
+      ),
+      tickfont = list(color = pal_sequence[1]),
       side = "left",
       autorange = "reversed", # inversé pour que la pluie tombe du haut
+      linecolor = pal_sequence[1],
       showgrid = FALSE,
-      linecolor = "black",
-      showgrid = FALSE,
-      showline = FALSE),
+      showline = TRUE,
+      zerolinecolor = pal_sequence[1]),  # Couleur de la ligne zéro
     yaxis3 = list(
-      title = "Moving average temperature\n(°C, 24h window)",
-      domain = c(0.67, 1.0),
+      title = list(
+        text = "Moving average temperature\n(°C, 24h window)",
+        font = list(color = pal_sequence[2])),
+      tickfont = list(color = pal_sequence[2]),
       overlaying = "y2",       # superposé à l'axe de pluie en haut
       side = "right",          # placé à droite pour ne pas gêner la pluie
       showgrid = FALSE,
-      linecolor = "black",
-      showgrid = FALSE,
-      showline = FALSE), 
-    legend = list(orientation = "h", y = -0.20, x = 0.5, xanchor = "center"),
+      linecolor = pal_sequence[2],
+      showline = TRUE,
+      zeroline = TRUE,            # Force le tracé de la ligne zéro
+      zerolinecolor = pal_sequence[2],  # Couleur de la ligne zéro
+      rangemode = "tozero"), 
     annotations = list( # simule le titre via une annotation positionnée dans le vide supérieur
       list( # titre principal
         text = "<b>Ecotone experimental units at Inkerman (N.-B., Canada)",
         xref = "paper", yref = "paper",
         x = 0.5, 
-        y = 1.08,                  # Tout en haut du graphique
+        y = 1.15,                  # Tout en haut du graphique
         showarrow = FALSE,
         font = list(size = 14, color = "black"),
         xanchor = "center", yanchor = "bottom"),
@@ -335,18 +247,219 @@ pasMareDvsC.p30m.data.plotly <- plot_ly() %>%
         y = 1.02,
         showarrow = FALSE,
         font = list(size = 12, color = "black"),
-        xanchor = "center", yanchor = "bottom"),
-      list( # titre water table
-        text = "Water table dynamic in reprofiled [gentle slope] vs control treatments\n(relative distance to main : +30 m)",
-        xref = "paper", yref = "paper",
-        x = 0.5,
-        y = 0.58,
-        showarrow = FALSE,
-        font = list(size = 12, color = "black", face = "bold"),
-        xanchor = "center",
-        yanchor = "bottom")))
-pasMareDvsC.p30m.data.plotly
+        xanchor = "center", yanchor = "bottom")))
+meteo
 # pour enregistrer pas le choix d'utiliser le bouton dans la fenêtre Plotly parce que sinon Python et tout 
 
+## m1m ----
+# comment transposer en boucle ??
 
+## p7m ----
+
+## p14m ----
+
+## p30m ----
+# ### data subset (pasMareDvsC.p30m.data) : ajustements ----
+# pasMareDvsC.p30m.data <- tidy.WTD.INK.compld %>% 
+#   dplyr::filter(exp.unit_trmnt_dist %in% c("pasMareD.p30m", "pasMareC.p30m")) %>%
+#   mutate(exp.unit_trmnt_dist = fct_recode(factor(exp.unit_trmnt_dist),
+#                                           "Gentle slope (+30 m; n = 2)" = "pasMareD.p30m",
+#                                           "Control treatment (+30 m, n = 1)" = "pasMareC.p30m"))
+# table(pasMareDvsC.p30m.data$exp.unit_trmnt_dist)
+# 
+# ### graphique en plotly ----
+# pasMareDvsC.p30m.data.plotly <- plot_ly(
+#   height = 400, 
+#   width = 700) %>%
+#   add_ribbons(
+#     data = pasMareDvsC.p30m.data,
+#     x = ~ date.time.tz.orig,
+#     ymin = ~ ymin_WTD,
+#     ymax = ~ ymax_WTD,
+#     color = ~ exp.unit_trmnt_dist,
+#     colors = pal_sequence[3:4], 
+#     opacity = 0.2,
+#     inherit = FALSE,
+#     legendgroup = ~ exp.unit_trmnt_dist,
+#     showlegend = FALSE) %>%
+#   add_lines( # axe Y principal
+#     data = pasMareDvsC.p30m.data,
+#     x = ~ date.time.tz.orig,
+#     y = ~ mean.WTD,
+#     color = ~ exp.unit_trmnt_dist,
+#     line = list(width = 1.5), 
+#     inherit = FALSE,
+#     legendgroup = ~ exp.unit_trmnt_dist) %>%
+#   add_bars( # axe Y secondaire inversé (transparent, pour afficher en légende)
+#     data = tidy.WTD.INK.compld,
+#     x = ~ date.time.tz.orig,
+#     y = 0,
+#     yaxis = "y2",name = "Precipitations (mm)",
+#     marker = list(color = pal_sequence[1]),
+#     showlegend = TRUE,
+#     hoverinfo = "none",
+#     inherit = FALSE) %>%
+#   add_lines( # axe Y tertiaire (transparent, pour afficher en légende)
+#     data = tidy.WTD.INK.compld,
+#     x = tidy.WTD.INK.compld$date.time.tz.orig[1],
+#     y = 0, # un seul point (invisible)
+#     yaxis = "y3",
+#     name = "Temperature (°C)",
+#     line = list(color = pal_sequence[2]),
+#     showlegend = TRUE,
+#     hoverinfo = "none",
+#     inherit = FALSE) %>%
+#   plotly::layout(
+#     title = list(
+#       text = "Water table dynamic in reprofiled [gentle slope] vs control treatments\n(relative distance to main : +30 m)",
+#       font = list(size = 12)),
+#     margin = list(r = 60, l = 60, b = 60, t = 37), # marges; hauteur globale
+#     plot_bgcolor = "white",
+#     paper_bgcolor = "white",
+#     xaxis = list(
+#       title = "Date",
+#       type = "date",
+#       tickformat = "%y/%b/%d",
+#       tickangle = -45,
+#       showgrid = TRUE,
+#       autosize = TRUE,
+#       gridcolor = "#f0f0f0",
+#       linecolor = "black",
+#       mirror = TRUE,
+#       showline = TRUE),
+#     yaxis = list(
+#       title = "Water table depth (cm)",
+#       showgrid = TRUE,
+#       gridcolor = "#f0f0f0",
+#       showline = TRUE,
+#       linecolor = "black",
+#       linewidth = 1,
+#       mirror = TRUE,   
+#       zeroline = TRUE,
+#       zerolinecolor = "black",
+#       zerolinewidth = 1,
+#       rangemode = "tozero"),
+#     legend = list(
+#       orientation = "h",
+#       x = 0.5, 
+#       xanchor = "center",  
+#       y = -0.25, 
+#       yanchor = "top",
+#       # --- AJUSTEMENTS POUR COMPACTER ---
+#       font = list(size = 11),
+#       traceorder = "normal",
+#       itemwidth = 30,
+#       itemsizing = "constant",
+#       valign = "top"),
+#     yaxis2 = list(
+#       visible = FALSE,
+#       overlaying = "y"),
+#     yaxis3 = list(
+#       visible = FALSE,
+#       overlaying = "y"))
+# pasMareDvsC.p30m.data.plotly
+
+## p14.30m ----
+### data subset (pasMareDvsC.p14.30m.data) : ajustements ----
+pasMareDvsC.p14.30m.data <- tidy.WTD.INK.compld %>% 
+  dplyr::filter(exp.unit_trmnt_dist %in% c("pasMareD.p30m", "pasMareC.p30m", 
+                                           "pasMareD.p14m", "pasMareC.p14m")) %>%
+  mutate(exp.unit_trmnt_dist = fct_recode(factor(exp.unit_trmnt_dist),
+                                          "Gentle slope (+30 m; n = 2)" = "pasMareD.p30m",
+                                          "Control treatment (+30 m, n = 1)" = "pasMareC.p30m",
+                                          "Gentle slope (+14 m; n = 2)" = "pasMareD.p14m",
+                                          "Control treatment (+14 m, n = 1)" = "pasMareC.p14m"))
+table(pasMareDvsC.p14.30m.data$exp.unit_trmnt_dist)
+
+### graphique en plotly ----
+pasMareDvsC.p14.30m.data.plotly <- plot_ly(
+  height = 400, 
+  width = 700) %>%
+  add_ribbons(
+    data = pasMareDvsC.p14.30m.data,
+    x = ~ date.time.tz.orig,
+    ymin = ~ ymin_WTD,
+    ymax = ~ ymax_WTD,
+    color = ~ exp.unit_trmnt_dist,
+    colors = pal_sequence[c(3:4, 6:7)], 
+    opacity = 0.2,
+    inherit = FALSE,
+    legendgroup = ~ exp.unit_trmnt_dist,
+    showlegend = FALSE) %>%
+  add_lines( # axe Y principal
+    data = pasMareDvsC.p14.30m.data,
+    x = ~ date.time.tz.orig,
+    y = ~ mean.WTD,
+    color = ~ exp.unit_trmnt_dist,
+    line = list(width = 1.5), 
+    inherit = FALSE,
+    legendgroup = ~ exp.unit_trmnt_dist) %>%
+  add_bars( # axe Y secondaire inversé (transparent, pour afficher en légende)
+    data = tidy.WTD.INK.compld,
+    x = ~ date.time.tz.orig,
+    y = 0,
+    yaxis = "y2",name = "Precipitations (mm)",
+    marker = list(color = pal_sequence[1]),
+    showlegend = TRUE,
+    hoverinfo = "none",
+    inherit = FALSE) %>%
+  add_lines( # axe Y tertiaire (transparent, pour afficher en légende)
+    data = tidy.WTD.INK.compld,
+    x = tidy.WTD.INK.compld$date.time.tz.orig[1],
+    y = 0, # un seul point (invisible)
+    yaxis = "y3",
+    name = "Temperature (°C)",
+    line = list(color = pal_sequence[2]),
+    showlegend = TRUE,
+    hoverinfo = "none",
+    inherit = FALSE) %>%
+  plotly::layout(
+    title = list(
+      text = "Water table dynamic in reprofiled [gentle slope] vs control treatments\n(relative distance to main : +30 m)",
+      font = list(size = 12)),
+    margin = list(r = 60, l = 60, b = 0, t = 37), # marges; hauteur globale
+    plot_bgcolor = pal_sequence[5],
+    paper_bgcolor = pal_sequence[5],
+    xaxis = list(
+      title = "Date",
+      type = "date",
+      tickformat = "%y/%b/%d",
+      tickangle = -45,
+      showgrid = TRUE,
+      autosize = TRUE,
+      gridcolor = "#f0f0f0",
+      linecolor = "black",
+      mirror = TRUE,
+      showline = TRUE),
+    yaxis = list(
+      title = "Water table depth (cm)",
+      showgrid = TRUE,
+      gridcolor = "#f0f0f0",
+      showline = TRUE,
+      linecolor = "black",
+      linewidth = 1,
+      mirror = TRUE,   
+      zeroline = TRUE,
+      zerolinecolor = "black",
+      zerolinewidth = 1,
+      rangemode = "tozero"),
+    legend = list(
+      orientation = "h",
+      x = 0.5, 
+      xanchor = "center",  
+      y = -0.25, 
+      yanchor = "top",
+      # --- AJUSTEMENTS POUR COMPACTER ---
+      font = list(size = 11),
+      traceorder = "normal",
+      itemwidth = 30,
+      itemsizing = "constant",
+      valign = "top"),
+    yaxis2 = list(
+      visible = FALSE,
+      overlaying = "y"),
+    yaxis3 = list(
+      visible = FALSE,
+      overlaying = "y"))
+pasMareDvsC.p14.30m.data.plotly
 
