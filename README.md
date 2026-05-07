@@ -62,6 +62,10 @@ APERÇU DES DONNÉES ET DES FICHIERS
 | **Fichier traité** | **Commentaire 1** | **Commentaire 2** |
 | REMPLIR ICI | REMPLIR ICI | REMPLIR ICI |
 
+3. Nomenclature des scripts :
+"data_X.R" : nettoyage/extraction initial(e)
+"visalstion_X.R" : graphiques
+
 INFORMATIONS MÉTHODOLOGIQUES
 # Décrire ici les informations méthodologiques de la collecte de données. 
 

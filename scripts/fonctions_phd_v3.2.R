@@ -135,13 +135,13 @@ filter.raw.file <- function(object.to.filter = NULL, path.filtering.object = NUL
 }
 
 # uid.to.columns
-# ele.profiles <- readRDS(file = "~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/clean/elevation.profiles.RDS")
+# ele.profiles <- readRDS(file = "~/Documents/Doctorat/_R_Stats_PhD/connectivite/data/clean/elevation.profiles.RDS")
 # file.to.restructure <- ele.profiles
-# vegetation_lower.str <- read.xlsx("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/extracted_raw/vegetation_lower.str.xlsx")
+# vegetation_lower.str <- read.xlsx("~/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/vegetation_lower.str.xlsx")
 # file.to.restructure <- vegetation_lower.str # ok
-# vegetation_trees.shr <- read.xlsx("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/extracted_raw/vegetation_trees.shr.xlsx")
+# vegetation_trees.shr <- read.xlsx("~/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/vegetation_trees.shr.xlsx")
 # file.to.restructure <- vegetation_trees.shr # ok
-# canopy.peat.fauna <- read.xlsx("~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/extracted_raw/canopy.peat.fauna.xlsx")
+# canopy.peat.fauna <- read.xlsx("~/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/canopy.peat.fauna.xlsx")
 # file.to.restructure <- canopy.peat.fauna # ok
 # path <- "~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/raw/level_logger_calibration_all.csv"; file.to.restructure = NULL
 uid.to.columns <- function(file.to.restructure = NULL, type = NULL, path = NULL) { # other ou cal.data
@@ -167,20 +167,26 @@ uid.to.columns <- function(file.to.restructure = NULL, type = NULL, path = NULL)
       select(!c(site.uid, 
                 grep("carotte.uid", colnames(file)), # ajouter des grep des colonnes à exclure de la restructuration, dans grep évite l'erreur "cannot remove col that doesn't exist
                 # exclure ces dernier car info contenue n'est pas aggrégée (pas de points dans l'UID)
-                grep("peat.samples_LOI_LAB.UID.1", colnames(file)), 
-                grep("peat.samples_LOI_LAB.UID.2", colnames(file)), 
+                grep("peat.samples_LOI_LAB.UID.1", colnames(file.to.restructure)), 
+                grep("peat.samples_LOI_LAB.UID.2", colnames(file.to.restructure)), 
                 grep("probe.uid", colnames(file)))) %>% 
-      mutate(ID = as.character(sample(unique(abs(rnorm(n = nrow(file))))))) # créer une colonne d'ID unique par lequel joindre après la boucle
-    cols <- grep("uid", colnames(file), ignore.case = T) # colonnes avec uid à séparer en plusieurs colonnes
+      mutate(ID = as.character(sample(unique(abs(rnorm(n = nrow(file.to.restructure))))))) # créer une colonne d'ID unique par lequel joindre après la boucle
+    cols <- grep("uid", colnames(file.to.restructure), ignore.case = T) # colonnes avec uid à séparer en plusieurs colonnes
     cols.list <- list()
     for(col in seq_along(cols)) {
-      # col <-2
-      col.no <- cols[col]
+      col.name <- colnames(file)[cols[col]] # On récupère le nom de la colonne
+      target_names <- col.sequence[[col.name]] 
+      if (is.null(target_names)) {
+        stop(paste("Le nom de colonne", col.name, "n'est pas défini dans col.sequence"))}
       file.2 <- file %>% 
-        separate_wider_delim(colnames(file)[col.no], delim = ".", names = c(col.sequence[[match(colnames(file)[col.no], names(col.sequence))]]), cols_remove = F, too_few = "debug", too_many = "debug")
-      file.2$type <- str_replace(file.2$type, "C", "control")
-      cols.list[[col]] <- file.2
-    }
+        separate_wider_delim(
+          cols = all_of(col.name), 
+          delim = ".", 
+          names = target_names, 
+          cols_remove = FALSE, 
+          too_few = "debug", 
+          too_many = "debug")
+      cols.list[[col]] <- file.2}
     cols.df <- cols.list %>%
       reduce(full_join) %>%
       select(!c("ID"))  } 
