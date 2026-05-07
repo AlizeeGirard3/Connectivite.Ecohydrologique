@@ -85,7 +85,7 @@ pasMareDvsC.p14.30m.elevation.plotly <- plot_ly(
     y = ~ elevation.m,
     color = ~ trmnt.uid,
     colors = pal_sequence[c(9, 8)],
-    line = list(width = 1.5),
+    line = list(width = 2),
     # linetype = ~ trmnt.uid,
     # linetypes = mes_styles,
     legendgroup = ~ trmnt.uid) %>% 
