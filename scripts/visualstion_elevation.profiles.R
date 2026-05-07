@@ -73,8 +73,7 @@ ele.profiles.INK.GvsC <- ele.profiles %>%
 ## séquence de couleurs et lignes ----
 pal_sequence <- c("#1b019b", "#FF6B6B", "#98FB98", "#548B54", "rgba(0,0,0,0)", "#DB7093","#8B475D", "#EE799F",       "#7CCD7C")
                  # pluie     # temp.  # contrl 14  # contrl 30 # transparent  # gentl 14 # gentl 30  # elev. Gentle # elev. contrl
-# "#6497B1FF", "#6A359CFF", "#FFB04FFF", "#679C35FF", "#CD1076FF" # autres idées
-mes_styles <- c("dash", "solid") 
+# https://r-charts.com/colors/, palegreen et palevioletred
 
 ### graphique en plotly ----
 pasMareDvsC.p14.30m.elevation.plotly <- plot_ly(
@@ -86,8 +85,9 @@ pasMareDvsC.p14.30m.elevation.plotly <- plot_ly(
     y = ~ elevation.m,
     color = ~ trmnt.uid,
     colors = pal_sequence[c(9, 8)],
-    linetype = ~ trmnt.uid,            # Lie le type de ligne à la catégorie
-    linetypes = mes_styles,
+    line = list(width = 1.5),
+    # linetype = ~ trmnt.uid,
+    # linetypes = mes_styles,
     legendgroup = ~ trmnt.uid) %>% 
   plotly::layout(
     title = list(
