@@ -233,7 +233,7 @@ meteo <- plot_ly(
       rangemode = "tozero"), 
     annotations = list( # simule le titre via une annotation positionnée dans le vide supérieur
       list( # titre principal
-        text = "<b>Ecotone experimental units at Inkerman (N.-B., Canada)",
+        text = "<b>Ecotone experiment at Inkerman (N.-B., Canada)",
         xref = "paper", yref = "paper",
         x = 0.5, 
         y = 1.15,                  # Tout en haut du graphique
@@ -373,7 +373,7 @@ table(pasMareDvsC.p14.30m.data$exp.unit_trmnt_dist)
 
 ### graphique en plotly ----
 pasMareDvsC.p14.30m.data.plotly <- plot_ly(
-  height = 400, 
+  height = 320, 
   width = 700) %>%
   add_ribbons(
     data = pasMareDvsC.p14.30m.data,
@@ -447,7 +447,7 @@ pasMareDvsC.p14.30m.data.plotly <- plot_ly(
       orientation = "h",
       x = 0.5, 
       xanchor = "center",  
-      y = -0.25, 
+      y = -0.35, 
       yanchor = "top",
       # --- AJUSTEMENTS POUR COMPACTER ---
       font = list(size = 11),

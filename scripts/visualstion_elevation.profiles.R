@@ -17,7 +17,7 @@
 # ============================================================================= /
 #  Libraries
 if (!require("conflicted")) install.packages("conflicted") # Use the conflicted package to force all conflicts to become errors    ---->>>>  devtools::install_github("r-lib/conflicted")
-if (!require("ggplot2")) install.packages("ggplot2")
+if (!require("plotly")) install.packages("plotly")
 if (!require("patchwork")) install.packages("patchwork")
 if (!require("lubridate")) install.packages("lubridate")
 # autres packages dans le script sourcé
@@ -74,42 +74,35 @@ pal_sequence <- c("#1b019b", "#FF6B6B", "#FFB04FFF", "#679C35FF", "rgba(0,0,0,0)
 
 ### graphique en plotly ----
 pasMareDvsC.p14.30m.elevation.plotly <- plot_ly(
-  height = 400, 
+  height = 250, 
   width = 700) %>%
-  # add_ribbons(
-  #   data = ele.profiles.INK.GvsC,
-  #   x = ~ distance.m,
-  #   ymin = ~ ymin_elev,
-  #   ymax = ~ ymax_elev,
-  #   # color = ~ exp.unit_trmnt,
-  #   # colors = pal_sequence[c(3:4, 6:7)],
-  #   opacity = 0.2,
-  #   # inherit = FALSE,
-  #   legendgroup = ~ exp.unit_trmnt,
-  #   showlegend = FALSE) %>%
-  add_lines( # axe Y principal
+  add_lines(
     data = ele.profiles.INK.GvsC,
     x = ~ distance.m,
     y = ~ elevation.m,
     color = ~ trmnt.uid,
     line = list(width = 1.5), 
     inherit = FALSE,
-    legendgroup = ~ trmnt.uid) %>%
+    legendgroup = ~ trmnt.uid) %>% 
   plotly::layout(
     title = list(
       text = "Elevation profiles along the gentle slope and control transects and position of wells.",
-      font = list(size = 12)),
-    margin = list(r = 60, l = 60, b = 0, t = 37), # marges; hauteur globale
+      font = list(size = 12),
+      y = 0.98),
+    # Remplacer b = 60 par b = 10 ou 20 pour couper le vide sous la légende
+    margin = list(r = 10, l = 55, b = 80, t = 20, pad = 0), 
     plot_bgcolor = pal_sequence[5],
     paper_bgcolor = pal_sequence[5],
     xaxis = list(
-      title = "Distance (m)",
-      showgrid = TRUE,
-      autosize = TRUE,
+      title = list(
+        text = "Distance (m)", 
+        standoff = 5),
+      autosize = FALSE,
       gridcolor = "#f0f0f0",
       linecolor = "black",
       mirror = TRUE,
-      showline = TRUE),
+      showline = TRUE,
+      automargin = TRUE),
     yaxis = list(
       title = "Elevation (m)",
       showgrid = TRUE,
@@ -126,5 +119,7 @@ pasMareDvsC.p14.30m.elevation.plotly <- plot_ly(
       y = -0.25, 
       yanchor = "top"))
 pasMareDvsC.p14.30m.elevation.plotly
+
+
 
   
