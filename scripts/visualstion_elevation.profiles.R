@@ -42,9 +42,11 @@ ele.profiles.INK.GvsC <- ele.profiles %>%
                 !stringr::str_detect(trmnt.uid, "^INK\\.ch3"), # enlever chapitre 3 (routes)
                 trmnt.uid != "INK.ch2.MareC1") %>% 
   # sélectionner + faire une moyenne + sd de la pente des deux réplicats
-    separate(trmnt.uid, into = c("exp.unit_trmnt", "replicate"), sep = -1, remove = FALSE) %>% # ajouter à la source : fonction uid.to.columns **
-    separate(exp.unit_trmnt, into = c("trmnt", "slope"), sep = -1, remove = FALSE) # %>%  # ajouter à la source : fonction uid.to.columns **
-
+  separate(trmnt.uid, into = c("exp.unit_trmnt", "replicate"), sep = -1, remove = FALSE) %>% # ajouter à la source : fonction uid.to.columns **
+  separate(exp.unit_trmnt, into = c("trmnt", "slope"), sep = -1, remove = FALSE) %>%  # ajouter à la source : fonction uid.to.columns **
+  mutate(trmnt.uid = fct_recode(factor(trmnt.uid),
+                                "Gentle slope (n = 1)" = "INK.ch2.pasMareD1",
+                                "Control treatment (n = 1)" = "INK.ch2.pasMareC2"))
 # avant de pouvoir calculer les profils de pente par réplicat, je dois
 # 1. transloquer par rapport au canal (=0)
 # 2. interpoler et lisser la courbe
@@ -68,9 +70,11 @@ ele.profiles.INK.GvsC <- ele.profiles %>%
 # ============================================================================= /
 # INK gentle vs Control pour affiches 2026 ----
 # ============================================================================= /
-## séquence de couleurs ----
-pal_sequence <- c("#1b019b", "#FF6B6B", "#FFB04FFF", "#679C35FF", "rgba(0,0,0,0)", "#6A359CFF","#CD1076FF")
+## séquence de couleurs et lignes ----
+pal_sequence <- c("#1b019b", "#FF6B6B", "#98FB98", "#548B54", "rgba(0,0,0,0)", "#DB7093","#8B475D", "#EE799F",       "#7CCD7C")
+                 # pluie     # temp.  # contrl 14  # contrl 30 # transparent  # gentl 14 # gentl 30  # elev. Gentle # elev. contrl
 # "#6497B1FF", "#6A359CFF", "#FFB04FFF", "#679C35FF", "#CD1076FF" # autres idées
+mes_styles <- c("dash", "solid") 
 
 ### graphique en plotly ----
 pasMareDvsC.p14.30m.elevation.plotly <- plot_ly(
@@ -81,13 +85,14 @@ pasMareDvsC.p14.30m.elevation.plotly <- plot_ly(
     x = ~ distance.m,
     y = ~ elevation.m,
     color = ~ trmnt.uid,
-    line = list(width = 1.5), 
-    inherit = FALSE,
+    colors = pal_sequence[c(9, 8)],
+    linetype = ~ trmnt.uid,            # Lie le type de ligne à la catégorie
+    linetypes = mes_styles,
     legendgroup = ~ trmnt.uid) %>% 
   plotly::layout(
     title = list(
       text = "Elevation profiles along the gentle slope and control transects and position of wells.",
-      font = list(size = 12),
+      font = list(size = 13),
       y = 0.98),
     # Remplacer b = 60 par b = 10 ou 20 pour couper le vide sous la légende
     margin = list(r = 10, l = 55, b = 80, t = 20, pad = 0), 
@@ -105,6 +110,8 @@ pasMareDvsC.p14.30m.elevation.plotly <- plot_ly(
       automargin = TRUE),
     yaxis = list(
       title = "Elevation (m)",
+      font = list(size = 14), # <-- Taille du titre Y
+      tickfont = list(size = 12),    # <-- Taille des chiffres Y
       showgrid = TRUE,
       gridcolor = "#f0f0f0",
       showline = TRUE,
@@ -113,13 +120,21 @@ pasMareDvsC.p14.30m.elevation.plotly <- plot_ly(
       mirror = TRUE,
       rangemode = "tozero"),
     legend = list(
+      font = list(size = 11),
       orientation = "h",
       x = 0.5, 
       xanchor = "center",  
       y = -0.25, 
-      yanchor = "top"))
+      yanchor = "top")) %>% 
+  config(
+    toImageButtonOptions = list(
+      format = 'png',
+      filename = 'elevation',
+      height = 250,
+      width = 700,
+      scale = 4 # Augmente la résolution par 4
+    ))
 pasMareDvsC.p14.30m.elevation.plotly
-
 
 
   
