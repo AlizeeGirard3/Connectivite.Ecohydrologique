@@ -89,7 +89,8 @@ tidy.cal.data <- tidy.cal.data.pre %>%
   dplyr::filter(!well.uid %in% c("INK.ch2.MareD1_A1.m9,8m.pre", "INK.ch2.MareC1.p7m.2025")) %>% # INK.ch2.MareD1_A1.m9,8m.pre -> puits hors design (opportuniste) et INK.ch2.MareC1.p7m.2025 -> je suis le C de pasMare à la place (2025 pas assez de sonde pour les deux)
   dplyr::distinct() %>% # enlever les lignes répétées (dûes aux bulleurs)
   separate(type, into = c("exp.unit_trmnt", "replicate"), sep = -1, remove = FALSE) %>% # ajouter à la source : fonction uid.to.columns **
-  separate(exp.unit_trmnt, into = c("trmnt", "slope"), sep = -1, remove = FALSE) # ajouter à la source : fonction uid.to.columns **
+  separate(exp.unit_trmnt, into = c("trmnt", "slope"), sep = -1, remove = FALSE) %>%  # ajouter à la source : fonction uid.to.columns **
+  ungroup()
 table(tidy.cal.data$type) # MareA1    MareA2    MareC1    MareD1    MareD2 pasMareA1 pasMareA2 pasMareC2 pasMareD1 pasMareD2 
 table(tidy.cal.data$exp.unit_trmnt) # MareA    MareC    MareD pasMareA pasMareC pasMareD 
 table(tidy.cal.data$trmnt) # Mare pasMare
@@ -121,8 +122,9 @@ tidy.WTD.INK %>%
 ## calcul des stats par groupe ----
 # vérification des moyennes
 tidy.WTD.INK.compld.summry <- tidy.WTD.INK %>%
+  ungroup() %>% 
   mutate(exp.unit_trmnt_dist = paste0(exp.unit_trmnt, ".", relative.distance)) %>% 
-  group_by(date.time.UTC.0, exp.unit_trmnt_dist, source_calib) %>% 
+  group_by(date.time.UTC.0, exp.unit_trmnt_dist) %>% #, source_calib (mais j'ai déjà éliminé les autres types)
   # tableur "groupes" = exp.unit_trmnt, relative.distance -> combiné dans exp.unit_trmnt_dist
   # source_calib =  choisir éventuellement, (caduque 4 mai : choix de "ms" //), mais pour l'instant les deux valeurs sont considérées)
   # moyenne + sd à chaque heure
@@ -131,8 +133,9 @@ tidy.WTD.INK.compld.summry <- tidy.WTD.INK %>%
     sd.WTD = sd(calibrated.value.cm, na.rm = TRUE))
 
 tidy.WTD.INK.compld <- tidy.WTD.INK %>%
+  ungroup() %>% 
   mutate(exp.unit_trmnt_dist = paste0(exp.unit_trmnt, ".", relative.distance)) %>% 
-  group_by(date.time.UTC.0, exp.unit_trmnt_dist, source_calib) %>% 
+  group_by(date.time.UTC.0, exp.unit_trmnt_dist) %>% 
   # tableur "groupes" = exp.unit_trmnt, relative.distance -> combiné dans exp.unit_trmnt_dist
   # source_calib =  choisir éventuellement, (caduque 4 mai : choix de "ms" //), mais pour l'instant les deux valeurs sont considérées)
   # moyenne + sd à chaque heure
@@ -142,7 +145,7 @@ tidy.WTD.INK.compld <- tidy.WTD.INK %>%
     ymin_WTD = mean.WTD - sd.WTD,
     ymax_WTD = mean.WTD + sd.WTD) %>%
   ungroup() %>% 
-  distinct(date.time.UTC.0, exp.unit_trmnt_dist, source_calib, .keep_all = TRUE)
+  distinct(date.time.UTC.0, exp.unit_trmnt_dist, .keep_all = TRUE) # , source_calib
 colnames(tidy.WTD.INK.compld)
 table(tidy.WTD.INK.compld$type)
 table(tidy.WTD.INK.compld$exp.unit_trmnt) # combiner exp.unit_trmnt + relative.distance pour afficher les courbes de WTD ~ temps
@@ -382,6 +385,7 @@ table(pasMareDvsC.p14.30m.data$exp.unit_trmnt_dist)
 ## p14.30m ----
 ### data subset (pasMareDvsC.p14.30m.data) : ajustements ----
 pasMareDvsC.p14.30m.data <- tidy.WTD.INK.compld %>% 
+  ungroup() %>% 
   dplyr::filter(exp.unit_trmnt_dist %in% c("pasMareD.p30m", "pasMareC.p30m", 
                                            "pasMareD.p14m", "pasMareC.p14m")) %>%
   mutate(exp.unit_trmnt_dist = fct_recode(factor(exp.unit_trmnt_dist),
@@ -498,3 +502,4 @@ pasMareDvsC.p14.30m.data.plotly <- plot_ly(
       scale = 4 # Augmente la résolution par 4
     ))
 pasMareDvsC.p14.30m.data.plotly
+
