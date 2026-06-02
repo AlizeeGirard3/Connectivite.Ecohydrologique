@@ -65,7 +65,7 @@ rm(list=c(ls(pattern='.pre')))
 tidy.WTD.data <- list()
 s = Sys.time() # compte le temps d'exécution
 for (i in 1:length(raw.ll.files)) {
-  # i <-74 # début des ODYSSEY
+  # i <-61 # début des ODYSSEY
   # i <-7
   print(i)
   raw.ll.files[i]
