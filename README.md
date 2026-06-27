@@ -1,19 +1,11 @@
+# IMPORTANT :
+voir /Épreuves de fin de thèse/_Rédaction/Articles pour le fichier _AG_PhD_article_first_drafts dans lequel j'ai commencé à inscrire la méthodologie d'analyse.
 # Notes analyses à faire
 BACI : VOIR COURS 8 diapo 20-2 bayésien
 
 # Nom dépôt
-description sommaire
-version R
-
-structure du dossier joint
-
-qui 
-
-quand
- 
-où
- 
-comment
+Dépôt de code complet de mon projet de doctorat.
+Version(s) de R : 2026.05.1+225 (2026.05.1+225)
 
 # Ressources
 ## QGIS Python API [application programming interface]:
@@ -30,26 +22,26 @@ INFORMATIONS GÉNÉRALES
 1. Titre de la base de données: 
 2. Information des auteurs
 	Chercheur correspondant
-		Nom: 
-		Institution: 
-		Courriel: 
+		Nom: Alizée Girard
+		Institution: Université laval, Québec, Québec, Canada
+		Courriel: alizee.girard.1@ulaval.ca
 	Co-investigateur 1
-		Nom: 
-		Institution: 
-3. Date de collecte des données :
-4. Localisation géographique de la collecte des données :
-5. Sources de financement ayant soutenu la collecte des données :
-6. Citation recommandée pour cet ensemble de données :
-7. Logiciels requis pour analyser les données
-Sujet    # Liste de sujets généraux 
-Keyword  # Liste de mots clés pour retrouver le document au besoin 
-License  # Type de licence pour les données. Souvent différent du code source. 
+		Nom: Line Rochefort (directrice)
+		Institution: Université laval, Québec, Québec, Canada
+	Co-investigateur 2
+		Nom: Sylvain Jutras (co-directeur)
+		Institution: Université laval, Québec, Québec, Canada
+3. Date de collecte des données : 2025-
+4. Localisation géographique de la collecte des données : Québec et Nouveau-Brunswick (Est du Canada)
+5. Sources de financement ayant soutenu la collecte des données : 
+6. Citation recommandée pour cet ensemble de données : CSPMA, CRSNG
+Sujet    # Liste de sujets généraux (à venir)
+Keyword  # Liste de mots clés pour retrouver le document au besoin(à venir)
+License  # Type de licence pour les données. Souvent différent du code source. (à venir)
          # Par exemple, les données pourraient être sous CC-BY 4.0 et 
          # le code sous GNU V3. Vous devriez discuter de cela avec vos collègues. 
 
-
 APERÇU DES DONNÉES ET DES FICHIERS
-# Décrire ce qui se retrouve comme données dans le projet. 
 1. Description of dataset
 2. Liste des fichiers :
 **fichier :** REMPLIR ICI  

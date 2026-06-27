@@ -6,16 +6,16 @@
 ###########################################################################-
 # Fait par :      Alizée Girard
 # Affiliation :   ULaval
-# Date création : 2026-05-01
-# Date mise à jour : 2026-05-05 (pour ANOVA Mare/pasMare par distance)
-# Pourquoi : pour visualiser les données de nappe phréatique compilées par réplicats en préparation de l'affiche
-# des conférences de mai et juin 2026 (Halifax, Nouvelle-Écosse et IPS - Irlande)
+# Date création : 2026-05-01 (basé sur visualstion_water.table_INK.cmpild_v3.1.R)
+# Date mise à jour : 2026-06-26
+# Pourquoi : pour visualiser les données de nappe phréatique compilées par réplicats
 # NOTES : 
 # Ressources
 # https://r-graph-gallery.com/279-plotting-time-series-with-ggplot2.html
 # https://r-graph-gallery.com/line-chart-dual-Y-axis-ggplot2.html
 # https://finchstudio.io/blog/ggplot-dual-y-axes/
 # Lexique :
+# TERMES À RÉVISER
 # A: abrupte (exp.unit, treatment)
 # D: douce (exp.unit, treatment)
 # C: contrôle (exp.unit, treatment)
@@ -502,4 +502,3 @@ pasMareDvsC.p14.30m.data.plotly <- plot_ly(
       scale = 4 # Augmente la résolution par 4
     ))
 pasMareDvsC.p14.30m.data.plotlys
-
