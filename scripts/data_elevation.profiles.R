@@ -45,7 +45,7 @@ source("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/scripts/fonctio
 # Lecture, nettoyage, visualisation des fichier bruts ----
 # ============================================================================= /
 # REEXTRAIRE DONNÉES ** -> CHANGÉ NOMS DES COLONNES
-# ele.profiles.raw <- readxl::read_xlsx("connectivite/data/extracted_raw/microtopo.xlsx")
+ele.profiles.raw <- readxl::read_xlsx("connectivite/data/extracted_raw/microtopo.xlsx")
 
 # Nettoyage des données
 ele.profiles <- filter.raw.file(ele.profiles.raw) # script "fonctions_phd_v3.0.R"
