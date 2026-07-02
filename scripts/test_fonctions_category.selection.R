@@ -10,7 +10,7 @@
 # Date mise à jour : 
 # Pourquoi : function pour sélectionner rapidement les catégories de groupement des graphiques séries chronologiques d'hydrologie
 # NOTES : 
-
+ 
 ###########################################################################-
 
 # Initialisation ----

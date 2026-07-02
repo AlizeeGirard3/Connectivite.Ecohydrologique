@@ -55,7 +55,7 @@ ele.profiles <- ele.profiles %>%
   mutate(elevation.m = elevation.cm/100)
   
 # dates
-ele.profiles$`date.aaaa-mm-dd` <- ymd(ele.profiles$`date.aaaa-mm-dd`)
+ele.profiles$`date.aaaa.mm.dd` <- ymd(ele.profiles$`date.aaaa.mm.dd`)
 
 ## Graphique avec purrrr (tidyverse) ----
 list <- split(ele.profiles, ele.profiles$trmnt.uid.aaaa) # équivalent à toute la boucle sous "graph.topo.list <- list()"

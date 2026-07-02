@@ -38,8 +38,13 @@ if (!require("openxlsx")) install.packages("openxlsx") # lire/écrire les excel
 # .rs.restartR()
 # setwd("/Users/Aliz/Library/CloudStorage/OneDrive-UniversitéLaval/_FIELD.LAB WORK 2025/Laboratoire/LOI")
 setwd("~/Documents/Doctorat/_R_Stats_PhD/connectivite")
-source("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/scripts/fonctions_phd_v3.0.R")
+source("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/scripts/fonctions_phd_v3.2.R")
 
+# # retirer date feuille de données
+# data_SITE.UID <- list.files(path = "~/Documents/Doctorat/_R_Stats_PhD/connectivite/data", pattern = "_data") |>
+#   basename() |> 
+#   str_remove(".+?(?=_)_")
+# file.rename(from = list.files(path = "~/Documents/Doctorat/_R_Stats_PhD/connectivite/data", pattern = "_data", full.names = TRUE), to = data_SITE.UID)
 # ============================================================================= /
 # Nettoyage et enregistrement en RDS ----
 # ============================================================================= /
@@ -70,23 +75,41 @@ for (i in 1:(length(raw.env.data))) {
 
 env.data.merged <- list()
 for (n in names(env.data.sitewise[[1]])) { # n c'est chaque feuille dans env.data.sitewise // [[1]] pas grave lequel des site, car ils comportent les mm données
-                                           # 1 à 5 ce sont mes 5 sites 
+                                           # 1 à 6 ce sont mes 6 sites 
   n
   env.data.n <- bind_rows(env.data.sitewise[[1]][[n]], 
                           env.data.sitewise[[2]][[n]],
                           env.data.sitewise[[3]][[n]],
                           env.data.sitewise[[4]][[n]],
-                          env.data.sitewise[[5]][[n]])
+                          env.data.sitewise[[5]][[n]],
+                          env.data.sitewise[[6]][[n]])
                           # autant de ligne que DE SITE sinon les sites ultérieurs vont manquer dans les données
-  # AJUSTER CETTE FORMULE env.data.n <- bind_rows(cat(paste0("env.data.sitewise[[", n, "]][[n]]"), ")"))
+  # env.data.n <- bind_rows(cat(paste0("env.data.sitewise[[", n, "]][[n]]"), ")")) # AJUSTER CETTE FORMULE
+  env.data.n <- env.data.sitewise %>% 
+    purrr::map(n) %>% 
+    dplyr::bind_rows()
   
-  env.data.n <- filter.raw.file(env.data.n)
+  env.data.n <- filter.raw.file(env.data.n) # 
   env.data.merged[[n]] <- env.data.n # liste (de feuillets) contenant les données de chaque site concatennés ensemble
   
   j <- which(n == names(env.data.sitewise[[1]])) # index pour le path et nom de fichier .xslx
-  if(paste0(names(env.data.sitewise[[1]])[j], ".xlsx") %in% list.files("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/extracted_raw"))  {
-    stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
-  } else {
-    write.xlsx(env.data.merged[[n]], file = paste0("/Users/Aliz/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/extracted_raw/", names(env.data.sitewise[[1]])[j], ".xlsx"))
-  }
+  # if(paste0(names(env.data.sitewise[[1]])[j], ".xlsx") %in% list.files("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw"))  {
+  #   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
+  # } else { # comment here above (3 lines) for the files to be updated ** (warning it will replace)
+    write.xlsx(env.data.merged[[n]], 
+               file = paste0("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/", 
+                             names(env.data.sitewise[[1]])[j], 
+                             ".xlsx"),
+               guess_max = 12)
+  # } # comment here
 }
+microtopo_visualisation <- readxl::read_xlsx("data/extracted_raw/microtopo.xlsx")
+# ok warnings INUTILES
+colnames(readxl::read_xlsx("data/extracted_raw/microtopo.xlsx"))
+str(microtopo_visualisation)
+# canopy.peat.fauna_visualisation <- readxl::read_xlsx("data/extracted_raw/canopy.peat.fauna.xlsx")
+# colnames(readxl::read_xlsx("data/extracted_raw/canopy.peat.fauna.xlsx"))
+# str(canopy.peat.fauna_visualisation)
+# canopy.peat.fauna_visualisation <- readxl::read_xlsx("data/extracted_raw/canopy.peat.fauna.xlsx")
+# colnames(readxl::read_xlsx("data/extracted_raw/canopy.peat.fauna.xlsx"))
+# str(canopy.peat.fauna_visualisation)
