@@ -44,15 +44,15 @@ License  # Type de licence pour les données. Souvent différent du code source.
 APERÇU DES DONNÉES ET DES FICHIERS
 1. Description of dataset
 2. Liste des fichiers :
-**fichier :** REMPLIR ICI  
+**fichier :** microtopo.xlsx/.csv  
 **script de nettoyage:** REMPLIR ICI  
 **REMLIR ICI : descr tableau**
-| Nom de colonne | Commentaire 1 | Commentaire 2 |
-|---|---|---|
-| REMPLIR ICI | REMPLIR ICI | REMPLIR ICI |
-|---|---|---|
-| **Fichier traité** | **Commentaire 1** | **Commentaire 2** |
-| REMPLIR ICI | REMPLIR ICI | REMPLIR ICI |
+| lat | long | Commentaire 1 | Commentaire 2 |
+|---|---|---|---|
+| EPSG : 4269, NAD83 | REMPLIR ICI | REMPLIR ICI | REMPLIR ICI |
+|---|---|---|---|
+| **Fichier traité** | **Commentaire 1** | **Commentaire 2** | **Commentaire 2** |
+| REMPLIR ICI | REMPLIR ICI | REMPLIR ICI | REMPLIR ICI |
 
 3. Nomenclature des scripts :
 "data_X.R" : nettoyage/extraction initial(e)
