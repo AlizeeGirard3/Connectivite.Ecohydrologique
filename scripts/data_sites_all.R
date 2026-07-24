@@ -81,6 +81,13 @@ for (i in 1:(length(raw.env.data))) {
   }
   env.data.sitewise[[i]] <- raw.env.data.i # liste (de site) contenant une liste (d'onglets pertinents)
 }
+# Extraire tous les noms de colonnes, pour examiner les problèmes (warnings). Merci à Google IA pour l'aide dans PURRR (24/07/2026).
+# lapply(env.data.sitewise, class) # j'ai quel type d'objet ?
+# liste_aplatie <- flatten(env.data.sitewise) # applatir (éliminer un niveau liste de liste -> liste longue)
+# mapped_df <- map(liste_aplatie, colnames) |> # extraire tous les colnames
+#   enframe(name = "table_name", value = "column_name") |> # inscrire en colonne 1 le nom de la liste
+#   unchop(column_name) # la colonne "column_name' précédante contient plein d'info illisible (un paquet de column names trouvés), on doit la déployer (unchop)
+# mapped_df # tous les noms de colonnes, pour examiner les problèmes (warnings)
 
 ## décision d'archivage de version existante ----
 # explication : si les fichiers n'existent pas déjà, écrire les fichiers
@@ -93,31 +100,31 @@ if(paste0(names(env.data.sitewise[[1]])[j], ".xlsx") %in% list.files("/Users/Ali
 
 ## aggrégation des onglets du même nom en base de données tous sites ----
 ### COMMENT/UNCOMMENT HERE (next line)
-env.data.merged <- list()
-for (n in names(env.data.sitewise[[1]])) { # n c'est chaque feuille dans env.data.sitewise // [[1]] pas grave lequel des site, car ils comportent les mm données
-                                           # 1 à 6 ce sont mes 6 sites
-  n
-  env.data.n <- bind_rows(env.data.sitewise[[1]][[n]],
-                          env.data.sitewise[[2]][[n]],
-                          env.data.sitewise[[3]][[n]],
-                          env.data.sitewise[[4]][[n]],
-                          env.data.sitewise[[5]][[n]],
-                          env.data.sitewise[[6]][[n]])
-                          # autant de ligne que DE SITE sinon les sites ultérieurs vont manquer dans les données
-  # env.data.n <- bind_rows(cat(paste0("env.data.sitewise[[", n, "]][[n]]"), ")")) # AJUSTER CETTE FORMULE
-  env.data.n <- env.data.sitewise %>%
-    purrr::map(n) %>%
-    dplyr::bind_rows()
-
-  env.data.n <- filter.raw.file(env.data.n) # issu du script "fonctions_phd_v3.2.R" (AG, 2025+)
-  env.data.merged[[n]] <- env.data.n # liste (de feuillets) contenant les données de chaque site concatennés ensemble
-  writexl::write_xlsx(
-    env.data.merged[[n]],
-    path = paste0(
-      "/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/",
-      names(env.data.sitewise[[1]])[j],
-      ".xlsx"))
-}
+# env.data.merged <- list()
+# for (n in names(env.data.sitewise[[1]])) { # n c'est chaque feuille dans env.data.sitewise // [[1]] pas grave lequel des site, car ils comportent les mm données
+#                                            # 1 à 6 ce sont mes 6 sites
+#   n
+#   env.data.n <- bind_rows(env.data.sitewise[[1]][[n]],
+#                           env.data.sitewise[[2]][[n]],
+#                           env.data.sitewise[[3]][[n]],
+#                           env.data.sitewise[[4]][[n]],
+#                           env.data.sitewise[[5]][[n]],
+#                           env.data.sitewise[[6]][[n]])
+#                           # autant de ligne que DE SITE sinon les sites ultérieurs vont manquer dans les données
+#   # env.data.n <- bind_rows(cat(paste0("env.data.sitewise[[", n, "]][[n]]"), ")")) # AJUSTER CETTE FORMULE
+#   env.data.n <- env.data.sitewise %>%
+#     purrr::map(n) %>%
+#     dplyr::bind_rows()
+# 
+#   env.data.n <- filter.raw.file(env.data.n) # issu du script "fonctions_phd_v3.2.R" (AG, 2025+)
+#   env.data.merged[[n]] <- env.data.n # liste (de feuillets) contenant les données de chaque site concatennés ensemble
+#   writexl::write_xlsx(
+#     env.data.merged[[n]],
+#     path = paste0(
+#       "/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/",
+#       names(env.data.sitewise[[1]])[j],
+#       ".xlsx"))
+# }
 ### COMMENT/UNCOMMENT TO HERE (previous line)
 
 # ============================================================================= /
