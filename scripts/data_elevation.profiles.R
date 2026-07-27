@@ -7,7 +7,9 @@
 # Fait par :      Alizée Girard
 # Affiliation :   ULaval
 # Date création : Oct. 23rd 2024
-# Date mise à jour : 6 mai 2026 (code : profile pas mare INK (gentle et controle) pour afficher)
+# Date mise à jour : 
+# - 6 mai 2026 (code : profile pas mare INK (gentle et controle) pour afficher)
+# - 27 juillet 2026 : ajout sélection des Lat, Long UNIQUES pour insertion dans QGIS
 # Fonction : pour visualiser les données d'élévation à Inkerman
 # NOTES : données caduques, ces données d'élévation sont issues de données DSM, alors que je cherchais le DEM
 # – A DEM (Digital Elevation Model) Represents the bare-Earth surface, removing all natural and built features;
@@ -57,6 +59,18 @@ ele.profiles <- ele.profiles %>%
 # dates
 ele.profiles$`date.aaaa.mm.dd` <- ymd(ele.profiles$`date.aaaa.mm.dd`)
 
+# ============================================================================= /
+# Extraction unique des Lat, Long pour insertion dans QGIS ----
+# ============================================================================= /
+ele.profiles$lat.long <- paste0(ele.profiles$perm.plot.uid.NOmicrotopo.aaaa, ";", ele.profiles$lat.garmin.dd, ";", ele.profiles$long.garmin.dd, ";", ele.profiles$lat.long.location)
+
+lat.long.column <- data.frame(unique(ele.profiles$lat.long))
+colnames(lat.long.column)[1] <- "UID;lat;long;location"
+write_csv(lat.long.column, file = "/Users/Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectitite_PhD_Mergin_26nov24/_microtopo_lat.long.csv")
+
+# ============================================================================= /
+# Visualisation des fichier bruts ----
+# ============================================================================= /
 ## Graphique avec purrrr (tidyverse) ----
 list <- split(ele.profiles, ele.profiles$trmnt.uid.aaaa) # équivalent à toute la boucle sous "graph.topo.list <- list()"
 chaque.graph <- map(list, ~ ggplot(.x, aes(distance.m, elevation.m)) + 

@@ -90,7 +90,7 @@ for (i in 1:(length(raw.env.data))) {
 # mapped_df # tous les noms de colonnes, pour examiner les problèmes (warnings)
 
 ## décision d'archivage de version existante ----
-# explication : si les fichiers n'existent pas déjà, écrire les fichiers
+# explication : si les fichiers N'existent PAS déjà, écrire les fichiers
 # s'ils existent, aller vérifier ce qu'en faire, et écraser/réécrire en conservant la version précédante au besoin (uncomment suivant)
 for (n in names(env.data.sitewise[[1]])) { # n c'est chaque feuille dans env.data.sitewise // [[1]] pas grave lequel des site, car ils comportent les mm données
   j <- which(n == names(env.data.sitewise[[1]])) 
@@ -111,7 +111,7 @@ if(paste0(names(env.data.sitewise[[1]])[j], ".xlsx") %in% list.files("/Users/Ali
 #                           env.data.sitewise[[5]][[n]],
 #                           env.data.sitewise[[6]][[n]])
 #                           # autant de ligne que DE SITE sinon les sites ultérieurs vont manquer dans les données
-#   # env.data.n <- bind_rows(cat(paste0("env.data.sitewise[[", n, "]][[n]]"), ")")) # AJUSTER CETTE FORMULE
+#   env.data.n <- bind_rows(cat(paste0("env.data.sitewise[[", n, "]][[n]]"), ")")) # AJUSTER CETTE FORMULE
 #   env.data.n <- env.data.sitewise %>%
 #     purrr::map(n) %>%
 #     dplyr::bind_rows()
@@ -122,7 +122,7 @@ if(paste0(names(env.data.sitewise[[1]])[j], ".xlsx") %in% list.files("/Users/Ali
 #     env.data.merged[[n]],
 #     path = paste0(
 #       "/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/",
-#       names(env.data.sitewise[[1]])[j],
+#       n,
 #       ".xlsx"))
 # }
 ### COMMENT/UNCOMMENT TO HERE (previous line)
