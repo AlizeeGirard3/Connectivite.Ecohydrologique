@@ -1,0 +1,21 @@
+Date de création : 2026/07/29
+Autrice : AG
+Sources : Google IA (code initial, réponses à mes questions)
+
+Fonction : 
+1. archiver les fichiers contenant "data_" du dossier /Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/raw vers /Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/raw/x.archives_generales
+
+2. copier, nettoyer & coller 
+2.1. copier le plus récent (format AAAMMJJ_data_[...].xlsx = le tri alphabétique correspond exactement au tri chronologique) fichier dont le nom contient "_data_"
+de: 
+~/Library/CloudStorage/OneDrive-UniversitéLaval/_FIELD.LAB WORK/_Feuilles_données_pas_local
+à : 
+/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/raw
+2.1. ET, À LA VOLÉE : 
+nettoyer le nom (enlever "AAAAMMJJ_")
+
+
+NOTER :
+exécuter le script en le copiant dans la console Terminal de RStudio
+OU
+retirer tous les "(r-reticulate)" et exécuter dans le Terminal BASH

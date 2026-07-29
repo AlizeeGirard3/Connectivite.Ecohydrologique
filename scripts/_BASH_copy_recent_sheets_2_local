@@ -1,0 +1,7 @@
+
+
+
+cd /Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/raw
+for fichier in data_*; do [ -e "$fichier" ] && mv "$fichier" /Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/raw/x.archives_generales/;done
+cd ~/Library/CloudStorage/OneDrive-UniversitéLaval/_FIELD_LAB.WORK/_Feuilles_données_pas_local
+for element in $(ls *data_* | sed -E 's/[0-9]{8}_data_(.*)/\1/' | sort -u); do fichier_recent=$(ls *_data_${element} | sort | tail -n 1); nom_propre=$(basename "$fichier_recent"); nouveau_nom="data_${nom_propre#*_*_}"; cp "$fichier_recent" "/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/raw/$nouveau_nom"; done

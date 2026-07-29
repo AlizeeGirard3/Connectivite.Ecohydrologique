@@ -47,10 +47,15 @@ source("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/scripts/fonctio
 # Lecture, nettoyage, visualisation des fichier bruts ----
 # ============================================================================= /
 # REEXTRAIRE DONNÉES ** -> CHANGÉ NOMS DES COLONNES
-ele.profiles.raw <- readxl::read_xlsx("connectivite/data/extracted_raw/microtopo.xlsx")
+ele.profiles.raw <- readr::read_delim(
+  "connectivite/data/extracted_raw/microtopo.csv", 
+  delim = ";", 
+  locale = readr::locale(decimal_mark = ",", grouping_mark = "")) # "le point ne sert à rien d'autre qu'à l'écriture normale"
 
 # Nettoyage des données
+str(ele.profiles.raw)
 ele.profiles <- filter.raw.file(ele.profiles.raw) # script "fonctions_phd_v3.0.R"
+str(ele.profiles)
 ele.profiles$distance.m <- round(as.numeric(ele.profiles$distance.m), digits = 2)
 ele.profiles$elevation.cm <- round(as.numeric(ele.profiles$elevation.cm), digits = 2)
 ele.profiles <- ele.profiles %>% 
@@ -65,7 +70,7 @@ ele.profiles$`date.aaaa.mm.dd` <- ymd(ele.profiles$`date.aaaa.mm.dd`)
 ele.profiles$lat.long <- paste0(ele.profiles$perm.plot.uid.NOmicrotopo.aaaa, ";", ele.profiles$lat.garmin.dd, ";", ele.profiles$long.garmin.dd, ";", ele.profiles$lat.long.location)
 
 lat.long.column <- data.frame(unique(ele.profiles$lat.long))
-colnames(lat.long.column)[1] <- "UID;lat;long;location"
+colnames(lat.long.column)[1] <- "trnsct.uid;lat;long;location"
 write_csv(lat.long.column, file = "/Users/Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectitite_PhD_Mergin_26nov24/_microtopo_lat.long.csv")
 
 # ============================================================================= /
