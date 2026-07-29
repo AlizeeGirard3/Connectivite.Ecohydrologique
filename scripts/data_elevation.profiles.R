@@ -56,6 +56,7 @@ ele.profiles.raw <- readr::read_delim(
 str(ele.profiles.raw)
 ele.profiles <- filter.raw.file(ele.profiles.raw) # script "fonctions_phd_v3.0.R"
 str(ele.profiles)
+colnames(ele.profiles)
 ele.profiles$distance.m <- round(as.numeric(ele.profiles$distance.m), digits = 2)
 ele.profiles$elevation.cm <- round(as.numeric(ele.profiles$elevation.cm), digits = 2)
 ele.profiles <- ele.profiles %>% 
@@ -67,10 +68,10 @@ ele.profiles$`date.aaaa.mm.dd` <- ymd(ele.profiles$`date.aaaa.mm.dd`)
 # ============================================================================= /
 # Extraction unique des Lat, Long pour insertion dans QGIS ----
 # ============================================================================= /
-ele.profiles$lat.long <- paste0(ele.profiles$perm.plot.uid.NOmicrotopo.aaaa, ";", ele.profiles$lat.garmin.dd, ";", ele.profiles$long.garmin.dd, ";", ele.profiles$lat.long.location)
+ele.profiles$lat.long <- paste0(ele.profiles$trnsct.uid.aaaa, ";", ele.profiles$lat.garmin.dd, ";", ele.profiles$long.garmin.dd, ";", ele.profiles$lat.long.location)
 
 lat.long.column <- data.frame(unique(ele.profiles$lat.long))
-colnames(lat.long.column)[1] <- "trnsct.uid;lat;long;location"
+colnames(lat.long.column)[1] <- "trnsct.uid.aaaa;lat;long;location"
 write_csv(lat.long.column, file = "/Users/Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectitite_PhD_Mergin_26nov24/_microtopo_lat.long.csv")
 
 # ============================================================================= /

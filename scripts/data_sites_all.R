@@ -148,16 +148,9 @@ readr::write_delim(
 # Nettoyage (type colonnes, wide-to-long, etc.) ----
 # ============================================================================= /
 ## microtopo ----
-# EPSG  4269, NAD83
-microtopo_visualisation <- readxl::read_xlsx("data/extracted_raw/microtopo.xlsx")
-# ok warnings INUTILES
-colnames(readxl::read_xlsx("data/extracted_raw/microtopo.xlsx"))
-str(microtopo_visualisation)
+# caduque
 
-
-
-
-
+## canopy.peat.fauna, visualisation ----
 # canopy.peat.fauna_visualisation <- readxl::read_xlsx("data/extracted_raw/canopy.peat.fauna.xlsx")
 # colnames(readxl::read_xlsx("data/extracted_raw/canopy.peat.fauna.xlsx"))
 # str(canopy.peat.fauna_visualisation)
