@@ -56,7 +56,7 @@ data_SITE.UID <- list.files(path = "~/Documents/Doctorat/_R_Stats_PhD/connectivi
 # file.rename(from = list.files(path = "~/Documents/Doctorat/_R_Stats_PhD/connectivite/data", pattern = "_data", full.names = TRUE), to = data_SITE.UID)
 
 # ============================================================================= /
-# Filtre global (\filter.raw.file()) et enregistrement en RDS ----
+# Filtre global (\filter.raw.file()), nettoyage et enregistrement en RDS ----
 # ============================================================================= /
 # listes de données et filtration
 raw.env.data.pre <- list.files(path = "data/raw", pattern = "data_", full.names = T) # mettre dans "pattern" tous les ID de SNH listés dans l'objet SNH
@@ -68,10 +68,10 @@ env.data.sitewise <- list()
 ## boucle pour chaque site, agglomérer les onglets pertinents ----
 for (i in 1:(length(raw.env.data))) {
   print(i)
-  # i<-1
+  # i<-2
   # nom des onglets du classeur .csv et sélection des pertinents
-  sheets.pre <- readxl::excel_sheets(raw.env.data[i])
-  sheets <- subset(sheets.pre,!grepl(pattern = "À FAIRE|sp_code|validation|READ ME|cad.", sheets.pre)) # keeps any other sheet
+  # sheets.pre <- readxl::excel_sheets(raw.env.data[i])
+  # sheets <- subset(sheets.pre,!grepl(pattern = "À FAIRE|sp_code|validation|READ ME|cad.|DATA-site visit", sheets.pre)) # keeps any other sheet
   
   raw.env.data.i <- read_excel_sheets_NO.BUGS(raw.env.data[i]) # script "fonction_phd_vX" (AG, 2025+)
   # LONG à cause de la conversion de TOUTE les cellules en texte
@@ -87,6 +87,7 @@ for (i in 1:(length(raw.env.data))) {
   }
   env.data.sitewise[[i]] <- env.data.sitewise[[i]] <- raw.env.data.i # liste (de site) contenant une liste (d'onglets pertinents)
 }
+# warning OK (rencontre des "NA" et "NO" et les transforme en vrai NA)
 
 ## Extraire tous les noms de colonnes, pour examiner les problèmes (warnings). Merci à Google IA pour l'aide dans PURRR (24/07/2026).
 # lapply(env.data.sitewise, class) # j'ai quel type d'objet ?
@@ -126,9 +127,30 @@ for (n in names(env.data.sitewise[[1]])) { # n c'est chaque feuille dans env.dat
     purrr::map(n) %>%
     dplyr::bind_rows()
   
-  env.data.n <- filter.raw.file(env.data.n) # issu du script "fonctions_phd_v3.2.R" (AG, 2025+)
-  env.data.merged[[n]] <- env.data.n # liste (de feuillets) contenant les données de chaque site concatennés ensemble
+  # créer l'objet
+  env.data.n.pre <- filter.raw.file(env.data.n) # issu du script "fonctions_phd_v3.2.R" (AG, 2025+)
   
+  # nettoyage
+  # classes de colonnes ----
+  # stratégie : coder dans "fonction_phd_vX" (AG, 2025+)
+  # 
+  # # éviter les notations scientifiques (essayé par plein de moyens ----
+  # ## exemple : 
+  # df.exemple <- as.data.frame(env.data.sitewise[[1]][2])
+  # df.exemple$canopy.peat.fauna.peat.sample_BD_g.cm3
+  # ## stratégie : rechercher la présence dans chaque cellule de À LA FOIS un "." ET un "E", indicateur de notation scientifique
+  # 
+  # # fonction
+  # search.scinotation <- function(X) 
+  #   grep("(?=.*\\.)(?=.*E)", , X, ignore.case = F)
+  # 
+  # map(env.data.n.pre, search.scinotation)
+  # env.data.n <- env.data.n.pre |> 
+  #   gsub(env.data.n.pre)
+  # 
+  # mettre l'objet dans la liste
+  env.data.merged[[n]] <- env.data.n # liste (de feuillets) contenant les données de chaque site concatennés ensemble
+
   # ARCHIVES ----
   # ARCHIVE : exporter en .xlsx / cause problèmes de type de données et impossible d'ajouter directement dans QGIS
   #   writexl::write_xlsx(
@@ -179,14 +201,26 @@ for (n in names(env.data.sitewise[[1]])) { # n c'est chaque feuille dans env.dat
 ## microtopo ----
 # caduque
 
-## canopy.peat.fauna, visualisation pour définir comment l'ouvrir ----
+## canopy.peat.fauna ----
+### visualisation pour définir comment l'ouvrir ----
 canopy.peat.fauna <- read.csv("data/extracted_raw/canopy.peat.fauna.csv", 
                                             sep = ";", quote = "\"'",
-                                            dec = ",", fileEncoding = "UTF-8-BOM")
-
-# canopy.peat.fauna_visualisation <- readr::read_csv2("data/extracted_raw/canopy.peat.fauna.csv")
+                                            dec = ",", fileEncoding = "UTF-8-BOM") # bon formatage, puis, enregistrement en RDS
 colnames(canopy.peat.fauna)
 str(canopy.peat.fauna)
+
+### subdivisions ----
+peat <- canopy.peat.fauna |> 
+  select(contains(c("perm.plot.uid.NO.quadrat.aaaa", "trmnt.uid.rel.dist.aaaa", "peat.sample")))
+
+peat.BD <- peat |> 
+  select(contains(c("UID", "_BD_"))) |> 
+  select(!contains("_LOI_"))
+# stratégie : modifier ce fichier ET FUSIONNER ENSUITE
+readr::write_excel_csv2(
+  x = peat.BD,
+  file = "~/desktop/peat.BD.csv",
+  na = "")
 
 ## vegetation_trees.shr, visualisation ----
 vegetation_trees.shr_visualisation <- readr::read_csv2("data/extracted_raw/vegetation_trees.shr.csv")
@@ -197,3 +231,50 @@ str(vegetation_trees.shr_visualisation)
 vegetation_lower.str_visualisation <- readr::read_csv2("data/extracted_raw/vegetation_lower.str.csv")
 colnames(readxl::read_xlsx("data/extracted_raw/vegetation_lower.str.xlsx"))
 str(vegetation_lower.str_visualisation)
+
+# ============================================================================= /
+# Enregistrement final ----
+# ============================================================================= /
+
+for (n in names(env.data.sitewise[[1]])) {
+  saveRDS(, file = paste0("data/clean/", n, ".Rds"))
+          
+}
+
+# si fichier n'existe pas déjà :
+# filter la base de données, recréer des fichier distincts par site.uid, stocker dans data/clean
+# sinon, arrêt et avertissement
+URLs.list <- vector()
+site.uids <- unique(tidy.weather.data.res$site.uid.ms)
+for (site in 1:length(site.uids)) {
+  URLs.list[site] <- paste0("meteoStat.data.hourly.res.", unique(tidy.weather.data.res$site.uid.ms)[site], ".csv")
+}
+if(any(URLs.list %in% list.files("connectivite/data/clean")))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
+  stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
+} else { 
+  for (j in 1:length(site.uids)) {
+    # j<-1
+    tidy.weather.data.j <- tidy.weather.data.originales %>% 
+      dplyr::filter(site.uid.ms == site.uids[j]) %>% 
+      select(-site.uid.ms)
+    write.csv(tidy.weather.data.j,  paste0("connectivite/data/clean/meteoStat.data.hourly.", site.uids[j], ".res.csv"), row.names = FALSE)
+  }
+}
+
+## version originale ----
+URLs.list <- vector()
+site.uids <- unique(tidy.weather.data.originales$site.uid.ms)
+for (site in 1:length(site.uids)) {
+  URLs.list[site] <- paste0("meteoStat.data.hourly.", unique(tidy.weather.data.originales$site.uid.ms)[site], ".csv")
+}
+if(any(URLs.list %in% list.files("connectivite/data/clean")))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
+  stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
+} else {
+  for (j in 1:length(site.uids)) {
+    # j<-1
+    tidy.weather.data.j <- tidy.weather.data.originales %>%
+      dplyr::filter(site.uid.ms == site.uids[j]) %>%
+      select(-site.uid.ms)
+    write.csv(tidy.weather.data.j,  paste0("connectivite/data/clean/meteoStat.data.hourly.", site.uids[j], ".csv"), row.names = FALSE)
+  }
+}

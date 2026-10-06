@@ -78,15 +78,36 @@ read_excel_sheets <- function(filename, tibble = FALSE) {  # for tidyverse tibbl
 # utilité : changer le read_excel pour read_delim pour PERSONNALISER la codification du délim, sep et dec ÉLIMINER DES BUGS à la source
 # filename <- raw.env.data[i]
 read_excel_sheets_NO.BUGS <- function(filename, tibble = FALSE) {  # for tidyverse tibbles (the default with read_excel): tibble = TRUE
-  sheets.pre <- readxl::excel_sheets(filename)
-  sheets <- subset(sheets.pre,!grepl(pattern = "À FAIRE|sp_code|validation|READ ME|cad.", sheets.pre)) # keeps any other sheet
   
-  x <- lapply(sheets, function(X) readxl::read_excel(filename, 
-                                                     sheet = X,
-                                                     col_types = "text")) # convertit TOUT en texte par défaut / LONG
+  sheets.pre <- readxl::excel_sheets(filename)
+  sheets <- subset(sheets.pre,!grepl(pattern = "À FAIRE|sp_code|validation|READ ME|cad.|DATA-site visit", sheets.pre)) # keeps any other sheet
+  
+  X <- sheets[2]
+  x <- lapply(sheets, function(X) { # merci à Google IA pour l'aide à la recherche intelligente et à la définition de classe PROPRE
+    
+    # noms des colonnes de l'onglet (n_max = 0 signifie « ouvre l'onglet, lis la toute première ligne (celle qui contient les noms des colonnes), et arrête-toi tout de suite sans charger aucune donnée. »)
+    colonnes_onglet <- names(readxl::read_excel(filename, sheet = X, n_max = 0))
+    # par défaut: "text" pour CHAQUE colonne
+    types_colonnes <- rep("text", length(colonnes_onglet)) # convertit TOUT en texte par défaut / LONG
+    names(types_colonnes) <- colonnes_onglet
+    
+    # nettoyage
+    ## attribuer la classe désirée (AJOUTER ICI SI D'AUTRES PROBLÈMES SE POINTENT)
+    ### notation scientifique
+    if ("peat.sample_BD_g.cm3" %in% colonnes_onglet) {
+      types_colonnes["peat.sample_BD_g.cm3"] <- "numeric" } # éviter la notation scientifique
+   
+     # lecture finale propre
+    test <- readxl::read_excel(
+      path = filename, 
+      sheet = X, 
+      col_types = unname(types_colonnes)) 
+    })
+  
   # lapply = applique la fonction suivante décrite à tous les éléments contenus dans l'objet "sheets" et crée une liste avec le résultat
   lapply(x, as.data.frame) # fais-en un dataframe
   names(x) <- sheets
+  
   return(x)
 }
 
@@ -269,12 +290,11 @@ uid.to.columns <- function(file.to.restructure = NULL, type = NULL, path = NULL)
 # cols.df <- uid.to.columns(path = "~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/raw/level_logger_calibration_all.csv")
 
 
-# column class (créé 2026-10-05, modifié _______)
+# lat.long (créé 2026-10-05, modifié _______)
 # stratégie :
-# énumérer les colonnes et spécifier manuellement les classes désirées
+# transformer les données géographiques
 ################################################################################  EN CHANTIER ################################################################################ 
-# column.class <- function() {
-#   
+#   https://bedeffinianrowedavies.com/intermediatertutorials/startergis
 # #   # Lat, Long :
 #   library(sf)
 #   Points_df <- data.frame("long" = canopy.peat.fauna_visualisation$long.garmin.dd, "lat" = canopy.peat.fauna_visualisation$lat.garmin.dd)
@@ -284,75 +304,6 @@ uid.to.columns <- function(file.to.restructure = NULL, type = NULL, path = NULL)
 #     st_as_sf(coords = c("long","lat") )  %>% # nettoyer les FUCKING notations scientifiques
 #     st_set_crs("EPSG:4326") # √ EPSG:4326 avec le GPS Garmin / possibles erreurs, arranger si deviennent pertinentes pour les analyses -> certaines ont été extraites de QGIS avec la projection précise associée à la province/MTM
 # #   
-#   
-#   canopy.peat.fauna_visualisation : 
-#     "site.uid"
-#   "perm.plot.uid.NO.quadrat.aaaa"
-#   ("lat.garmin.dd", "long.garmin.dd")
-#   "n.pt.open.canopy"                           "s.pt.open.canopy"                          
-#   [7] "e.pt.open.canopy"                           "w.pt.open.canopy"                           "peat.depth.1.cm"                           
-#   [10] "peat.depth.2.cm"                            "peat.depth.3.cm"                            "peat.von.post"                             
-#   [13] "soil.sample.pH.EC"                          "soil.sample.DA"                             "date.aaaa.mm.dd"                           
-#   [16] "observers"                                  "comment"                                    "fauna"                                     
-#   [19] "measure.status"                             "tree.core_no.pochette_CADUQUE"              "tree.core_sp"                              
-#   [22] "tree.core_uid"                              "peat.sample_UID_R.randNum"                  "peat.sample_EC_temperature_dc"             
-#   [25] "peat.sample_EC_micS.cm"                     "peat.sample_ph_temperature_dc"              "peat.sample_ph"                            
-#   [28] "peat.sample_ph.EC_date.aaaa.mm.dd"          "peat.sample_BD_container.mass_g"            "peat.sample_BD_container.peat.mass_g_CAD.1"
-#   [31] "peat.sample_BD_container.peat.mass_g"       "peat.sample_BD_dry.mass_g"                  "peat.sample_BD_cm3"                        
-#   [34] "peat.sample_BD_g.cm3"                       "peat.sample_observers"                      "peat.sample_comment"                       
-#   [37] "peat.sample_DA_date_drying.aaaa.mm.dd"      "peat.sample_DA_date_weigh.aaaa.mm.dd"       "peat.sample_LOI_LAB.UID.1"                 
-#   [40] "peat.sample_LOI_crucible.mass.g.1"          "peat.sample_LOI_initial.mass.g.1"           "peat.sample_LOI_dried.mass.1.g.1"          
-#   [43] "peat.sample_LOI_dried.mass.2.g.1"           "peat.sample_LOI_dried.mass.3.g.1"           "peat.sample_LOI_ash.mass.g.1"              
-#   [46] "peat.sample_LOI_LAB.UID.2"                  "peat.sample_LOI_crucible.mass.g.2"          "peat.sample_LOI_initial.mass.g.2"          
-#   [49] "peat.sample_LOI_dried.mass.1.g.2"           "peat.sample_LOI_dried.mass.2.g.2"           "peat.sample_LOI_dried.mass.3.g.2"          
-#   [52] "peat.sample_LOI_ash.mass.g.2"               "peat.sample_LOI_date.aaaa.mm.dd"            "peat.sample_LOI_observers"                 
-#   [55] "peat.sample_LOI_comment"                    "trmnt.uid.rel.dist.aaaa"       
-# #   
-#   object.to.filter <- canopy.peat.fauna_visualisation
-# #   function(object.to.filter = NULL) {
-# #     
-#     object.to.filter.filtrd <- object.to.filter %>%
-#       mutate(across(contains(".garmin.dd"), as.numeric))
-#         
-#         # Force toutes les colonnes finissant par ".uid" en texte brut
-#         across(ends_with(".uid"), as.character)
-#       )
-#       dplyr::select(grep(".garmin.dd", colnames(object.to.filter)))
-# #   } 
-#   if(c(!is.null(path.filtering.object) & !is.null(object.to.filter))) { # fournir l'objet à filtrer par les informations fournies dans le cal data path à filtrer
-#     filtering.object <- read.csv(path.filtering.object, , sep = ";", dec = ",")
-#     filter.out <- filtering.object$file.uid[grep("rejected", filtering.object$measure_status)]
-#     str_split <- str_split(filter.out, "_")
-#     filter.out.df <- data.frame(do.call(rbind, str_split)) # colnames = c("probe.uid", "extr.date"))
-#     exclude.lines <- vector()
-#     for(exclude in 1:nrow(filter.out.df)) { 
-#       exclude.lines[exclude] <- which(grepl(filter.out.df[exclude,1], object.to.filter) & grepl(filter.out.df[exclude,2], object.to.filter))
-#     }
-#     object.to.filter.filtrd <- object.to.filter[-exclude.lines]
-#   } 
-#   if(c(!is.null(path.filtering.object) & is.null(object.to.filter))) { # fournir juste le cal data path à filtrer
-#     object.to.filter.filtrd <- read.csv(path.filtering.object, sep = ";", dec = ",") %>% 
-#       dplyr::filter(!measure_status == "rejected") %>% 
-#       select(!contains("x.archive"))
-#   }
-#   if(c(!is.null(object.to.filter) && identical(type, "MeteoStat"))) {
-#     # caduque, metno_forecast n'est pas de la prédiction, ça vient d'une source qui s'appelle comme ça... # https://dev.meteostat.net/faq.html
-#     # object.to.filter.filtrd.pre <- names(object.to.filter) %>%
-#     #   reduce(function(df, col_name) {
-#     #     nom_source <- paste0(col_name, "_source")  # Condition d'exclusion : on vérifie si la colonne source existe dans le dataframe
-#     #     if (nom_source %in% colnames(df)) {
-#     #         df <- df %>% mutate(
-#     #         !!col_name := if_else(df[[nom_source]] == "metno_forecast", NA, df[[col_name]]))
-#     #         return(df)
-#     #     } else {
-#     #       return(df)
-#     #     }}, .init = object.to.filter)
-#     object.to.filter.filtrd <- object.to.filter %>%
-#       select(!"X")
-#   } # pour meteoStat
-#   return(object.to.filter.filtrd)
-#   }
-# }
 ################################################################################  FIN CHANTIER ################################################################################ 
     
 

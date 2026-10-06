@@ -27,6 +27,7 @@
 # NP : Nappe phréatique / synonymes : water table
 # ECCC/CSSS : Environnement and Climate Change Canada / Canadian Centre for Climate Services 
 # tz : time zone, syn. fuseau horaire
+# .res = résidus (voir code)
 
 ##########################################################################-
 
