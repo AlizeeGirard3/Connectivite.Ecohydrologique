@@ -73,8 +73,9 @@ for (i in 1:(length(raw.env.data))) {
   sheets.pre <- readxl::excel_sheets(raw.env.data[i])
   sheets <- subset(sheets.pre,!grepl(pattern = "À FAIRE|sp_code|validation|READ ME|cad.", sheets.pre)) # keeps any other sheet
   
-  raw.env.data.i <- read_excel_sheets(raw.env.data[i]) # script "fonction_phd_vX" (AG, 2025+)
-  # # tests trouver problème 29 juill QGIS (microtopo)
+  raw.env.data.i <- read_excel_sheets_NO.BUGS(raw.env.data[i]) # script "fonction_phd_vX" (AG, 2025+)
+  # LONG à cause de la conversion de TOUTE les cellules en texte
+  ## caduque tests : trouver problème 29 juill QGIS (microtopo)
   # unique(raw.env.data.i[[1]]$perm.plot.uid.NOmicrotopo.aaaa) # ok tout y est... (certains UID disparaîssent dans QGIS)
   # table(raw.env.data.i[[1]]$lat.garmin.dd) # ici juste des décimales en virgule ?
   # table(raw.env.data.i[[1]]$long.garmin.dd) # PROBLÈME ici : ya des virgules ET des points décimaux... dû à l'import...
@@ -82,12 +83,12 @@ for (i in 1:(length(raw.env.data))) {
   for (z in names(raw.env.data.i)) {
     raw.env.data.i[[z]] <- raw.env.data.i[[z]] %>% 
       mutate(across(everything(), as.character))    
-    
     # colnames(raw.env.data.i$microtopo) <- as.character(colnames(raw.env.data.i$microtopo))
   }
   env.data.sitewise[[i]] <- env.data.sitewise[[i]] <- raw.env.data.i # liste (de site) contenant une liste (d'onglets pertinents)
 }
-# Extraire tous les noms de colonnes, pour examiner les problèmes (warnings). Merci à Google IA pour l'aide dans PURRR (24/07/2026).
+
+## Extraire tous les noms de colonnes, pour examiner les problèmes (warnings). Merci à Google IA pour l'aide dans PURRR (24/07/2026).
 # lapply(env.data.sitewise, class) # j'ai quel type d'objet ?
 # liste_aplatie <- flatten(env.data.sitewise) # applatir (éliminer un niveau liste de liste -> liste longue)
 # mapped_df <- map(liste_aplatie, colnames) |> # extraire tous les colnames
@@ -110,37 +111,65 @@ if(paste0(names(env.data.sitewise[[1]])[j],".csv") %in% list.files("/Users/Aliz/
 ### COMMENT/UNCOMMENT HERE (next line)
 env.data.merged <- list()
 for (n in names(env.data.sitewise[[1]])) { # n c'est chaque feuille dans env.data.sitewise // [[1]] pas grave lequel des site, car ils comportent les mm données
-                                           # 1 à 6 ce sont mes 6 sites
-  n <- names(env.data.sitewise[[1]])[1]
+  # 1 à 6 ce sont mes 6 sites
+  # n<-names(env.data.sitewise[[1]])[2]
+  print(n)
   env.data.n <- bind_rows(env.data.sitewise[[1]][[n]],
                           env.data.sitewise[[2]][[n]],
                           env.data.sitewise[[3]][[n]],
                           env.data.sitewise[[4]][[n]],
                           env.data.sitewise[[5]][[n]],
                           env.data.sitewise[[6]][[n]])
-                          # autant de ligne que DE SITE sinon les sites ultérieurs vont manquer dans les données
+  # autant de ligne que DE SITE sinon les sites ultérieurs vont manquer dans les données
   ## caduque # env.data.n <- bind_rows(cat(paste0("env.data.sitewise[[", n, "]][[n]]"), ")")) # AJUSTER CETTE FORMULE au besoin
   env.data.n <- env.data.sitewise %>%
     purrr::map(n) %>%
     dplyr::bind_rows()
-
+  
   env.data.n <- filter.raw.file(env.data.n) # issu du script "fonctions_phd_v3.2.R" (AG, 2025+)
   env.data.merged[[n]] <- env.data.n # liste (de feuillets) contenant les données de chaque site concatennés ensemble
-# ARCHIVE : exporter en .xlsx / cause problèmes de type de données et impossible d'ajouter directement dans QGIS
-#   writexl::write_xlsx(
-#     env.data.merged[[n]],
-#     path = paste0(
-#       "/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/",
-#       n,
-#       ".xlsx"))
-# exporter en .csv
-readr::write_delim(
-    env.data.merged[[n]],
+  
+  # ARCHIVES ----
+  # ARCHIVE : exporter en .xlsx / cause problèmes de type de données et impossible d'ajouter directement dans QGIS
+  #   writexl::write_xlsx(
+  #     env.data.merged[[n]],
+  #     path = paste0(
+  #       "/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/",
+  #       n,
+  #       ".xlsx"))
+  # exporter en .csv
+  # ARCHIVE : exporter en .csv / cause problèmes de type de données et impossible d'ajouter directement dans QGIS
+  # readr::write_delim(
+  #     env.data.merged[[n]],
+  #     file = paste0(
+  #       "/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/",
+  #       n,
+  #       ".csv"),
+  #     encoding = "UTF-8-BOM",
+  #     delim = ";") # encodage FRANÇAIS pour les commentaires
+  # ARCHIVE : ne fonctionne pas car incapable d'appliquer le format UTF-8-BOM
+  # write.table(
+  #   x = env.data.merged[[n]],
+  #   file = paste0(
+  #     "/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/",
+  #     n,
+  #     ".csv"
+  #   ),
+  #   sep = ";",          # Force le point-virgule entre les colonnes (comme le csv2)
+  #   dec = ",",          # Conserve la virgule pour les décimales
+  #   row.names = FALSE,  # Évite d'ajouter des numéros de lignes parasites
+  #   na = "",            # Remplace les NA par du vide propre
+  #   fileEncoding = "UTF-8" # Assure la compatibilité des accents sur votre Mac
+  # )
+  # ----
+  readr::write_excel_csv2(
+    x = env.data.merged[[n]],
     file = paste0(
       "/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/",
       n,
-      ".csv"),
-      delim = ";")
+      ".csv"
+    ),
+    na = "")
 }
 ### COMMENT/UNCOMMENT TO HERE (previous line)
 
@@ -150,13 +179,21 @@ readr::write_delim(
 ## microtopo ----
 # caduque
 
-## canopy.peat.fauna, visualisation ----
-# canopy.peat.fauna_visualisation <- readxl::read_xlsx("data/extracted_raw/canopy.peat.fauna.xlsx")
-# colnames(readxl::read_xlsx("data/extracted_raw/canopy.peat.fauna.xlsx"))
-# str(canopy.peat.fauna_visualisation)
-# vegetation_trees.shr_visualisation <- readxl::read_xlsx("data/extracted_raw/vegetation_trees.shr.xlsx")
-# colnames(readxl::read_xlsx("data/extracted_raw/vegetation_trees.shr.xlsx"))
-# str(vegetation_trees.shr_visualisation)
-# vegetation_lower.str_visualisation <- readxl::read_xlsx("data/extracted_raw/vegetation_lower.str.xlsx")
-# colnames(readxl::read_xlsx("data/extracted_raw/vegetation_lower.str.xlsx"))
-# str(vegetation_lower.str_visualisation)
+## canopy.peat.fauna, visualisation pour définir comment l'ouvrir ----
+canopy.peat.fauna <- read.csv("data/extracted_raw/canopy.peat.fauna.csv", 
+                                            sep = ";", quote = "\"'",
+                                            dec = ",", fileEncoding = "UTF-8-BOM")
+
+# canopy.peat.fauna_visualisation <- readr::read_csv2("data/extracted_raw/canopy.peat.fauna.csv")
+colnames(canopy.peat.fauna)
+str(canopy.peat.fauna)
+
+## vegetation_trees.shr, visualisation ----
+vegetation_trees.shr_visualisation <- readr::read_csv2("data/extracted_raw/vegetation_trees.shr.csv")
+colnames(vegetation_trees.shr_visualisation)
+str(vegetation_trees.shr_visualisation)
+
+## vegetation_lower.str, visualisation ----
+vegetation_lower.str_visualisation <- readr::read_csv2("data/extracted_raw/vegetation_lower.str.csv")
+colnames(readxl::read_xlsx("data/extracted_raw/vegetation_lower.str.xlsx"))
+str(vegetation_lower.str_visualisation)
