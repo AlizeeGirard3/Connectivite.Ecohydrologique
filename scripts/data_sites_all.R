@@ -69,10 +69,7 @@ env.data.sitewise <- list()
 for (i in 1:(length(raw.env.data))) {
   print(i)
   # i<-1
-  # nom des onglets du classeur .csv et sélection des pertinents
-  # sheets.pre <- readxl::excel_sheets(raw.env.data[i])
-  # sheets <- subset(sheets.pre,!grepl(pattern = "À FAIRE|sp_code|validation|READ ME|cad.|DATA-site visit", sheets.pre)) # keeps any other sheet
-  
+
   raw.env.data.i <- read_excel_sheets_NO.BUGS(raw.env.data[i]) # script "fonction_phd_vX" (AG, 2025+)
   # LONG à cause de la conversion de TOUTE les cellules en texte
   ## caduque tests : trouver problème 29 juill QGIS (microtopo)
@@ -87,7 +84,7 @@ for (i in 1:(length(raw.env.data))) {
   }
   env.data.sitewise[[i]] <- env.data.sitewise[[i]] <- raw.env.data.i # liste (de site) contenant une liste (d'onglets pertinents)
 }
-# warning OK (rencontre des "NA" et "NO" et les transforme en vrai NA)
+print("Avertissement OK : rencontre des 'NA' et 'NO' et les transforme en vrai NA")
 
 ## Extraire tous les noms de colonnes, pour examiner les problèmes (warnings). Merci à Google IA pour l'aide dans PURRR (24/07/2026).
 # lapply(env.data.sitewise, class) # j'ai quel type d'objet ?
@@ -136,27 +133,43 @@ for (n in names(env.data.sitewise[[1]])) { # n c'est chaque feuille dans env.dat
   env.data.n <- filter.raw.file(env.data.n.pre) # issu du script "fonctions_phd_v3.2.R" (AG, 2025+)
   
   ### nettoyage ----
-  #### données spatiales en WKT (sf object) ----
-  if (T %in% grepl(".*long.*", colnames(env.data.n))) {
-    col.index <- c(grep(".*long.garmin*", colnames(env.data.n)), grep(".*lat.garmin*", colnames(env.data.n)))
-    coord.names <- colnames(env.data.n)[col.index[1:2]]
-    
-    env.data.n.sf <- env.data.n %>%
-      st_as_sf(coords = coord.names, na.fail = F) %>% 
-      st_set_crs("EPSG:4326") 
-    # √ EPSG:4326 avec le GPS Garmin / possibles erreurs, arranger si deviennent pertinentes pour les analyses -> certaines ont été extraites de QGIS avec la projection précise associée à la province/MTM
-  }
-  
-  #### classes de colonnes ----
-
-  #### classes de colonnes ----
-  # stratégie : coder dans "fonction_phd_vX" (AG, 2025+)
+  #### ... ----
 
   ### liste finale ----
   env.data.merged[[n]] <- env.data.n # liste (de feuillets) contenant les données de chaque site concatennés ensemble
-  env.data.merged.sf[[n]] <- env.data.n.sf
   
-  ### ARCHIVES ----
+  ## enregistrements ----
+  ### .RDS ----
+  # stratégie : les .csv peuvent-être visualisés MAIS PAS MODIFIÉS, 
+  #             TOUTES modifications à la source seulement, puis rouler 
+  #             et effectuer les analyses sur les .rds
+  
+  ### SI NÉCESSAIRE (long) .GPKG (sf-objects) ----
+  #### création ----
+  if (T %in% grepl(".*long.*", colnames(env.data.n))) {
+    col.index <- c(grep(".*long.garmin*", colnames(env.data.n)), grep(".*lat.garmin*", colnames(env.data.n)))
+    coord.names <- colnames(env.data.n)[col.index[1:2]]
+
+    env.data.n.sf <- env.data.n %>%
+      st_as_sf(coords = coord.names, na.fail = F) %>%
+      st_set_crs("EPSG:4326")
+    # √ EPSG:4326 avec le GPS Garmin / possibles erreurs, arranger si deviennent pertinentes pour les analyses -> certaines ont été extraites de QGIS avec la projection précise associée à la province/MTM
+  }
+  #### mise en liste ----
+  env.data.merged.sf[[n]] <- env.data.n.sf
+  #### .GPKG dans ~/desktop/QGIS/... ----
+  if (T %in% grepl(".*long.*", colnames(env.data.n))) {
+    st_write(env.data.merged.sf[[n]],
+             paste0("/Users/Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectivite_PhD_Mergin_20260824/_Connectitite_PhD_Mergin_20260824/sf_", n, ".gpkg"))
+  }
+  
+  ### .CSV "extracted_raw" ----
+  path <- paste0("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/", n,".csv")
+  readr::write_excel_csv2(x = env.data.merged[[n]],file = path, na = "")
+  #### LECTURE SEULE ----
+  Sys.chmod(path, mode = "0444", use_umask = FALSE)
+  
+  #### ARCHIVES ----
   # ARCHIVE : exporter en .xlsx / cause problèmes de type de données et impossible d'ajouter directement dans QGIS
   #   writexl::write_xlsx(
   #     env.data.merged[[n]],
@@ -188,26 +201,8 @@ for (n in names(env.data.sitewise[[1]])) { # n c'est chaque feuille dans env.dat
   #   na = "",            # Remplace les NA par du vide propre
   #   fileEncoding = "UTF-8" # Assure la compatibilité des accents sur votre Mac
   # )
-  ## enregistrements ----
-  ### création du fichier excel "extracted_raw" ----
-  readr::write_excel_csv2(
-    x = env.data.merged[[n]],
-    file = paste0(
-      "/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/",
-      n,
-      ".csv"
-    ),
-    na = "")
-  
-  if (T %in% grepl(".*long.*", colnames(env.data.n))) {
-    ### création des objets sf ----
-    st_write(env.data.merged.sf[[n]],
-             paste0("/Users/Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectivite_PhD_Mergin_20260824/_Connectitite_PhD_Mergin_20260824/", n, "_sf.gpkg"))
-  }
-  if(n == "microtopo") {
-    print("Avertissement OK c'est qu'il y a des lignes vides. Juste m'assurer d'avoir copié la coordonnée dans chaque ligne d'élévation-distance.")
-  }
 }
+print("Avertissement (microtopo) OK : il y a des lignes vides. Juste m'assurer d'avoir copié la coordonnée dans chaque ligne d'élévation-distance.")
 ### COMMENT/UNCOMMENT TO HERE (previous line)
 
 # ============================================================================= /
