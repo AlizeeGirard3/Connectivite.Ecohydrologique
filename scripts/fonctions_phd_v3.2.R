@@ -82,7 +82,7 @@ read_excel_sheets_NO.BUGS <- function(filename, tibble = FALSE) {  # for tidyver
   sheets.pre <- readxl::excel_sheets(filename)
   sheets <- subset(sheets.pre,!grepl(pattern = "À FAIRE|sp_code|validation|READ ME|cad.|DATA-site visit", sheets.pre)) # keeps any other sheet
   
-  X <- sheets[2]
+  # X <- sheets[2]
   x <- lapply(sheets, function(X) { # merci à Google IA pour l'aide à la recherche intelligente et à la définition de classe PROPRE
     
     # noms des colonnes de l'onglet (n_max = 0 signifie « ouvre l'onglet, lis la toute première ligne (celle qui contient les noms des colonnes), et arrête-toi tout de suite sans charger aucune donnée. »)
@@ -294,8 +294,9 @@ uid.to.columns <- function(file.to.restructure = NULL, type = NULL, path = NULL)
 # stratégie :
 # transformer les données géographiques
 ################################################################################  EN CHANTIER ################################################################################ 
+# 
 #   https://bedeffinianrowedavies.com/intermediatertutorials/startergis
-# #   # Lat, Long :
+#   # Lat, Long :
 #   library(sf)
 #   Points_df <- data.frame("long" = canopy.peat.fauna_visualisation$long.garmin.dd, "lat" = canopy.peat.fauna_visualisation$lat.garmin.dd)
 #   # |>
@@ -303,7 +304,7 @@ uid.to.columns <- function(file.to.restructure = NULL, type = NULL, path = NULL)
 #   Points_sf <- Points_df %>%
 #     st_as_sf(coords = c("long","lat") )  %>% # nettoyer les FUCKING notations scientifiques
 #     st_set_crs("EPSG:4326") # √ EPSG:4326 avec le GPS Garmin / possibles erreurs, arranger si deviennent pertinentes pour les analyses -> certaines ont été extraites de QGIS avec la projection précise associée à la province/MTM
-# #   
+# #
 ################################################################################  FIN CHANTIER ################################################################################ 
     
 
