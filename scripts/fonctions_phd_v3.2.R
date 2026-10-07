@@ -89,6 +89,8 @@ read_excel_sheets_NO.BUGS <- function(filename, tibble = FALSE) {  # for tidyver
     colonnes_onglet <- names(readxl::read_excel(filename, sheet = X, n_max = 0))
     # par défaut: "text" pour CHAQUE colonne
     types_colonnes <- rep("text", length(colonnes_onglet)) # convertit TOUT en texte par défaut / LONG
+    # * les dates sont transformées en dates julienne
+    
     names(types_colonnes) <- colonnes_onglet
     
     # nettoyage
@@ -107,7 +109,7 @@ read_excel_sheets_NO.BUGS <- function(filename, tibble = FALSE) {  # for tidyver
   # lapply = applique la fonction suivante décrite à tous les éléments contenus dans l'objet "sheets" et crée une liste avec le résultat
   lapply(x, as.data.frame) # fais-en un dataframe
   names(x) <- sheets
-  
+
   return(x)
 }
 
@@ -139,7 +141,8 @@ filter.raw.file <- function(object.to.filter = NULL, path.filtering.object = NUL
   if(c(is.null(path.filtering.object) & !is.null(object.to.filter) & is.null(type))) { # fournir juste un objet à filtrer, sans cal data path
     object.to.filter.filtrd <- object.to.filter %>% 
       dplyr::filter(!grepl("rejected", object.to.filter$measure.status), 
-                    !if_all(everything(), is.na))
+                    !if_all(everything(), is.na)) %>% 
+      select(!contains("_cad")) # insensible à la case
   } 
   if(c(!is.null(path.filtering.object) & !is.null(object.to.filter))) { # fournir l'objet à filtrer par les informations fournies dans le cal data path à filtrer
     filtering.object <- read.csv(path.filtering.object, , sep = ";", dec = ",")
@@ -289,25 +292,36 @@ uid.to.columns <- function(file.to.restructure = NULL, type = NULL, path = NULL)
 }
 # cols.df <- uid.to.columns(path = "~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/raw/level_logger_calibration_all.csv")
 
-
-# lat.long (créé 2026-10-05, modifié _______)
-# stratégie :
-# transformer les données géographiques
-################################################################################  EN CHANTIER ################################################################################ 
-# 
-#   https://bedeffinianrowedavies.com/intermediatertutorials/startergis
-#   # Lat, Long :
-#   library(sf)
-#   Points_df <- data.frame("long" = canopy.peat.fauna_visualisation$long.garmin.dd, "lat" = canopy.peat.fauna_visualisation$lat.garmin.dd)
-#   # |>
-#   #   select(c(Points_df$long, Points_df$lat), str_extract_all("[0-9]"))
-#   Points_sf <- Points_df %>%
-#     st_as_sf(coords = c("long","lat") )  %>% # nettoyer les FUCKING notations scientifiques
-#     st_set_crs("EPSG:4326") # √ EPSG:4326 avec le GPS Garmin / possibles erreurs, arranger si deviennent pertinentes pour les analyses -> certaines ont été extraites de QGIS avec la projection précise associée à la province/MTM
-# #
-################################################################################  FIN CHANTIER ################################################################################ 
+# class.selection
+target.file <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/canopy.peat.fauna.RDS")
+mapped_df <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/mapped_df.RDS")
+mapped_df_class <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/mapped_df_class.RDS")
+list(mapped_df)
+class.selection <- function(target.file) {
+  
+  sapply(target.file, class)
+  
+  list(
+    mapped_df$column_name
     
-
+  )
+  class(c)
+  # stratégie : une liste des classes voulues, un join et une attribution de la classe en fonction
+  
+  
+  names(c)
+  c
+  
+  
+  
+  
+  iris <- iris %>%
+    mutate(Sepal.Length = as.character(Sepal.Length))
+  
+  target.file
+  str(target.file)
+  return()
+}
 # ============================================================================= /
 #  MeteoStat data (download and overwrite) ----
 # ============================================================================= /

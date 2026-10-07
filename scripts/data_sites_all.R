@@ -86,13 +86,22 @@ for (i in 1:(length(raw.env.data))) {
 }
 print("Avertissement OK : rencontre des 'NA' et 'NO' et les transforme en vrai NA")
 
-## Extraire tous les noms de colonnes, pour examiner les problèmes (warnings). Merci à Google IA pour l'aide dans PURRR (24/07/2026).
-# lapply(env.data.sitewise, class) # j'ai quel type d'objet ?
-# liste_aplatie <- flatten(env.data.sitewise) # applatir (éliminer un niveau liste de liste -> liste longue)
-# mapped_df <- map(liste_aplatie, colnames) |> # extraire tous les colnames
-#   enframe(name = "table_name", value = "column_name") |> # inscrire en colonne 1 le nom de la liste
-#   unchop(column_name) # la colonne "column_name' précédante contient plein d'info illisible (un paquet de column names trouvés), on doit la déployer (unchop)
-# mapped_df # tous les noms de colonnes, pour examiner les problèmes (warnings)
+## Extraire tous les noms de colonnes
+# utilité : pour examiner les problèmes (warnings), pour définir les classes
+# Merci à Google IA pour l'aide dans PURRR (24/07/2026).
+lapply(env.data.sitewise, class) # j'ai quel type d'objet ?
+liste_aplatie <- flatten(env.data.sitewise) # applatir (éliminer un niveau liste de liste -> liste longue)
+mapped_df <- map(liste_aplatie, colnames) |> # extraire tous les colnames
+  enframe(name = "table_name", value = "column_name") |> # inscrire en colonne 1 le nom de la liste
+  unchop(column_name) |> # la colonne "column_name' précédante contient plein d'info illisible (un paquet de column names trouvés), on doit la déployer (unchop)
+  distinct()
+# enregistrer (utilitaire)
+saveRDS(mapped_df, file = "/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/mapped_df.RDS")
+# 2027-10-07 : enregistrer (ajouter les classes désirées, objet utilisé dans la fonction "class.selection" du script ""fonctions_phd_vX.R" (AG, 2025+)")
+if (file.exists("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/mapped_df_class.xlsx")) {
+  stop("NE PAS ÉCRASER") # donner accès à R pour modification
+}
+# readr::write_excel_csv2(x = mapped_df, file = "/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/mapped_df_class.csv", na = "")
 
 ## décision d'archivage de version existante ----
 # explication : si les fichiers N'existent PAS déjà, écrire les fichiers
@@ -111,7 +120,7 @@ env.data.merged <- list()
 env.data.merged.sf <- list() # pour objets-sf seulement (incompatibles avec .csv ou .xlsx, enregistrer en .RDS ou .gpkg)
 for (n in names(env.data.sitewise[[1]])) { # n c'est chaque feuille dans env.data.sitewise // [[1]] pas grave lequel des site, car ils comportent les mm données
   # 1 à 6 ce sont mes 6 sites
-  # n <- names(env.data.sitewise[[1]])[1]
+  # n <- names(env.data.sitewise[[1]])[2]
   print(n)
   if(n == "microtopo") {
     print("Attention, très LONG car microtopo est un tableur avec beaucoup de lignes")
@@ -130,11 +139,15 @@ for (n in names(env.data.sitewise[[1]])) { # n c'est chaque feuille dans env.dat
     dplyr::bind_rows()
   
   # créer l'objet
-  env.data.n <- filter.raw.file(env.data.n.pre) # issu du script "fonctions_phd_v3.2.R" (AG, 2025+)
+  env.data.n <- filter.raw.file(env.data.n.pre) # issu du script "fonctions_phd_vX.R" (AG, 2025+)
   
   ### nettoyage ----
-  #### ... ----
-
+  #### date ----
+  # à faire au besoin, données pas tant pertinente pour l'instant (plus une métadonnée)
+  
+  #### classes ----
+  
+  
   ### liste finale ----
   env.data.merged[[n]] <- env.data.n # liste (de feuillets) contenant les données de chaque site concatennés ensemble
   
@@ -143,6 +156,8 @@ for (n in names(env.data.sitewise[[1]])) { # n c'est chaque feuille dans env.dat
   # stratégie : les .csv peuvent-être visualisés MAIS PAS MODIFIÉS, 
   #             TOUTES modifications à la source seulement, puis rouler 
   #             et effectuer les analyses sur les .rds
+  # seule exception, les fichiers de donnée de laboratoire (à refusionner avec la plus grand précaution) : deviennent fichiers PRIMAIRES
+  saveRDS(env.data.n, file = paste0("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/", n,".RDS"))
   
   ### SI NÉCESSAIRE (long) .GPKG (sf-objects) ----
   ### COMMENT/UNCOMMENT HERE (next line)
@@ -167,7 +182,8 @@ for (n in names(env.data.sitewise[[1]])) { # n c'est chaque feuille dans env.dat
   
   ### .CSV "extracted_raw" ----
   path <- paste0("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/", n,".csv")
-  readr::write_excel_csv2(x = env.data.merged[[n]],file = path, na = "")
+  if (file.exists(path)) Sys.chmod(path, mode = "0755") # donner accès à R pour modification
+  readr::write_excel_csv2(x = env.data.merged[[n]], file = path, na = "")
   #### LECTURE SEULE ----
   Sys.chmod(path, mode = "0444", use_umask = FALSE)
   
@@ -205,6 +221,8 @@ for (n in names(env.data.sitewise[[1]])) { # n c'est chaque feuille dans env.dat
   # )
 }
 print("Avertissement (microtopo) OK : il y a des lignes vides. Juste m'assurer d'avoir copié la coordonnée dans chaque ligne d'élévation-distance.")
+saveRDS(env.data.merged, file = "/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/env.data.merged.RDS")
+
 ### COMMENT/UNCOMMENT TO HERE (previous line)
 
 # ============================================================================= /
@@ -215,9 +233,11 @@ print("Avertissement (microtopo) OK : il y a des lignes vides. Juste m'assurer d
 
 ## canopy.peat.fauna ----
 ### visualisation pour définir comment l'ouvrir ----
-canopy.peat.fauna <- read.csv("data/extracted_raw/canopy.peat.fauna.csv", 
-                                            sep = ";", quote = "\"'",
-                                            dec = ",", fileEncoding = "UTF-8-BOM") # bon formatage, puis, enregistrement en RDS
+# ne pas ouvrir en .csv ça chie
+# canopy.peat.fauna <- read.csv("data/extracted_raw/canopy.peat.fauna.csv", 
+#                                             sep = ";", quote = "\"'",
+#                                             dec = ",", fileEncoding = "UTF-8-BOM") # bon formatage, puis, enregistrement en RDS
+canopy.peat.fauna <- read
 colnames(canopy.peat.fauna)
 str(canopy.peat.fauna)
 
@@ -232,9 +252,22 @@ peat <- canopy.peat.fauna |>
 peat.BD <- peat |> 
   select(contains(c("UID", "_BD_")), "") |> 
   select(!contains("_LOI_"))
+
+peat.BD_20261007 <- read_excel("~/Desktop/20261007_peat.BD.xlsx")
+canopy.peat.fauna_peat.BD_20261007 <- left_join(canopy.peat.fauna, peat.BD_20261007)
+
+peat <- canopy.peat.fauna_peat.BD_20261007 |> 
+  select(contains(c("perm.plot.uid.NO.quadrat.aaaa", "trmnt.uid.rel.dist.aaaa", "peat.sample")))
+
 # stratégie : modifier ce fichier ET FUSIONNER ENSUITE
-openxlsx::write.xlsx(peat.BD, "~/desktop/peat.BD.xlsx", overwrite = TRUE)
+if(TRUE %in% grepl(".*_peat\\.xlsx", list.files("/Users/Aliz/Desktop/")))  {
+  stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.") }
+write.table(peat, "~/desktop/aaaammdd_peat.xlsx", dec = ',')
 # écrasé fichier, perdu les pesées du 6 oct 2026; UID : 122663 (?, ou SEUL ÉCRIT EN VERT ***) j'ai ajouté un sac de mémoire il pesait 9,4g ** ajouter
+
+
+
+
 
 ## vegetation_trees.shr, visualisation ----
 vegetation_trees.shr_visualisation <- readr::read_csv2("data/extracted_raw/vegetation_trees.shr.csv")
