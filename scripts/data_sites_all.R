@@ -145,23 +145,25 @@ for (n in names(env.data.sitewise[[1]])) { # n c'est chaque feuille dans env.dat
   #             et effectuer les analyses sur les .rds
   
   ### SI NÉCESSAIRE (long) .GPKG (sf-objects) ----
-  #### création ----
-  if (T %in% grepl(".*long.*", colnames(env.data.n))) {
-    col.index <- c(grep(".*long.garmin*", colnames(env.data.n)), grep(".*lat.garmin*", colnames(env.data.n)))
-    coord.names <- colnames(env.data.n)[col.index[1:2]]
-
-    env.data.n.sf <- env.data.n %>%
-      st_as_sf(coords = coord.names, na.fail = F) %>%
-      st_set_crs("EPSG:4326")
-    # √ EPSG:4326 avec le GPS Garmin / possibles erreurs, arranger si deviennent pertinentes pour les analyses -> certaines ont été extraites de QGIS avec la projection précise associée à la province/MTM
-  }
-  #### mise en liste ----
-  env.data.merged.sf[[n]] <- env.data.n.sf
-  #### .GPKG dans ~/desktop/QGIS/... ----
-  if (T %in% grepl(".*long.*", colnames(env.data.n))) {
-    st_write(env.data.merged.sf[[n]],
-             paste0("/Users/Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectivite_PhD_Mergin_20260824/_Connectitite_PhD_Mergin_20260824/sf_", n, ".gpkg"))
-  }
+  ### COMMENT/UNCOMMENT HERE (next line)
+  # #### création
+  # if (T %in% grepl(".*long.*", colnames(env.data.n))) {
+  #   col.index <- c(grep(".*long.garmin*", colnames(env.data.n)), grep(".*lat.garmin*", colnames(env.data.n)))
+  #   coord.names <- colnames(env.data.n)[col.index[1:2]]
+  # 
+  #   env.data.n.sf <- env.data.n %>%
+  #     st_as_sf(coords = coord.names, na.fail = F) %>%
+  #     st_set_crs("EPSG:4326")
+  #   # √ EPSG:4326 avec le GPS Garmin / possibles erreurs, arranger si deviennent pertinentes pour les analyses -> certaines ont été extraites de QGIS avec la projection précise associée à la province/MTM
+  # }
+  # #### mise en liste
+  # env.data.merged.sf[[n]] <- env.data.n.sf
+  # #### enregistrement .GPKG dans ~/desktop/QGIS/...
+  # if (T %in% grepl(".*long.*", colnames(env.data.n))) {
+  #   st_write(env.data.merged.sf[[n]],
+  #            paste0("/Users/Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectivite_PhD_Mergin_20260824/_Connectitite_PhD_Mergin_20260824/sf_", n, ".gpkg"))
+  # }
+  #### COMMENT/UNCOMMENT TO HERE (previous line)
   
   ### .CSV "extracted_raw" ----
   path <- paste0("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/", n,".csv")
