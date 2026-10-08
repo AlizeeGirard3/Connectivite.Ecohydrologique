@@ -35,6 +35,7 @@ message("Importation de paquet et chargement de fonctions pour le projet")
 #  Initialisation ----
 # ============================================================================= /
 if (!require("tidyverse")) install.packages("tidyverse") # méta package // dplyr, tidyr, purrr, stringr, lubridate, ect
+if (!require("janitor")) install.packages("janitor") # excel_numeric_to_date()
 if (!require("data.table")) install.packages("data.table") # ℹ Use the conflicted package to force all conflicts to become errors    ---->>>>  devtools::install_github("r-lib/conflicted")
 if (!require("sf")) install.packages("sf"); if (!require("lutz")) install.packages("lutz") # GIS in R
 if (!require("readxl")) install.packages("readxl") # lire les excel
@@ -293,34 +294,33 @@ uid.to.columns <- function(file.to.restructure = NULL, type = NULL, path = NULL)
 # cols.df <- uid.to.columns(path = "~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/raw/level_logger_calibration_all.csv")
 
 # class.selection
-target.file <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/canopy.peat.fauna.RDS")
-mapped_df <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/mapped_df.RDS")
-mapped_df_class <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/mapped_df_class.RDS")
-list(mapped_df)
+# target.file <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/canopy.peat.fauna.RDS")
+# mapped_df <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/mapped_df.RDS")
 class.selection <- function(target.file) {
+  # création du vecteur nommé, structure exacte recherchée pour attribuer des classes
+  mapped_df_class <- read.csv("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/20261007_mapped_df_class.csv", sep = ";") |> 
+    select(!table_name) |> 
+    distinct()
+  mapped_df_class_large <- pivot_wider(mapped_df_class, names_from = "column_name", values_from = "class")
+  classes_named.vector <- mapped_df_class_large %>%
+    slice(1) %>% # index rows by their (integer) locations; allows to select, remove, and duplicate rows
+    unlist() # aplatissement (df de n=1 col) : pour ne pas perdre d'information, R copie les noms de col du df et les colle comme étiquettes sur les éléments du vecteur
   
-  sapply(target.file, class)
-  
-  list(
-    mapped_df$column_name
-    
-  )
-  class(c)
-  # stratégie : une liste des classes voulues, un join et une attribution de la classe en fonction
-  
-  
-  names(c)
-  c
-  
-  
-  
-  
-  iris <- iris %>%
-    mutate(Sepal.Length = as.character(Sepal.Length))
-  
-  target.file
-  str(target.file)
-  return()
+  # attribution de classe selon le vecteur nommé
+  target.file_class <- target.file %>%
+    mutate(across(any_of(names(classes_named.vector)), ~ {
+      classe_cible <- classes_named.vector[[cur_column()]] # cur_column() utilisé dans across() seulement**
+      if (classe_cible == "numeric") {
+        as.numeric(.)
+      } else if (classe_cible == "character") {
+        as.character(.)
+      } else if (classe_cible == "Date") {
+        janitor::excel_numeric_to_date(as.numeric(.)) #, error_with_large_num = FALSE)
+      } else {
+        . # Si c'est une autre classe (ex: factor), on la laisse intacte
+      }
+    }))
+  return(target.file_class)
 }
 # ============================================================================= /
 #  MeteoStat data (download and overwrite) ----
