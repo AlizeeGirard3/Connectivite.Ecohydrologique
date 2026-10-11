@@ -141,9 +141,11 @@ order.list <- function(path, pattern) {
 filter.raw.file <- function(object.to.filter = NULL, path.filtering.object = NULL, type = NULL) {
   if(c(is.null(path.filtering.object) & !is.null(object.to.filter) & is.null(type))) { # fournir juste un objet à filtrer, sans cal data path
     object.to.filter.filtrd <- object.to.filter %>% 
-      dplyr::filter(!grepl("rejected", object.to.filter$measure.status), 
-                    !if_all(everything(), is.na)) %>% 
-      select(!contains("_cad")) # insensible à la case
+      dplyr::filter(!grepl("rejected", measure.status), 
+                    !if_all(everything(), is.na),
+                    ) %>% 
+      select(!contains("_cad"), # insensible à la case
+             -any_of(c("picture.no",  "date.aaaa.mm.dd", "observers", "comment", "measure.status"))) # le cas échéant, enlever les colonnes inutiles aux analyses
   } 
   if(c(!is.null(path.filtering.object) & !is.null(object.to.filter))) { # fournir l'objet à filtrer par les informations fournies dans le cal data path à filtrer
     filtering.object <- read.csv(path.filtering.object, , sep = ";", dec = ",")
@@ -322,6 +324,25 @@ class.selection <- function(target.file) {
     }))
   return(target.file_class)
 }
+
+# order.cols
+# target.file.2 <- env.data.n.class
+order.cols <- function(target.file.2) {
+  if (all(c("perm.plot.uid.NO.quadrat.aaaa","trmnt.uid.rel.dist.quadrat.aaaa") %in% colnames(target.file.2)) == TRUE) {
+    target.file.2.ordrd <- target.file.2 |> 
+      # retrait des colonnes qui n'ont pas de [...].quadrat.uid
+      dplyr::filter(!is.na(perm.plot.uid.NO.quadrat.aaaa) & is.na(trmnt.uid.rel.dist.quadrat.aaaa) | # un ou l'autre
+                      !is.na(trmnt.uid.rel.dist.quadrat.aaaa) & is.na(perm.plot.uid.NO.quadrat.aaaa)) |> 
+      # unir les types de [...].quadrat.uid en une seule colonne
+      unite(col = quadrat.uid, trmnt.uid.rel.dist.quadrat.aaaa, perm.plot.uid.NO.quadrat.aaaa, na.rm = T)
+  } else {
+    # NE RIEN FAIRE POUR L'INSTANT
+    # CODER ICI
+    target.file.2.ordrd <- target.file.2
+  }
+  return(target.file.2.ordrd) 
+  }
+
 # ============================================================================= /
 #  MeteoStat data (download and overwrite) ----
 # ============================================================================= /

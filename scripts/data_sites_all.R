@@ -116,126 +116,121 @@ if(paste0(names(env.data.sitewise[[1]])[j],".csv") %in% list.files("/Users/Aliz/
 
 ## aggrégation des onglets du même nom en base de données tous sites ----
 ### COMMENT/UNCOMMENT HERE (next line)
-# env.data.merged <- list()
-# env.data.merged.sf <- list() # pour objets-sf seulement (incompatibles avec .csv ou .xlsx, enregistrer en .RDS ou .gpkg)
-# for (n in names(env.data.sitewise[[1]])) { # n c'est chaque feuille dans env.data.sitewise // [[1]] pas grave lequel des site, car ils comportent les mm données
-#   # 1 à 6 ce sont mes 6 sites
-#   # n <- names(env.data.sitewise[[1]])[2]
-#   print(n)
-#   if(n == "microtopo") {
-#     print("Attention, très LONG car microtopo est un tableur avec beaucoup de lignes")
-#   }
-#   
-#   env.data.n <- bind_rows(env.data.sitewise[[1]][[n]],
-#                           env.data.sitewise[[2]][[n]],
-#                           env.data.sitewise[[3]][[n]],
-#                           env.data.sitewise[[4]][[n]],
-#                           env.data.sitewise[[5]][[n]],
-#                           env.data.sitewise[[6]][[n]])
-#   # autant de ligne que DE SITE sinon les sites ultérieurs vont manquer dans les données
-#   # caduque # env.data.n <- bind_rows(cat(paste0("env.data.sitewise[[", n, "]][[n]]"), ")")) # AJUSTER CETTE FORMULE au besoin
-#   env.data.n.pre <- env.data.sitewise %>%
-#     purrr::map(n) %>%
-#     dplyr::bind_rows()
-#   
-#   # créer l'objet
-#   env.data.n.filterd <- filter.raw.file(env.data.n.pre) # issu du script "fonctions_phd_vX.R" (AG, 2025+)
-#   
-#   ### nettoyage ----
-#   #### date ----
-#   # à faire au besoin, données pas tant pertinente pour l'instant (plus une métadonnée)
-#   
-#   #### classes ----
-#   env.data.n.class <- class.selection(env.data.n.filterd)
-#   
-#   ### liste finale ----
-#   env.data.n <- env.data.n.class # nom final (stratégie : changer juste ici et pas en-dessous à plusieurs autres endroit)
-#   env.data.merged[[n]] <- env.data.n # liste (de feuillets) contenant les données de chaque site concatennés ensemble
-#   
-#   ## enregistrements ----
-#   ### .RDS ----
-#   # stratégie : les .csv peuvent-être visualisés MAIS PAS MODIFIÉS, 
-#   #             TOUTES modifications à la source seulement, puis rouler 
-#   #             et effectuer les analyses sur les .rds
-#   # seule exception, les fichiers de donnée de laboratoire (à refusionner avec la plus grand précaution) : deviennent fichiers PRIMAIRES
-#   saveRDS(env.data.n, file = paste0("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/", n,".RDS"))
-#   
-#   ### SI NÉCESSAIRE (long) .GPKG (sf-objects) ----
-#   ### COMMENT/UNCOMMENT HERE (next line)
-#   # #### création
-#   # if (T %in% grepl(".*long.*", colnames(env.data.n))) {
-#   #   col.index <- c(grep(".*long.garmin*", colnames(env.data.n)), grep(".*lat.garmin*", colnames(env.data.n)))
-#   #   coord.names <- colnames(env.data.n)[col.index[1:2]]
-#   # 
-#   #   env.data.n.sf <- env.data.n %>%
-#   #     st_as_sf(coords = coord.names, na.fail = F) %>%
-#   #     st_set_crs("EPSG:4326")
-#   #   # √ EPSG:4326 avec le GPS Garmin / possibles erreurs, arranger si deviennent pertinentes pour les analyses -> certaines ont été extraites de QGIS avec la projection précise associée à la province/MTM
-#   # }
-#   # #### mise en liste
-#   # env.data.merged.sf[[n]] <- env.data.n.sf
-#   # #### enregistrement .GPKG dans ~/desktop/QGIS/...
-#   # if (T %in% grepl(".*long.*", colnames(env.data.n))) {
-#   #   st_write(env.data.merged.sf[[n]],
-#   #            paste0("/Users/Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectivite_PhD_Mergin_20260824/_Connectitite_PhD_Mergin_20260824/sf_", n, ".gpkg"))
-#   # }
-#   #### COMMENT/UNCOMMENT TO HERE (previous line)
-#   
-#   ### .CSV "extracted_raw" ----
-#   path <- paste0("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/", n,".csv")
-#   if (file.exists(path)) Sys.chmod(path, mode = "0755") # donner accès à R pour modification
-#   readr::write_excel_csv2(x = env.data.merged[[n]], file = path, na = "")
-#   #### LECTURE SEULE ----
-#   Sys.chmod(path, mode = "0444", use_umask = FALSE)
-#   
-#   #### ARCHIVES ----
-#   # ARCHIVE : exporter en .xlsx / cause problèmes de type de données et impossible d'ajouter directement dans QGIS
-#   #   writexl::write_xlsx(
-#   #     env.data.merged[[n]],
-#   #     path = paste0(
-#   #       "/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/",
-#   #       n,
-#   #       ".xlsx"))
-#   # exporter en .csv
-#   # ARCHIVE : exporter en .csv / cause problèmes de type de données et impossible d'ajouter directement dans QGIS
-#   # readr::write_delim(
-#   #     env.data.merged[[n]],
-#   #     file = paste0(
-#   #       "/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/",
-#   #       n,
-#   #       ".csv"),
-#   #     encoding = "UTF-8-BOM",
-#   #     delim = ";") # encodage FRANÇAIS pour les commentaires
-#   # ARCHIVE : ne fonctionne pas car incapable d'appliquer le format UTF-8-BOM
-#   # write.table(
-#   #   x = env.data.merged[[n]],
-#   #   file = paste0(
-#   #     "/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/",
-#   #     n,
-#   #     ".csv"
-#   #   ),
-#   #   sep = ";",          # Force le point-virgule entre les colonnes (comme le csv2)
-#   #   dec = ",",          # Conserve la virgule pour les décimales
-#   #   row.names = FALSE,  # Évite d'ajouter des numéros de lignes parasites
-#   #   na = "",            # Remplace les NA par du vide propre
-#   #   fileEncoding = "UTF-8" # Assure la compatibilité des accents sur votre Mac
-#   # )
-# }
-# print("Avertissement (microtopo) OK : il y a des lignes vides. Juste m'assurer d'avoir copié la coordonnée dans chaque ligne d'élévation-distance.")
-# saveRDS(env.data.merged, file = "/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/env.data.merged.RDS") 
+env.data.merged <- list()
+env.data.merged.sf <- list() # pour objets-sf seulement (incompatibles avec .csv ou .xlsx, enregistrer en .RDS ou .gpkg)
+for (n in names(env.data.sitewise[[1]])) { # n c'est chaque feuille dans env.data.sitewise // [[1]] pas grave lequel des site, car ils comportent les mm données
+  # 1 à 6 ce sont mes 6 sites
+  # n <- names(env.data.sitewise[[1]])[2]
+  print(n)
+  if(n == "microtopo") {
+    print("Attention, très LONG car microtopo est un tableur avec beaucoup de lignes") }
+
+  env.data.n <- bind_rows(env.data.sitewise[[1]][[n]],
+                          env.data.sitewise[[2]][[n]],
+                          env.data.sitewise[[3]][[n]],
+                          env.data.sitewise[[4]][[n]],
+                          env.data.sitewise[[5]][[n]],
+                          env.data.sitewise[[6]][[n]])
+  # autant de ligne que DE SITE sinon les sites ultérieurs vont manquer dans les données
+  # caduque # env.data.n <- bind_rows(cat(paste0("env.data.sitewise[[", n, "]][[n]]"), ")")) # AJUSTER CETTE FORMULE au besoin
+  env.data.n.pre <- env.data.sitewise %>%
+    purrr::map(n) %>%
+    dplyr::bind_rows()
+
+  # créer l'objet
+  env.data.n.filterd <- filter.raw.file(env.data.n.pre) # issu du script "fonctions_phd_vX.R" (AG, 2025+)
+
+  ### nettoyage ----
+  #### classes ----
+  env.data.n.class <- class.selection(env.data.n.filterd)
+  
+  #### col.order ----
+  env.data.n.class.order <- order.cols(env.data.n.class)
+
+  ### liste finale ----
+  env.data.n <- env.data.n.class.order # nom final (stratégie : changer juste ici et pas en-dessous à plusieurs autres endroit)
+  env.data.merged[[n]] <- env.data.n # liste (de feuillets) contenant les données de chaque site concatennés ensemble
+
+  ## enregistrements ----
+  ### .RDS ----
+  # stratégie : les .csv peuvent-être visualisés MAIS PAS MODIFIÉS,
+  #             TOUTES modifications à la source seulement, puis rouler
+  #             et effectuer les analyses sur les .rds
+  # seule exception, les fichiers de donnée de laboratoire (à refusionner avec la plus grand précaution) : deviennent fichiers PRIMAIRES
+  saveRDS(env.data.n, file = paste0("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/", n,".RDS"))
+
+  ### SI NÉCESSAIRE (long) .GPKG (sf-objects) ----
+  ### COMMENT/UNCOMMENT HERE (next line)
+  # #### création
+  # if (T %in% grepl(".*long.*", colnames(env.data.n))) {
+  #   col.index <- c(grep(".*long.garmin*", colnames(env.data.n)), grep(".*lat.garmin*", colnames(env.data.n)))
+  #   coord.names <- colnames(env.data.n)[col.index[1:2]]
+  #
+  #   env.data.n.sf <- env.data.n %>%
+  #     st_as_sf(coords = coord.names, na.fail = F) %>%
+  #     st_set_crs("EPSG:4326")
+  #   # √ EPSG:4326 avec le GPS Garmin / possibles erreurs, arranger si deviennent pertinentes pour les analyses -> certaines ont été extraites de QGIS avec la projection précise associée à la province/MTM
+  # }
+  # #### mise en liste
+  # env.data.merged.sf[[n]] <- env.data.n.sf
+  # #### enregistrement .GPKG dans ~/desktop/QGIS/...
+  # if (T %in% grepl(".*long.*", colnames(env.data.n))) {
+  #   st_write(env.data.merged.sf[[n]],
+  #            paste0("/Users/Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectivite_PhD_Mergin_20260824/_Connectitite_PhD_Mergin_20260824/sf_", n, ".gpkg"))
+  # }
+  #### COMMENT/UNCOMMENT TO HERE (previous line)
+
+  ### SI NÉCESSAIRE (visualisation seulement) .CSV "extracted_raw" ----
+  # path <- paste0("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/", n,".csv")
+  # if (file.exists(path)) Sys.chmod(path, mode = "0755") # donner accès à R pour modification
+  # readr::write_excel_csv2(x = env.data.merged[[n]], file = path, na = "")
+  # #### LECTURE SEULE ----
+  # Sys.chmod(path, mode = "0444", use_umask = FALSE)
+
+  #### ARCHIVES ----
+  # ARCHIVE : exporter en .xlsx / cause problèmes de type de données et impossible d'ajouter directement dans QGIS
+  #   writexl::write_xlsx(
+  #     env.data.merged[[n]],
+  #     path = paste0(
+  #       "/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/",
+  #       n,
+  #       ".xlsx"))
+  # exporter en .csv
+  # ARCHIVE : exporter en .csv / cause problèmes de type de données et impossible d'ajouter directement dans QGIS
+  # readr::write_delim(
+  #     env.data.merged[[n]],
+  #     file = paste0(
+  #       "/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/",
+  #       n,
+  #       ".csv"),
+  #     encoding = "UTF-8-BOM",
+  #     delim = ";") # encodage FRANÇAIS pour les commentaires
+  # ARCHIVE : ne fonctionne pas car incapable d'appliquer le format UTF-8-BOM
+  # write.table(
+  #   x = env.data.merged[[n]],
+  #   file = paste0(
+  #     "/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/",
+  #     n,
+  #     ".csv"
+  #   ),
+  #   sep = ";",          # Force le point-virgule entre les colonnes (comme le csv2)
+  #   dec = ",",          # Conserve la virgule pour les décimales
+  #   row.names = FALSE,  # Évite d'ajouter des numéros de lignes parasites
+  #   na = "",            # Remplace les NA par du vide propre
+  #   fileEncoding = "UTF-8" # Assure la compatibilité des accents sur votre Mac
+  # )
+}
+print("Avertissement (microtopo) OK : il y a des lignes vides. Juste m'assurer d'avoir copié la coordonnée dans chaque ligne d'élévation-distance.")
+saveRDS(env.data.merged, file = "/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/env.data.merged.RDS")
 ### COMMENT/UNCOMMENT TO HERE (previous line)
 
 # ============================================================================= /
 # Nettoyage (type colonnes, wide-to-long, etc.) ----
 # ============================================================================= /
 # env.data.merged <- saveRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/env.data.merged.RDS")
-canopy.peat.fauna <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/canopy.peat.fauna.RDS")
-microtopo <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/microtopo.RDS")
-vegetation_trees.shr <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/vegetation_trees.shr.RDS")
-vegetation_lower.str <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/vegetation_lower.str.RDS")
 
 ## microtopo ----
-# caduque
+# microtopo <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/microtopo.RDS")
 
 ## canopy.peat.fauna ----
 ### visualisation pour définir comment l'ouvrir ----
@@ -243,7 +238,7 @@ vegetation_lower.str <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/con
 # canopy.peat.fauna <- read.csv("data/extracted_raw/canopy.peat.fauna.csv", 
 #                                             sep = ";", quote = "\"'",
 #                                             dec = ",", fileEncoding = "UTF-8-BOM") # bon formatage, puis, enregistrement en RDS
-canopy.peat.fauna <- read
+canopy.peat.fauna <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/canopy.peat.fauna.RDS")
 colnames(canopy.peat.fauna)
 str(canopy.peat.fauna)
 
@@ -255,12 +250,13 @@ str(canopy.peat.fauna)
 peat <- canopy.peat.fauna |> 
   select(contains(c("perm.plot.uid.NO.quadrat.aaaa", "trmnt.uid.rel.dist.aaaa", "peat.sample")))
 
-peat.BD <- peat |> 
-  select(contains(c("UID", "_BD_")), "") |> 
-  select(!contains("_LOI_"))
+#### join avec le peat.sample
+peat <- list.files(path = "~/Documents/Doctorat/_R_Stats_PhD/connectivite/data", pattern = "_data") |>
+  basename() |> # basename(conserve le "path" dans le nom, en arrière-plan)
+  str_remove("\\d+?(?=_)_")
 
-peat.BD_20261007 <- read_excel("~/Desktop/20261007_peat.BD.xlsx")
-canopy.peat.fauna_peat.BD_20261007 <- left_join(canopy.peat.fauna, peat.BD_20261007)
+# peat_20261007 <- read_excel("~/Desktop/20261007_peat.xlsx")
+# canopy.peat.fauna_peat.BD_20261007 <- left_join(canopy.peat.fauna, peat.BD_20261007)
 
 peat <- canopy.peat.fauna_peat.BD_20261007 |> 
   select(contains(c("perm.plot.uid.NO.quadrat.aaaa", "trmnt.uid.rel.dist.aaaa", "peat.sample")))
@@ -268,7 +264,8 @@ peat <- canopy.peat.fauna_peat.BD_20261007 |>
 # stratégie : modifier ce fichier ET FUSIONNER ENSUITE
 if(TRUE %in% grepl(".*_peat\\.xlsx", list.files("/Users/Aliz/Desktop/")))  {
   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.") }
-write.table(peat, "~/desktop/aaaammdd_peat.xlsx", dec = ',')
+readr::write_excel_csv2(x = peat, file = "~/desktop/aaaammdd_peat.csv", na = "")
+# write.table(peat, "~/desktop/aaaammdd_peat.csv", dec = ',', sep = " ", row.names = F)
 # écrasé fichier, perdu les pesées du 6 oct 2026; UID : 122663 (?, ou SEUL ÉCRIT EN VERT ***) j'ai ajouté un sac de mémoire il pesait 9,4g ** ajouter
 
 
@@ -276,12 +273,12 @@ write.table(peat, "~/desktop/aaaammdd_peat.xlsx", dec = ',')
 
 
 ## vegetation_trees.shr, visualisation ----
-vegetation_trees.shr_visualisation <- readr::read_csv2("data/extracted_raw/vegetation_trees.shr.csv")
+vegetation_trees.shr <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/vegetation_trees.shr.RDS")
 colnames(vegetation_trees.shr_visualisation)
 str(vegetation_trees.shr_visualisation)
 
 ## vegetation_lower.str, visualisation ----
-vegetation_lower.str_visualisation <- readr::read_csv2("data/extracted_raw/vegetation_lower.str.csv")
+vegetation_lower.str <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/vegetation_lower.str.RDS")
 colnames(readxl::read_xlsx("data/extracted_raw/vegetation_lower.str.xlsx"))
 str(vegetation_lower.str_visualisation)
 
