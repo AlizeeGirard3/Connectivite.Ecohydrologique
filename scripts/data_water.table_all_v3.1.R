@@ -74,7 +74,7 @@ for (i in 1:length(raw.ll.files)) {
   raw.ll.files.i.init <- data.metadata(raw.ll.files[i]) # objet temporaire pour ajouter des lignes
   raw.ll.files.i <- metadata(raw.ll.files.i.init)
   
-  files.uid.df <- files.uid(raw.ll.files.i.init); rm(raw.ll.files.i.init)
+  files.uid.df <- files.uid(raw.ll.files.i.init); rm(raw.ll.files.i.init) # EXPLICATIONS ?
   
   #### ménage de la date et heure
   tz <- zone.tz("~Aliz/Desktop/QGIS/_Connectivite_PhD/Mergin/_Connectitite_PhD_Mergin_26nov24/Ecotone.restauration.zone.pt.shp")

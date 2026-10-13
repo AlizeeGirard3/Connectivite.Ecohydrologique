@@ -1,5 +1,5 @@
 #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=- #
-#                             Peat sample, cleaning script
+#                             Peat sample, analysis script
 #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=- #
 
 # Description -------------------------------------------------------------
@@ -7,11 +7,11 @@
 # Fait par :      Alizée Girard
 # Affiliation :   ULaval
 # Date création initiale : 2026-10-05
-# Date mise à jour : 
+# Date mise à jour : 2026-10-13
 # Pourquoi : 
-# créer/mettre à jour une liste des UID des échantillons de tourbe (peat.sample_UID)
+# caduque (voir script data_peat.sample) _créer/mettre à jour une liste des UID des échantillons de tourbe (peat.sample_UID) / ** Données tirées de ** : data_sites_all.R
 # analyser les échantillons de tourbe
-# ** Données tirées de ** : data_sites_all.R
+# ** Données tirées de peat.csv (modifications dans /Users/Aliz/Library/CloudStorage/OneDrive-UniversitéLaval/_FIELD_LAB.WORK/_Feuilles_données_pas_local/aaaammdd_peat.csv)
 
 # Structure :
 # —— connectivite
@@ -42,9 +42,9 @@ setwd("~/Documents/Doctorat/_R_Stats_PhD/connectivite")
 source("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/scripts/fonctions_phd_v3.2.R")
 
 # Import données (pour tout modification à la source: data_sites_all.R)
-read.csv("data/extracted_raw/canopy.peat.fauna.csv", dec = ",", sep = ";")
+# read.csv("data/extracted_raw/canopy.peat.fauna.csv", dec = ",", sep = ";")
 
-###  ----
+### REPRENDRE ----
 
 chiffres_extraits <- str_extract_all(canopy.peat.fauna_visualisation$peat.sample_UID_R.randNum, "[0-9]+") |> 
   flatten_chr() # aplatir la liste en un vecteur de texte

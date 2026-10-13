@@ -11,7 +11,8 @@
 # Pourquoi : Aggrégation des data_SITE.UID en quatre bases de données : names(env.data.sitewise[[1]]) = 
 # "microtopo"            "canopy.peat.fauna"    "vegetation_trees.shr" "vegetation_lower.str"
 # et nettoyage des données de site
-
+# À faire : modifier emplacement d'enregistrement : dans clean (les .RDS)
+#
 # Structure :
 # —— connectivite
 #         |—— archive
@@ -115,7 +116,7 @@ if(paste0(names(env.data.sitewise[[1]])[j],".csv") %in% list.files("/Users/Aliz/
   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.") }
 
 ## aggrégation des onglets du même nom en base de données tous sites ----
-### COMMENT/UNCOMMENT HERE (next line)
+## COMMENT/UNCOMMENT HERE (next line)
 env.data.merged <- list()
 env.data.merged.sf <- list() # pour objets-sf seulement (incompatibles avec .csv ou .xlsx, enregistrer en .RDS ou .gpkg)
 for (n in names(env.data.sitewise[[1]])) { # n c'est chaque feuille dans env.data.sitewise // [[1]] pas grave lequel des site, car ils comportent les mm données
@@ -143,7 +144,7 @@ for (n in names(env.data.sitewise[[1]])) { # n c'est chaque feuille dans env.dat
   ### nettoyage ----
   #### classes ----
   env.data.n.class <- class.selection(env.data.n.filterd)
-  
+
   #### col.order ----
   env.data.n.class.order <- order.cols(env.data.n.class)
 
@@ -153,13 +154,12 @@ for (n in names(env.data.sitewise[[1]])) { # n c'est chaque feuille dans env.dat
 
   ## enregistrements ----
   ### .RDS ----
-  # stratégie : les .csv peuvent-être visualisés MAIS PAS MODIFIÉS,
+  # stratégie : les .csv et le env.data.merged (créé sous la boucle) peuvent-être visualisés MAIS PAS MODIFIÉS,
   #             TOUTES modifications à la source seulement, puis rouler
   #             et effectuer les analyses sur les .rds
-  # seule exception, les fichiers de donnée de laboratoire (à refusionner avec la plus grand précaution) : deviennent fichiers PRIMAIRES
-  saveRDS(env.data.n, file = paste0("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/", n,".RDS"))
+  saveRDS(env.data.n, file = paste0("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/clean/", n,".RDS"))
 
-  ### SI NÉCESSAIRE (long) .GPKG (sf-objects) ----
+  ### .GPKG (sf-objects) SI NÉCESSAIRE (long) ----
   ### COMMENT/UNCOMMENT HERE (next line)
   # #### création
   # if (T %in% grepl(".*long.*", colnames(env.data.n))) {
@@ -180,14 +180,17 @@ for (n in names(env.data.sitewise[[1]])) { # n c'est chaque feuille dans env.dat
   # }
   #### COMMENT/UNCOMMENT TO HERE (previous line)
 
-  ### SI NÉCESSAIRE (visualisation seulement) .CSV "extracted_raw" ----
-  # path <- paste0("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/", n,".csv")
-  # if (file.exists(path)) Sys.chmod(path, mode = "0755") # donner accès à R pour modification
-  # readr::write_excel_csv2(x = env.data.merged[[n]], file = path, na = "")
-  # #### LECTURE SEULE ----
-  # Sys.chmod(path, mode = "0444", use_umask = FALSE)
+  ### .CSV "extracted_raw" SI NÉCESSAIRE (visualisation seulement)  ----
+  ### COMMENT/UNCOMMENT HERE (next line)
+  path <- paste0("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/", n,".csv")
+  if (file.exists(path)) Sys.chmod(path, mode = "0755") # donner accès à R pour modification
+  readr::write_excel_csv2(x = env.data.merged[[n]], file = path, na = "")
+  #### mise en lecture seule
+  Sys.chmod(path, mode = "0444", use_umask = FALSE) # "system change mode"
+  # Options : 0444 : lecture seule; 0666 : lecture & écriture
+  #### COMMENT/UNCOMMENT TO HERE (previous line)
 
-  #### ARCHIVES ----
+  # x.ARCHIVES ----
   # ARCHIVE : exporter en .xlsx / cause problèmes de type de données et impossible d'ajouter directement dans QGIS
   #   writexl::write_xlsx(
   #     env.data.merged[[n]],
@@ -219,16 +222,16 @@ for (n in names(env.data.sitewise[[1]])) { # n c'est chaque feuille dans env.dat
   #   na = "",            # Remplace les NA par du vide propre
   #   fileEncoding = "UTF-8" # Assure la compatibilité des accents sur votre Mac
   # )
+  # x.fin ----
 }
 print("Avertissement (microtopo) OK : il y a des lignes vides. Juste m'assurer d'avoir copié la coordonnée dans chaque ligne d'élévation-distance.")
+# enrigstrement pour ouverture et visualisation rapide. Pour modifier, passer pas la boucle et faire chaque env.data.n individuellement
 saveRDS(env.data.merged, file = "/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/env.data.merged.RDS")
 ### COMMENT/UNCOMMENT TO HERE (previous line)
 
 # ============================================================================= /
 # Nettoyage (type colonnes, wide-to-long, etc.) ----
 # ============================================================================= /
-# env.data.merged <- saveRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/env.data.merged.RDS")
-
 ## microtopo ----
 # microtopo <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/microtopo.RDS")
 
@@ -238,36 +241,53 @@ saveRDS(env.data.merged, file = "/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/con
 # canopy.peat.fauna <- read.csv("data/extracted_raw/canopy.peat.fauna.csv", 
 #                                             sep = ";", quote = "\"'",
 #                                             dec = ",", fileEncoding = "UTF-8-BOM") # bon formatage, puis, enregistrement en RDS
-canopy.peat.fauna <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/canopy.peat.fauna.RDS")
+canopy.peat.fauna <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/clean/canopy.peat.fauna.RDS")
 colnames(canopy.peat.fauna)
 str(canopy.peat.fauna)
 
 ### modifications ----
+# 2026-10-12 retiré les colonnes peat.sample (remplies uniquement en laboratoire). Fichier de consigne de données de laboratoire : peat.sample ou
+# tree.core (le plus récent), dans : /Users/Aliz/Library/CloudStorage/OneDrive-UniversitéLaval/_FIELD_LAB.WORK/_Feuilles_données_pas_local/
+
+#### tree.core.metadata ----
+tree.core.metadata <- canopy.peat.fauna |>
+  select(contains(c("perm.plot.uid.NO.quadrat.aaaa", "trmnt.uid.rel.dist.aaaa",  "tree.core_sp", "tree.core_uid")))
+
+##### join avec le tree.core ----
+
+
+#### peat.sample.metadata ----
+peat.sample.metadata <- canopy.peat.fauna |>
+  select("quadrat.uid", contains("peat.sample")) # fonctions_phd_v3.2/order.cols() uni les colonnes "perm.plot.uid.NO.quadrat.aaaa" et "trmnt.uid.rel.dist.aaaa" en "quadrat.uid"
+
+##### join avec le peat.sample ----
 
 
 
-### subdivisions ----
-peat <- canopy.peat.fauna |> 
-  select(contains(c("perm.plot.uid.NO.quadrat.aaaa", "trmnt.uid.rel.dist.aaaa", "peat.sample")))
 
-#### join avec le peat.sample
-peat <- list.files(path = "~/Documents/Doctorat/_R_Stats_PhD/connectivite/data", pattern = "_data") |>
-  basename() |> # basename(conserve le "path" dans le nom, en arrière-plan)
-  str_remove("\\d+?(?=_)_")
+### ARCHIVE SUPPRIMER subdivisions ----
 
-# peat_20261007 <- read_excel("~/Desktop/20261007_peat.xlsx")
-# canopy.peat.fauna_peat.BD_20261007 <- left_join(canopy.peat.fauna, peat.BD_20261007)
+# peat <- list.files(path = "~/Documents/Doctorat/_R_Stats_PhD/connectivite/data", pattern = "_data") |>
+#   basename() |> # basename(conserve le "path" dans le nom, en arrière-plan)
+#   str_remove("\\d+?(?=_)_")
+# 
+# # peat_20261007 <- read_excel("~/Desktop/20261007_peat.xlsx")
+# # canopy.peat.fauna_peat.BD_20261007 <- left_join(canopy.peat.fauna, peat.BD_20261007)
+# 
+# peat <- canopy.peat.fauna_peat.BD_20261007 |> 
+#   select(contains(c("perm.plot.uid.NO.quadrat.aaaa", "trmnt.uid.rel.dist.aaaa", "peat.sample")))
+# 
+# # stratégie : modifier ce fichier ET FUSIONNER ENSUITE
+# if(TRUE %in% grepl(".*_peat\\.xlsx", list.files("/Users/Aliz/Desktop/")))  {
+#   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.") }
+# readr::write_excel_csv2(x = peat, file = "~/desktop/aaaammdd_peat.csv", na = "")
+# # write.table(peat, "~/desktop/aaaammdd_peat.csv", dec = ',', sep = " ", row.names = F)
+# # écrasé fichier, perdu les pesées du 6 oct 2026; UID : 122663 (?, ou SEUL ÉCRIT EN VERT ***) j'ai ajouté un sac de mémoire il pesait 9,4g ** ajouter
+# 
 
-peat <- canopy.peat.fauna_peat.BD_20261007 |> 
-  select(contains(c("perm.plot.uid.NO.quadrat.aaaa", "trmnt.uid.rel.dist.aaaa", "peat.sample")))
-
-# stratégie : modifier ce fichier ET FUSIONNER ENSUITE
-if(TRUE %in% grepl(".*_peat\\.xlsx", list.files("/Users/Aliz/Desktop/")))  {
-  stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.") }
-readr::write_excel_csv2(x = peat, file = "~/desktop/aaaammdd_peat.csv", na = "")
-# write.table(peat, "~/desktop/aaaammdd_peat.csv", dec = ',', sep = " ", row.names = F)
-# écrasé fichier, perdu les pesées du 6 oct 2026; UID : 122663 (?, ou SEUL ÉCRIT EN VERT ***) j'ai ajouté un sac de mémoire il pesait 9,4g ** ajouter
-
+# recommencer : à partir de la plus récente feuille aaaammjj_peat.csv, joindre
+# -> nouveau script parce que data_sites n'inclus plus le peat samples
+# -> juste utilisé pour merge les quadrats_uid
 
 
 

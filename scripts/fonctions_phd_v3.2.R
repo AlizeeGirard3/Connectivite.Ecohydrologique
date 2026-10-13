@@ -297,10 +297,10 @@ uid.to.columns <- function(file.to.restructure = NULL, type = NULL, path = NULL)
 
 # class.selection
 # target.file <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/canopy.peat.fauna.RDS")
-# mapped_df <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/mapped_df.RDS")
 class.selection <- function(target.file) {
   # création du vecteur nommé, structure exacte recherchée pour attribuer des classes
-  mapped_df_class <- read.csv("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/20261007_mapped_df_class.csv", sep = ";") |> 
+  mapped_df_class <- read.csv("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/scripts/20261007_mapped_df_class.csv", sep = ";") |> 
+    # ** changer nom du fichier si je modifie le aaaammdd_mapped_df_class.csv **
     select(!table_name) |> 
     distinct()
   mapped_df_class_large <- pivot_wider(mapped_df_class, names_from = "column_name", values_from = "class")
@@ -335,6 +335,13 @@ order.cols <- function(target.file.2) {
                       !is.na(trmnt.uid.rel.dist.quadrat.aaaa) & is.na(perm.plot.uid.NO.quadrat.aaaa)) |> 
       # unir les types de [...].quadrat.uid en une seule colonne
       unite(col = quadrat.uid, trmnt.uid.rel.dist.quadrat.aaaa, perm.plot.uid.NO.quadrat.aaaa, na.rm = T)
+  } else if (all(c("perm.plot.uid.NO.quadrat.aaaa","trmnt.uid.rel.dist.aaaa") %in% colnames(target.file.2)) == TRUE) {
+    target.file.2.ordrd <- target.file.2 |> 
+      # retrait des colonnes qui n'ont pas de [...].quadrat.uid
+      dplyr::filter(!is.na(perm.plot.uid.NO.quadrat.aaaa) & is.na(trmnt.uid.rel.dist.aaaa) | # un ou l'autre
+                      !is.na(trmnt.uid.rel.dist.aaaa) & is.na(perm.plot.uid.NO.quadrat.aaaa)) |> 
+      # unir les types de [...].quadrat.uid en une seule colonne
+      unite(col = quadrat.uid, trmnt.uid.rel.dist.aaaa, perm.plot.uid.NO.quadrat.aaaa, na.rm = T)
   } else {
     # NE RIEN FAIRE POUR L'INSTANT
     # CODER ICI
