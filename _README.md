@@ -54,9 +54,16 @@ APERÇU DES DONNÉES ET DES FICHIERS
 | **Fichier traité** | **Commentaire 1** | **Commentaire 2** | **Commentaire 2** |
 | REMPLIR ICI | REMPLIR ICI | REMPLIR ICI | REMPLIR ICI |
 
-3. Nomenclature des scripts :
+3. Scripts :
+3.1. nomenclature
 "data_X.R" : nettoyage/extraction initial(e)
 "visalstion_X.R" : graphiques
+"analysis_X.R" : analyses
+3.2. Usage :
+  00. modifier à la source (/Users/Aliz/Library/CloudStorage/OneDrive-UniversitéLaval/_FIELD_LAB.WORK/_Feuilles_données_pas_local)
+  0. transférer localement à l'aide des scripts respectifs (/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/raw)
+  1. toujours rouler les scripts à partir du nettoyage, vers les analyses
+  1.1. pour les analyses subséquentes en laboratoire (peat, tree.core), rouler data_sites_all.R pour joindre les nouveaux UID annuels et les UID déjà analysés
 
 INFORMATIONS MÉTHODOLOGIQUES
 # Décrire ici les informations méthodologiques de la collecte de données. 

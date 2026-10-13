@@ -212,7 +212,7 @@ uid.to.columns <- function(file.to.restructure = NULL, type = NULL, path = NULL)
   if(type == "other") {
     file <- file.to.restructure %>% 
       select(!c(site.uid, 
-                grep("carotte.uid", colnames(file)), # ajouter des grep des colonnes à exclure de la restructuration, dans grep évite l'erreur "cannot remove col that doesn't exist
+                grep("tree.core_uid", colnames(file)), # ajouter des grep des colonnes à exclure de la restructuration, dans grep évite l'erreur "cannot remove col that doesn't exist
                 # exclure ces dernier car info contenue n'est pas aggrégée (pas de points dans l'UID)
                 grep("peat.samples_LOI_LAB.UID.1", colnames(file.to.restructure)), 
                 grep("peat.samples_LOI_LAB.UID.2", colnames(file.to.restructure)), 
