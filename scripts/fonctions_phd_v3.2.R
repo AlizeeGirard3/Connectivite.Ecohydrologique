@@ -134,16 +134,17 @@ order.list <- function(path, pattern) {
 }
 
 # filter.raw.file
-# object.to.filter <- raw.ll.files.pre
+# object.to.filter <- peat.sample_join
 # path.filtering.object <- "connectivite/data/raw/level_logger_calibration_all.csv"
 # object.to.filter <- ele.profiles
 # object.to.filter <- env.data.n
 filter.raw.file <- function(object.to.filter = NULL, path.filtering.object = NULL, type = NULL) {
   if(c(is.null(path.filtering.object) & !is.null(object.to.filter) & is.null(type))) { # fournir juste un objet à filtrer, sans cal data path
     object.to.filter.filtrd <- object.to.filter %>% 
-      dplyr::filter(!grepl("rejected", measure.status), 
-                    !if_all(everything(), is.na),
-                    ) %>% 
+      dplyr::rename(status_temp = any_of(c("measure.status", "peat.sample_measure.status", "tree.core_measure.status"))) %>% 
+      dplyr::filter(!grepl("rejected", status_temp), 
+                    !if_all(everything(), is.na)) %>% 
+      dplyr::rename(!!names(.)[names(.) == "status_temp"] := any_of(c("measure.status", "peat.sample_measure.status", "tree.core_measure.status"))) |> # renommer correctement les colonnes (pas status_temp)
       select(!contains("_cad"), # insensible à la case
              -any_of(c("picture.no",  "date.aaaa.mm.dd", "observers", "comment", "measure.status"))) # le cas échéant, enlever les colonnes inutiles aux analyses
   } 
@@ -182,21 +183,23 @@ filter.raw.file <- function(object.to.filter = NULL, path.filtering.object = NUL
 }
 
 # uid.to.columns
+# file.to.restructure <- peat.sample_join ; type = "other"
 # ele.profiles <- readRDS(file = "~/Documents/Doctorat/_R_Stats_PhD/connectivite/data/clean/elevation.profiles.RDS")
-# file.to.restructure <- ele.profiles
+# file.to.restructure <- ele.profiles <- env.data.n.filterd
 # vegetation_lower.str <- read.xlsx("~/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/vegetation_lower.str.xlsx")
-# file.to.restructure <- vegetation_lower.str # ok
+# file.to.restructure <- vegetation_lower.str
 # vegetation_trees.shr <- read.xlsx("~/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/vegetation_trees.shr.xlsx")
-# file.to.restructure <- vegetation_trees.shr # ok
+# file.to.restructure <- vegetation_trees.shr
 # canopy.peat.fauna <- read.xlsx("~/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/canopy.peat.fauna.xlsx")
-# file.to.restructure <- canopy.peat.fauna # ok
+# file.to.restructure <- canopy.peat.fauna <- env.data.n.class
 # path <- "~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/raw/level_logger_calibration_all.csv"; file.to.restructure = NULL
 uid.to.columns <- function(file.to.restructure = NULL, type = NULL, path = NULL) { # other ou cal.data
   {
     col.sequence <- list() # idée : nom des colonnes à mettre dans col.sequence... y référer dans la boucle
-    # mettre à jour les métadonnées de temps en temps (ok janv.2026)
-    col.sequence$trmnt.uid.aaaa <- c("site.uid", "chapter", "type", "year", "no")
-    col.sequence$trmnt.uid <- c("site.uid", "chapter", "type")
+    # mettre à jour les métadonnées de temps en temps (À FAIRE oct 2026/ ok janv.2026)
+    col.sequence$tree.core_uid <- c("site.uid", "no", "year", "replicate.no") # replicate.no le cas échéant (vide autrement): si la carotte est complète et présente deux profils d'anneaux de croissance; à la fin car déterminé après attribution du UID
+    col.sequence$trnsct.uid.aaaa <- c("site.uid", "chapter", "type", "perm.plot", "replicate.no", "year")
+    # col.sequence$trmnt.uid <- c("site.uid", "chapter", "type")
     col.sequence$trmnt.uid.orient.NO.aaaa <- c("site.uid", "chapter", "type", "orientation", "transect.replicate", "year")
     # col.sequence$perm.plot.uid.NO.aaaa <- c("site.uid", "chapter", "type", "perm.plot.replicate", "perm.plot.type", "year")
     col.sequence$perm.plot.uid.NO.quadrat.aaaa <- c("site.uid", "chapter", "type", "perm.plot.replicate", "perm.plot.type", "quadrat.letter", "year")
@@ -211,14 +214,15 @@ uid.to.columns <- function(file.to.restructure = NULL, type = NULL, path = NULL)
   }
   if(type == "other") {
     file <- file.to.restructure %>% 
-      select(!c(site.uid, 
-                grep("tree.core_uid", colnames(file)), # ajouter des grep des colonnes à exclure de la restructuration, dans grep évite l'erreur "cannot remove col that doesn't exist
-                # exclure ces dernier car info contenue n'est pas aggrégée (pas de points dans l'UID)
-                grep("peat.samples_LOI_LAB.UID.1", colnames(file.to.restructure)), 
-                grep("peat.samples_LOI_LAB.UID.2", colnames(file.to.restructure)), 
-                grep("probe.uid", colnames(file)))) %>% 
+      select(!c(
+        any_of("site.uid"), 
+        grep("tree.core_uid", colnames(file.to.restructure)), # ajouter des grep des colonnes à exclure de la restructuration, dans grep évite l'erreur "cannot remove col that doesn't exist
+        # exclure ces dernier car info contenue n'est pas aggrégée (pas de points dans l'UID)
+        grep("peat.samples_LOI_LAB.UID.1", colnames(file.to.restructure)), 
+        grep("peat.samples_LOI_LAB.UID.2", colnames(file.to.restructure)), 
+        grep("probe.uid", colnames(file)))) %>% 
       mutate(ID = as.character(sample(unique(abs(rnorm(n = nrow(file.to.restructure))))))) # créer une colonne d'ID unique par lequel joindre après la boucle
-    cols <- grep("uid", colnames(file.to.restructure), ignore.case = T) # colonnes avec uid à séparer en plusieurs colonnes
+    cols <- grep("uid", colnames(file), ignore.case = T) # colonnes avec uid à séparer en plusieurs colonnes
     cols.list <- list()
     for(col in seq_along(cols)) {
       col.name <- colnames(file)[cols[col]] # On récupère le nom de la colonne
@@ -327,6 +331,7 @@ class.selection <- function(target.file) {
 }
 
 # order.cols
+# CADUQUE - doit être noms originaux pour utiliser fonction uid.to.columns()
 # target.file.2 <- env.data.n.class
 order.cols <- function(target.file.2) {
   if (all(c("perm.plot.uid.NO.quadrat.aaaa","trmnt.uid.rel.dist.quadrat.aaaa") %in% colnames(target.file.2)) == TRUE) {

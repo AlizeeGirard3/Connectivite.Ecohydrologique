@@ -126,7 +126,7 @@ if(paste0(names(env.data.sitewise[[1]])[j],".csv") %in% list.files("/Users/Aliz/
 # }
 # readr::write_excel_csv2(x = mapped_df, file = "/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/mapped_df_class.csv", na = "")
 
-## aggrégation ----
+## aggrégation x----
 env.data.merged <- list()
 env.data.merged.sf <- list() # pour objets-sf seulement (incompatibles avec .csv ou .xlsx, enregistrer en .RDS ou .gpkg)
 for (n in names(env.data.sitewise[[1]])) { # n c'est chaque feuille dans env.data.sitewise // [[1]] pas grave lequel des site, car ils comportent les mm données
@@ -155,14 +155,14 @@ for (n in names(env.data.sitewise[[1]])) { # n c'est chaque feuille dans env.dat
   #### classes ----
   env.data.n.class <- class.selection(env.data.n.filterd)
   
-  #### col.order ----
-  env.data.n.class.order <- order.cols(env.data.n.class)
-  
-  
-  env.data.n.class
+  # #### col.order ----
+  # CADUQUE - doit être noms originaux pour utiliser fonction uid.to.columns()
+  # env.data.n.class.order <- order.cols(env.data.n.class)
+  # #### uid.to.columns ----
+  env.data.n.class.uid.to.columns <- uid.to.columns(file.to.restructure = env.data.n.class, type = "other") # LONG; © AlizéeGirard, script "fonctions_phd_vX.r" (aide GGIA)
   
   ### liste finale ----
-  env.data.n <- env.data.n.class.order # nom final (stratégie : changer juste ici et pas en-dessous à plusieurs autres endroit)
+  env.data.n <- env.data.n.class.uid.to.columns # nom final (stratégie : changer juste ici et pas en-dessous à plusieurs autres endroit)
   env.data.merged[[n]] <- env.data.n # liste (de feuillets) contenant les données de chaque site concatennés ensemble
   
   ## enregistrements ----
@@ -285,12 +285,12 @@ tree.core_join <- full_join(tree.core.metadata, ring.width.all)
 # visualisation / lecture fichier
 tree.core_join
 colnames(tree.core_join)
-str()
+str(tree.core_join)
 
 ##### enregistrement dans extracted_raw ----
 # pour toutes autres modification, passer au script "data_tree.core_all.R"
 saveRDS(tree.core_join, file = "data/extracted_raw/tree.core_join.RDS")
-
+# m'assurer que les BRNTC.[...].NA.2025 ou .pre suivent vu les changements dans quadrat.uid en oct 2026
 
 #### peat.sample.metadata ----
 # à chaque année, ajouter les nouvelles lignes d'UID sans écraser les données déjà remplies

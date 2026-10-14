@@ -17,13 +17,15 @@
 #         |—— archive
 #         |—— data
 #                     |—— raw (ici feuilles numériques terrain comportant plusieurs onglets pour un site; data_SITE.UID)
+#                     |—— extracted_raw (fichiers légèrement modifiés ou joints avec métadonnées ou quadrat_uid)
 #                     |—— clean
 #         |—— output
 #                     |—— data
 #                     |—— figures
 #         |—— scripts
 # NOTES : 
-# 
+# À FAIRE dans script analysis : anova one-way : bulk density groupe-site ou pas ? (mixt des routes et écotone, et aussi en les séparant ?)
+#
 ########################################################################## -
 
 # ============================================================================= /
@@ -42,19 +44,19 @@ source("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/scripts/fonctio
 # Import données (pour tout modification à la source: data_sites_all.R)
 peat.sample_join <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/peat.sample_join.RDS")
 
+# ============================================================================= /
+# Mise à jour données récentes, tous data)_SITE.UID ----
+# ============================================================================= /
+# Non-applicable : faire à partir de script data_sites_all.R pour joindre métadonnées et nouveaux quadrat.uid
 
-### REPRENDRE ----
+# ============================================================================= /
+# Nettoyage ----
+# ============================================================================= /
+## filtre global & uid.to.column ----
+peat.sample_join_fltrd <- filter.raw.file(peat.sample_join) # script "fonction_phd_vX" (AG, 2025+)
+peat.sample_tidy <- uid.to.columns(file.to.restructure = peat.sample_join_fltrd, type = "cal.data")) # script "fonction_phd_vX" (AG, 2025+)
 
-chiffres_extraits <- str_extract_all(canopy.peat.fauna_visualisation$peat.sample_UID_R.randNum, "[0-9]+") |> 
-  flatten_chr() # aplatir la liste en un vecteur de texte
-liste_chiffres.pre <- as.numeric(chiffres_extraits) 
-liste_chiffres <- liste_chiffres.pre[!is.na(liste_chiffres.pre)]
-
-# NETTOYAGE À FARE
-# OBTENIR : DATAFRAME AVEC colonnes : site, emplacement.UID, DATA (bulk dens, Von Post, pH, cond.corrigée, LOI, canopée)
-# anova one-way : bulk density groupe-site ou pas ? (mixt des routes et écotone, et aussi en les séparant ?)
-
-
-
-
+# ============================================================================= /
+# [...] ----
+# ============================================================================= /
 
