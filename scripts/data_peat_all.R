@@ -40,7 +40,8 @@ setwd("~/Documents/Doctorat/_R_Stats_PhD/connectivite")
 source("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/scripts/fonctions_phd_v3.2.R")
 
 # Import données (pour tout modification à la source: data_sites_all.R)
-# read.csv("data/extracted_raw/canopy.peat.fauna.csv", dec = ",", sep = ";")
+peat.sample_join <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/peat.sample_join.RDS")
+
 
 ### REPRENDRE ----
 

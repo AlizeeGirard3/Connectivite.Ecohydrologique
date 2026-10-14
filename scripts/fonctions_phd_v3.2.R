@@ -296,6 +296,7 @@ uid.to.columns <- function(file.to.restructure = NULL, type = NULL, path = NULL)
 # cols.df <- uid.to.columns(path = "~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/raw/level_logger_calibration_all.csv")
 
 # class.selection
+# target.file <- peat
 # target.file <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/canopy.peat.fauna.RDS")
 class.selection <- function(target.file) {
   # création du vecteur nommé, structure exacte recherchée pour attribuer des classes
