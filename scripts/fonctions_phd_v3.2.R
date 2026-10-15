@@ -137,17 +137,21 @@ order.list <- function(path, pattern) {
 # object.to.filter <- peat.sample_join
 # path.filtering.object <- "connectivite/data/raw/level_logger_calibration_all.csv"
 # object.to.filter <- ele.profiles
-# object.to.filter <- env.data.n
+# object.to.filter <- env.data.n <- env.data.merged[[1]]
 filter.raw.file <- function(object.to.filter = NULL, path.filtering.object = NULL, type = NULL) {
-  if(c(is.null(path.filtering.object) & !is.null(object.to.filter) & is.null(type))) { # fournir juste un objet à filtrer, sans cal data path
+  if (is.null(path.filtering.object) && !is.null(object.to.filter) && is.null(type)) { # si != level_logger_calibration_all.csv, fournir juste un objet à filtrer avec le reste NULL
+    status_col <- intersect(names(object.to.filter), 
+                            c("measure.status", "peat.sample_measure.status", "tree.core_measure.status"))[1]
     object.to.filter.filtrd <- object.to.filter %>% 
       dplyr::rename(status_temp = any_of(c("measure.status", "peat.sample_measure.status", "tree.core_measure.status"))) %>% 
       dplyr::filter(!grepl("rejected", status_temp), 
                     !if_all(everything(), is.na)) %>% 
-      dplyr::rename(!!names(.)[names(.) == "status_temp"] := any_of(c("measure.status", "peat.sample_measure.status", "tree.core_measure.status"))) |> # renommer correctement les colonnes (pas status_temp)
-      select(!contains("_cad"), # insensible à la case
-             -any_of(c("picture.no",  "date.aaaa.mm.dd", "observers", "comment", "measure.status"))) # le cas échéant, enlever les colonnes inutiles aux analyses
-  } 
+      dplyr::rename(!!status_col := status_temp) %>%  # restaurer le nom d'origine dynamiquement
+      # "!!" : opérateur Bang-Bang, pour interpréter le contenu de la variable nommée (ex. ma_variable_nommée <- "measure.status") au
+      # lieu de comprendre "ma_variable_nommée" comme du texte; contourne l'évaluation non-standard (NSE) par défaut de dplyr/tidyverse
+      dplyr::select(!contains("_cad", ignore.case = TRUE), 
+                    -any_of(c("picture.no", "date.aaaa.mm.dd", "observers", "comment"))) # , "measure.status" // le cas échéant, enlever les colonnes inutiles aux analyses
+  }
   if(c(!is.null(path.filtering.object) & !is.null(object.to.filter))) { # fournir l'objet à filtrer par les informations fournies dans le cal data path à filtrer
     filtering.object <- read.csv(path.filtering.object, , sep = ";", dec = ",")
     filter.out <- filtering.object$file.uid[grep("rejected", filtering.object$measure_status)]
@@ -185,11 +189,12 @@ filter.raw.file <- function(object.to.filter = NULL, path.filtering.object = NUL
 # uid.to.columns
 # file.to.restructure <- peat.sample_join ; type = "other"
 # ele.profiles <- readRDS(file = "~/Documents/Doctorat/_R_Stats_PhD/connectivite/data/clean/elevation.profiles.RDS")
-# file.to.restructure <- ele.profiles <- env.data.n.filterd
+# file.to.restructure <- microtopo <- env.data.n.class
 # vegetation_lower.str <- read.xlsx("~/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/vegetation_lower.str.xlsx")
-# file.to.restructure <- vegetation_lower.str
+# vegetation_lower.str <- env.data.n.class ; type = "other"
+# file.to.restructure <- env.data.n.class
 # vegetation_trees.shr <- read.xlsx("~/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/vegetation_trees.shr.xlsx")
-# file.to.restructure <- vegetation_trees.shr
+# file.to.restructure <- vegetation_trees.shr <- env.data.n.class
 # canopy.peat.fauna <- read.xlsx("~/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/canopy.peat.fauna.xlsx")
 # file.to.restructure <- canopy.peat.fauna <- env.data.n.class
 # path <- "~/Documents/Doctorat/_R.&.Stats_PhD/connectivite/data/raw/level_logger_calibration_all.csv"; file.to.restructure = NULL
@@ -197,11 +202,11 @@ uid.to.columns <- function(file.to.restructure = NULL, type = NULL, path = NULL)
   {
     col.sequence <- list() # idée : nom des colonnes à mettre dans col.sequence... y référer dans la boucle
     # mettre à jour les métadonnées de temps en temps (À FAIRE oct 2026/ ok janv.2026)
-    col.sequence$tree.core_uid <- c("site.uid", "no", "year", "replicate.no") # replicate.no le cas échéant (vide autrement): si la carotte est complète et présente deux profils d'anneaux de croissance; à la fin car déterminé après attribution du UID
-    col.sequence$trnsct.uid.aaaa <- c("site.uid", "chapter", "type", "perm.plot", "replicate.no", "year")
+    # col.sequence$tree.core_uid <- c("site.uid", "no", "year", "replicate.no") # replicate.no le cas échéant (vide autrement): si la carotte est complète et présente deux profils d'anneaux de croissance; à la fin car déterminé après attribution du UID
+    col.sequence$trnsct.uid.pp.rep.aaaa <- c("site.uid", "chapter", "type", "perm.plot", "replicate.no", "year")
     # col.sequence$trmnt.uid <- c("site.uid", "chapter", "type")
-    col.sequence$trmnt.uid.orient.NO.aaaa <- c("site.uid", "chapter", "type", "orientation", "transect.replicate", "year")
-    # col.sequence$perm.plot.uid.NO.aaaa <- c("site.uid", "chapter", "type", "perm.plot.replicate", "perm.plot.type", "year")
+    # col.sequence$trmnt.uid.orient.NO.aaaa <- c("site.uid", "chapter", "type", "orientation", "transect.replicate", "year") # caduque mise à jour : trnsct.uid.pp.rep.aaaa pour uniformiser entre les chapitres pour la microtopo
+    # col.sequence$perm.plot.uid.NO.aaaa <- c("site.uid", "chapter", "type", "perm.plot.replicate", "perm.plot.type", "year") # caduque
     col.sequence$perm.plot.uid.NO.quadrat.aaaa <- c("site.uid", "chapter", "type", "perm.plot.replicate", "perm.plot.type", "quadrat.letter", "year")
     col.sequence$trmnt.uid.rel.dist.aaaa <- c("site.uid", "chapter", "type", "relative.distance", "year")
     col.sequence$trmnt.uid.rel.dist.quadrat.aaaa <- c("site.uid", "chapter", "type", "relative.distance", "quadrat.letter", "year")
@@ -213,19 +218,19 @@ uid.to.columns <- function(file.to.restructure = NULL, type = NULL, path = NULL)
     col.sequence$well.uid$chap3 <- c("site.uid", "chapter", "type", "relative.distance", "year")
   }
   if(type == "other") {
+    renommer_regle.1 <- c("tree.core_NO.temp.col.name" = "tree.core_uid")
+    renommer_regle.2 <- c("tree.core_uid" = "tree.core_NO.temp.col.name")
     file <- file.to.restructure %>% 
-      select(!c(
-        any_of("site.uid"), 
-        grep("tree.core_uid", colnames(file.to.restructure)), # ajouter des grep des colonnes à exclure de la restructuration, dans grep évite l'erreur "cannot remove col that doesn't exist
-        # exclure ces dernier car info contenue n'est pas aggrégée (pas de points dans l'UID)
-        grep("peat.samples_LOI_LAB.UID.1", colnames(file.to.restructure)), 
-        grep("peat.samples_LOI_LAB.UID.2", colnames(file.to.restructure)), 
-        grep("probe.uid", colnames(file)))) %>% 
-      mutate(ID = as.character(sample(unique(abs(rnorm(n = nrow(file.to.restructure))))))) # créer une colonne d'ID unique par lequel joindre après la boucle
+      dplyr::rename(any_of(renommer_regle.1)) %>% # évite erreur si any_of("tree.core_uid") est vide
+      select(!c(any_of("site.uid"), 
+                # contains("tree.core_uid"),
+                matches("peat\\.samples_LOI_LAB\\.UID\\.[12]"), 
+                contains("probe.uid"))) %>% 
+      mutate(ID = as.character(row_number())) # créer une colonne d'ID unique par lequel joindre après la boucle
     cols <- grep("uid", colnames(file), ignore.case = T) # colonnes avec uid à séparer en plusieurs colonnes
     cols.list <- list()
     for(col in seq_along(cols)) {
-      col.name <- colnames(file)[cols[col]] # On récupère le nom de la colonne
+      col.name <- colnames(file)[cols[col]] # assigne nom de colonne
       target_names <- col.sequence[[col.name]] 
       if (is.null(target_names)) {
         stop(paste("Le nom de colonne", col.name, "n'est pas défini dans col.sequence"))}
@@ -235,12 +240,17 @@ uid.to.columns <- function(file.to.restructure = NULL, type = NULL, path = NULL)
           delim = ".", 
           names = target_names, 
           cols_remove = FALSE, 
-          too_few = "debug", 
-          too_many = "debug")
-      cols.list[[col]] <- file.2}
+          too_few = "error", # "error" / "debug" ou voir ??tidyr::separate_wider_delim
+          too_many = "error")
+      cols.list[[col]] <- file.2
+    }
     cols.df <- cols.list %>%
-      reduce(full_join) %>%
-      select(!c("ID"))  } 
+      # reduce(~ full_join(.x, .y)) %>% #, by = "ID")) %>% 
+      reduce(~ full_join(.x, .y)) %>%
+      dplyr::filter(!if_all(any_of(c("site.uid", "chapter", "type", "quadrat.letter", "year")), is.na)) %>%
+      select(!contains("ID", ignore.case = F)) %>% # tenir compte de la typographie (casse)
+      dplyr::rename(any_of(renommer_regle.2)) # évite erreur si any_of("tree.core_uid") est vide
+  } 
   if(is.null(file.to.restructure) | c(is.null(path) & type == "cal.data")) {
     # file.0.pre <- filter.raw.file(path.filtering.object = path)
     file.0.pre <- file.to.restructure %>%
@@ -331,24 +341,23 @@ class.selection <- function(target.file) {
 }
 
 # order.cols
-# CADUQUE - doit être noms originaux pour utiliser fonction uid.to.columns()
-# target.file.2 <- env.data.n.class
+# target.file.2 <- env.data.n.class.uid.to.columns
 order.cols <- function(target.file.2) {
   if (all(c("perm.plot.uid.NO.quadrat.aaaa","trmnt.uid.rel.dist.quadrat.aaaa") %in% colnames(target.file.2)) == TRUE) {
     target.file.2.ordrd <- target.file.2 |> 
-      # retrait des colonnes qui n'ont pas de [...].quadrat.uid
+      # retrait des lignes qui n'ont pas de [...].quadrat.uid
       dplyr::filter(!is.na(perm.plot.uid.NO.quadrat.aaaa) & is.na(trmnt.uid.rel.dist.quadrat.aaaa) | # un ou l'autre
                       !is.na(trmnt.uid.rel.dist.quadrat.aaaa) & is.na(perm.plot.uid.NO.quadrat.aaaa)) |> 
       # unir les types de [...].quadrat.uid en une seule colonne
       unite(col = quadrat.uid, trmnt.uid.rel.dist.quadrat.aaaa, perm.plot.uid.NO.quadrat.aaaa, na.rm = T)
   } else if (all(c("perm.plot.uid.NO.quadrat.aaaa","trmnt.uid.rel.dist.aaaa") %in% colnames(target.file.2)) == TRUE) {
-    target.file.2.ordrd <- target.file.2 |> 
-      # retrait des colonnes qui n'ont pas de [...].quadrat.uid
-      dplyr::filter(!is.na(perm.plot.uid.NO.quadrat.aaaa) & is.na(trmnt.uid.rel.dist.aaaa) | # un ou l'autre
-                      !is.na(trmnt.uid.rel.dist.aaaa) & is.na(perm.plot.uid.NO.quadrat.aaaa)) |> 
-      # unir les types de [...].quadrat.uid en une seule colonne
-      unite(col = quadrat.uid, trmnt.uid.rel.dist.aaaa, perm.plot.uid.NO.quadrat.aaaa, na.rm = T)
-  } else {
+      target.file.2.ordrd <- target.file.2 |> 
+        # retrait des lignes qui n'ont pas de [...].uid
+        dplyr::filter(!is.na(perm.plot.uid.NO.quadrat.aaaa) & is.na(trmnt.uid.rel.dist.aaaa) | # un ou l'autre
+                        !is.na(trmnt.uid.rel.dist.aaaa) & is.na(perm.plot.uid.NO.quadrat.aaaa)) |> 
+        # unir les types de [...].uid en une seule colonne
+        unite(col = perm.plot.uid, trmnt.uid.rel.dist.aaaa, perm.plot.uid.NO.quadrat.aaaa, na.rm = T) 
+    } else {
     # NE RIEN FAIRE POUR L'INSTANT
     # CODER ICI
     target.file.2.ordrd <- target.file.2

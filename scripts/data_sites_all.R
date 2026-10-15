@@ -7,10 +7,11 @@
 # Fait par :      Alizée Girard
 # Affiliation :   ULaval
 # Date création initiale : 2025-11-05
-# Date mise à jour : 2026-07-02
+# Date mise à jour : 2026-10-15
 # Pourquoi : Aggrégation des data_SITE.UID en quatre bases de données : names(env.data.sitewise[[1]]) = 
-# "microtopo"            "canopy.peat.fauna"    "vegetation_trees.shr" "vegetation_lower.str"
-# et nettoyage des données de site
+# "microtopo"            "canopy.peat.fauna"    "vegetation_trees.shr" "vegetation_lower.str";
+# nettoyage des données de site;
+# jonction des nouveaux quadrat.uid annuels avec les fichiers de consigne de laboratoire
 #
 # Structure :
 # —— connectivite
@@ -33,10 +34,7 @@
 # Initialisation ----
 # ============================================================================= /
 # Librairies
-if (!require("tidyverse")) install.packages("tidyverse") # gosser avec des suites de caractères, str_replace, [...]
 # if (!require("conflicted")) install.packages("conflicted") # ℹ Use the conflicted package to force all conflicts to become errors    ---->>>>  devtools::install_github("r-lib/conflicted")
-if (!require("readxl")) install.packages("readxl") # lire les excel
-# if (!require("openxlsx")) install.packages("openxlsx") # PROBLÈMES DANS QGIS (importer points en lat, long)/ lire/écrire les excel
 if (!require("writexl")) install.packages("writexl") # écrire les excel
 # if (!require("stringr")) install.packages("stringr") # gosser avec des suites de caractères, str_replace, [...]
 
@@ -126,7 +124,7 @@ if(paste0(names(env.data.sitewise[[1]])[j],".csv") %in% list.files("/Users/Aliz/
 # }
 # readr::write_excel_csv2(x = mapped_df, file = "/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/mapped_df_class.csv", na = "")
 
-## aggrégation x----
+## aggrégation ----
 env.data.merged <- list()
 env.data.merged.sf <- list() # pour objets-sf seulement (incompatibles avec .csv ou .xlsx, enregistrer en .RDS ou .gpkg)
 for (n in names(env.data.sitewise[[1]])) { # n c'est chaque feuille dans env.data.sitewise // [[1]] pas grave lequel des site, car ils comportent les mm données
@@ -153,16 +151,20 @@ for (n in names(env.data.sitewise[[1]])) { # n c'est chaque feuille dans env.dat
   
   ### nettoyage ----
   #### classes ----
-  env.data.n.class <- class.selection(env.data.n.filterd)
+  env.data.n.class <- class.selection(env.data.n.filterd) |> 
+    select(any_of(c("site.uid", "perm.plot.uid.NO.quadrat.aaaa", "trmnt.uid.rel.dist.quadrat.aaaa")), everything())
+  
+  # #### uid.to.columns ----
+  env.data.n.class.uid.to.columns <- uid.to.columns(file.to.restructure = env.data.n.class, type = "other") |> # LONG; © AlizéeGirard, script "fonctions_phd_vX.r" (aide GGIA)
+    select(any_of(c("site.uid", "chapter", "type", "perm.plot.replicate", "perm.plot.type", "relative.distance", "quadrat.letter",
+                    "year", "perm.plot.uid.NO.quadrat.aaaa", "trmnt.uid.rel.dist.quadrat.aaaa")), everything())
   
   # #### col.order ----
-  # CADUQUE - doit être noms originaux pour utiliser fonction uid.to.columns()
-  # env.data.n.class.order <- order.cols(env.data.n.class)
-  # #### uid.to.columns ----
-  env.data.n.class.uid.to.columns <- uid.to.columns(file.to.restructure = env.data.n.class, type = "other") # LONG; © AlizéeGirard, script "fonctions_phd_vX.r" (aide GGIA)
+  env.data.n.class.uid.to.columns.ordrd <- order.cols(env.data.n.class.uid.to.columns) |> 
+    select(any_of(c("site.uid", "perm.plot.uid.NO.quadrat.aaaa", "trmnt.uid.rel.dist.quadrat.aaaa", "trmnt.uid.rel.dist.aaaa")), everything())
   
   ### liste finale ----
-  env.data.n <- env.data.n.class.uid.to.columns # nom final (stratégie : changer juste ici et pas en-dessous à plusieurs autres endroit)
+  env.data.n <- env.data.n.class.uid.to.columns.ordrd # nom final (stratégie : changer juste ici et pas en-dessous à plusieurs autres endroit)
   env.data.merged[[n]] <- env.data.n # liste (de feuillets) contenant les données de chaque site concatennés ensemble
   
   ## enregistrements ----
@@ -172,7 +174,7 @@ for (n in names(env.data.sitewise[[1]])) { # n c'est chaque feuille dans env.dat
   #             et effectuer les analyses sur les .rds
   saveRDS(env.data.n, file = paste0("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/", n,".RDS"))
   
-  ### .GPKG (sf-objects) SI NÉCESSAIRE (long) ----
+  ### .GPKG (sf-objects) SI NÉCESSAIRE (long & LOURD en Mo) ----
   ### COMMENT/UNCOMMENT HERE (next line)
   # #### création
   # if (T %in% grepl(".*long.*", colnames(env.data.n))) {
@@ -238,13 +240,16 @@ for (n in names(env.data.sitewise[[1]])) { # n c'est chaque feuille dans env.dat
   # x.fin ----
 }
 print("Avertissement (microtopo) OK : il y a des lignes vides. Juste m'assurer d'avoir copié la coordonnée dans chaque ligne d'élévation-distance.")
-# enrigstrement pour ouverture et visualisation rapide. Pour modifier, passer pas la boucle et faire chaque env.data.n individuellement
+# enregistrement pour ouverture et visualisation rapide. Pour modifier, passer pas la boucle et faire chaque env.data.n individuellement
 saveRDS(env.data.merged, file = "/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/env.data.merged.RDS")
 ### COMMENT/UNCOMMENT TO HERE (previous line)
 
 # ============================================================================= /
 # Nettoyage (type colonnes, wide-to-long, etc.) ----
 # ============================================================================= /
+# ouverture rapide de l'état actuel des fiochiers data_site.uid
+# env.data.merged <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/env.data.merged.RDS")
+
 ## microtopo ----
 # microtopo <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/microtopo.RDS")
 
@@ -267,7 +272,7 @@ str(canopy.peat.fauna)
 # à chaque année, ajouter les nouvelles lignes d'UID sans écraser les données déjà remplies
 # obtenir les nouvelles données à partir de canopy.peat.fauna
 tree.core.metadata <- canopy.peat.fauna |>
-  select(contains(c("quadrat.uid",  "tree.core_sp", "tree.core_uid")))
+  select(contains(c("perm.plot.uid",  "tree.core_sp", "tree.core_uid")))
 
 ##### mise à jour données récentes, peat.xlsx ----
 # retrait de la date du nom des feuilles de données (aaaammjj_peat.xlsx -> peat.xlsx)
@@ -279,25 +284,22 @@ if (length(list.files(path = "data/", pattern = "_ring.width_all")) != 0) { # s'
 }
 # lecture fichier brut
 ring.width.all <- read.xlsx("data/raw/ring.width_all.xlsx")
-
 ##### join avec le tree.core ----
 tree.core_join <- full_join(tree.core.metadata, ring.width.all)
 # visualisation / lecture fichier
 tree.core_join
 colnames(tree.core_join)
 str(tree.core_join)
-
 ##### enregistrement dans extracted_raw ----
 # pour toutes autres modification, passer au script "data_tree.core_all.R"
-saveRDS(tree.core_join, file = "data/extracted_raw/tree.core_join.RDS")
+# saveRDS(tree.core_join, file = "data/extracted_raw/tree.core_join.RDS")
 # m'assurer que les BRNTC.[...].NA.2025 ou .pre suivent vu les changements dans quadrat.uid en oct 2026
 
 #### peat.sample.metadata ----
 # à chaque année, ajouter les nouvelles lignes d'UID sans écraser les données déjà remplies
 # obtenir les nouvelles données à partir de canopy.peat.fauna
 peat.sample.metadata <- canopy.peat.fauna |>
-  select(c("quadrat.uid", contains("peat.sample_")))
-
+  select(c("perm.plot.uid", contains("peat.sample_")))
 ##### mise à jour données récentes, peat.xlsx ----
 # retrait de la date du nom des feuilles de données (aaaammjj_peat.xlsx -> peat.xlsx)
 if (length(list.files(path = "data/", pattern = "_peat")) != 0) { # s'il y a un fichier correspondant au motif (pattern)
@@ -308,17 +310,15 @@ if (length(list.files(path = "data/", pattern = "_peat")) != 0) { # s'il y a un 
 }
 # lecture fichier brut
 peat <- read.xlsx("data/raw/peat.xlsx")
-
 ##### join avec le peat.sample ----
 peat.sample_join <- full_join(peat.sample.metadata, peat)
 # visualisation / lecture fichier
 peat.sample_join
 colnames(peat.sample_join)
 str(peat.sample_join)
-
 ##### enregistrement dans extracted_raw ----
 # pour toutes autres modification, passer au script "data_peat_all.R"
-saveRDS(peat.sample_join, file = "data/extracted_raw/peat.sample_join.RDS")
+# saveRDS(peat.sample_join, file = "data/extracted_raw/peat.sample_join.RDS")
 
 
 ## vegetation_trees.shr, visualisation ----
@@ -329,66 +329,11 @@ str(vegetation_trees.shr)
 
 ## vegetation_lower.str, visualisation ----
 vegetation_lower.str <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/vegetation_lower.str.RDS")
-colnames(readxl::read_xlsx("data/extracted_raw/vegetation_lower.str.xlsx"))
-str(vegetation_lower.str_visualisation)
+colnames(vegetation_lower.str)
+str(vegetation_lower.str)
 
 
 # ============================================================================= /
 # Enregistrement final ----
 # ============================================================================= /
-
-
-
-# ____________ CHANTIER - CHANTIER - CHANTIER - CHANTIER____________
-
-
-
-
-
-
-# if(paste0(names(env.data.sitewise[[1]])[j],".csv") %in% list.files("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw"))  {
-#   stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.") }
-
-# for (n in names(env.data.sitewise[[1]])) {
-#   # saveRDS(, file = paste0("data/clean/", n, ".Rds"))
-#   
-# }
-
-
-# si fichier n'existe pas déjà :
-# filter la base de données, recréer des fichier distincts par site.uid, stocker dans data/clean
-# sinon, arrêt et avertissement
-URLs.list <- vector()
-site.uids <- unique(tidy.weather.data.res$site.uid.ms)
-for (site in 1:length(site.uids)) {
-  URLs.list[site] <- paste0("meteoStat.data.hourly.res.", unique(tidy.weather.data.res$site.uid.ms)[site], ".csv")
-}
-if(any(URLs.list %in% list.files("connectivite/data/clean")))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
-  stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
-} else { 
-  for (j in 1:length(site.uids)) {
-    # j<-1
-    tidy.weather.data.j <- tidy.weather.data.originales %>% 
-      dplyr::filter(site.uid.ms == site.uids[j]) %>% 
-      select(-site.uid.ms)
-    write.csv(tidy.weather.data.j,  paste0("connectivite/data/clean/meteoStat.data.hourly.", site.uids[j], ".res.csv"), row.names = FALSE)
-  }
-}
-
-## version originale ----
-URLs.list <- vector()
-site.uids <- unique(tidy.weather.data.originales$site.uid.ms)
-for (site in 1:length(site.uids)) {
-  URLs.list[site] <- paste0("meteoStat.data.hourly.", unique(tidy.weather.data.originales$site.uid.ms)[site], ".csv")
-}
-if(any(URLs.list %in% list.files("connectivite/data/clean")))  { # si TRUE = STOP et warning // si FALSE = continuer la boucle (donc rien, donc IF statement)
-  stop("Attention, un fichier du même nom se trouve dans le dossier. En outrepassant cet avertissement, le fichier ancier sera effacé et remplacé.")
-} else {
-  for (j in 1:length(site.uids)) {
-    # j<-1
-    tidy.weather.data.j <- tidy.weather.data.originales %>%
-      dplyr::filter(site.uid.ms == site.uids[j]) %>%
-      select(-site.uid.ms)
-    write.csv(tidy.weather.data.j,  paste0("connectivite/data/clean/meteoStat.data.hourly.", site.uids[j], ".csv"), row.names = FALSE)
-  }
-}
+# voir scripts data_canopy.R, data_peat_all.R, data_tree.core_all.R, data_vegetation_v1.0.R
