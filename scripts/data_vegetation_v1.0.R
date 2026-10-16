@@ -39,14 +39,39 @@
 setwd("~/Documents/Doctorat/_R_Stats_PhD/connectivite")
 source("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/scripts/fonctions_phd_v3.2.R")
 
-# Import données (pour toute modification à la source: data_sites_all.R)
-vegetation_trees.shr.pre <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/vegetation_trees.shr.RDS")
-colnames(vegetation_trees.shr)
-str(vegetation_trees.shr)
 
-vegetation_lower.str.pre <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/vegetation_lower.str.RDS")
-colnames(vegetation_lower.str)
-str(vegetation_lower.str)
+# ============================================================================= /
+# Expolorations initiales ----
+# ============================================================================= /
+# pour toute modification à la source: data_sites_all.R
+
+vegetation_trees.shr.pre <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/vegetation_trees.shr.RDS") # |> 
+  # mutate(source.df.tab = "trees.shr") # |>  # onglet/feuille d'origine de la base de données "data/raw/data_SITE.UID.xlsx"
+  # les renames sont caduques si je pivote vers format long d'office avant l'aggrégation
+  # rename(trees.shr_measure.status = measure.status) |> 
+  # rename_with(
+  #   ~ paste0("trees.shr_", .x, recycle0 = TRUE),
+  #   starts_with("dom.")) |> 
+  # pivot_longer(cols = matches("(.*)\\.[1-5]$"), 
+  #              names_to = c("data.type", ".value"), 
+  #              names_pattern = "(.*)\\.([1-5]$)") # ou : (.*)\\.(\\d+)
+# explication du names_pattern : '.*' opérateur "glouton"/"greedy" qui capture le plus d'affaires possible
+# puis, \\. signifie "escape point, donc point comme élément typographique plustôt que comme symbole codé du regex
+# les 3 groupes de parenthèses indiquent les 2 parties à séparer
+# le \\d+ veut dire "tout ce qui se trouve après, fonctionne aussi en restreignant aux chiffres ([1-9]$) où le $ signifie FIN de la chaîne de charactères
+colnames(vegetation_trees.shr.pre)
+str(vegetation_trees.shr.pre)
+
+vegetation_lower.str.pre <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/vegetation_lower.str.RDS") # |> 
+  # mutate(source.df.tab = "lower.str") |> # onglet/feuille d'origine de la base de données "data/raw/data_SITE.UID.xlsx"
+  # les renames sont caduques si je pivote vers format long d'office avant l'aggrégation
+  # rename(trees.shr_measure.status = measure.status) |> 
+  # rename_with(
+  #   ~ paste0("lower.str_", .x, recycle0 = TRUE),
+  #   starts_with("dom.")) |> 
+  pivot_longer()
+colnames(vegetation_lower.str.pre)
+str(vegetation_lower.str.pre)
 
 # ============================================================================= /
 # Mise à jour données récentes, tous data_SITE.UID ----
@@ -59,19 +84,22 @@ str(vegetation_lower.str)
 ## idées (à faire) ----
 # - ggIA me recommande de transformer en wide-to-long immédiatement
 # - joindre les lower et higher stata d'abord...
-# - joindre et utiliser NOM LATIN plutôt que l'abbr
+# - joindre et utiliser NOM LATIN plutôt que l'abbr -> NON l'abbr = utile dans les ordinations !
 # - faire correspondre circ.cm.NO <-> diam.cm.NO avec circonférence = π * diamètre 
 #   - m'assurer de vérifier les incongruïtés possibles... tape en pouces, etc.
 # - ADDITIONNER LES INDIVIDUS COMME PROTOCOLE COUPE ARBRES : semis dans nb ind, dhp dans diam.. -> comptés séparément
 # - trouver comment gérer les données emboîtées (voir cours de stats); hypothèse de mémoire :
 #   - conserver la structure emboîtée et faire un join + une transformation wide-to-long
 # 
+## analyses et comment m,y rendre
+# • ggIA 16 oct 2026 :
+# L'Analyse en Coordonnées Principales (PCoA / MDS) avec l'indice de Gower : L'indice de distance de Gower est l'un des rares indices 
+# capables de gérer des variables de natures différentes (quantitatives, qualitatives) et d'ignorer mathématiquement les NA lors du calcul 
+# des distances entre sites, sans supprimer la ligne. Vous pouvez utiliser la fonction vegdist(..., method = "gower", na.rm = TRUE) du package vegan.
+# -> je préfère qqchose de plus intuitif, je vais analyser les strates SÉPARÉMENT...
 
 ## aggrégation des df strates ----
-
-intersect(colnames(vegetation_trees.shr), colnames(vegetation_lower.str))
-# déjà le dom.sp.NO et le measure.status sont respectifs à la base de donnée, donc PAS UNE CLÉ DE JOINTURE
-
+# ATTENTION, LES DONNÉES SONT DE NATURE DIFFÉRENTE : -> lower.str = %recouvrement vs -> trees.shr = nb et diamètre
 ## cols "nb.ind.1", "diam.cm.1", "circ.cm.1" ----
 # actions séquentielles (?), coder en fonction éventuellement
 ### comptage du nombre d'arbres ----

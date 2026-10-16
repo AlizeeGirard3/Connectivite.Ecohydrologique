@@ -1,5 +1,5 @@
 #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=- #
-#              Canopy data, cleaning script (following data_sites_all.R)
+#              CHANGER NOM PARTOUT-Canopy data, cleaning script (following data_sites_all.R)
 #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=- #
 
 # Description -------------------------------------------------------------
