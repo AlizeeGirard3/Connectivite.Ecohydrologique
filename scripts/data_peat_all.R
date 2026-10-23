@@ -52,9 +52,10 @@ peat.sample_join <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connect
 # ============================================================================= /
 # Nettoyage ----
 # ============================================================================= /
-## filtre global & uid.to.column ----
+## filtre global ----
 peat.sample_join_fltrd <- filter.raw.file(peat.sample_join) # script "fonction_phd_vX" (AG, 2025+)
-peat.sample_tidy <- uid.to.columns(file.to.restructure = peat.sample_join_fltrd, type = "cal.data")) # script "fonction_phd_vX" (AG, 2025+)
+colnames(peat.sample_join_fltrd)
+# uid.to.column -> fait dans le script qui a généré peat.sample_join.RDS (data_sites_all.R)
 
 # ============================================================================= /
 # [...] ----

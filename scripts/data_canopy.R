@@ -44,7 +44,7 @@ source("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/scripts/fonctio
 #                                             sep = ";", quote = "\"'",
 #                                             dec = ",", fileEncoding = "UTF-8-BOM") # bon formatage, puis, enregistrement en RDS
 canopy.peat.fauna <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/canopy.peat.fauna.RDS") |> 
-  select(!c(contains("peat.sample_"), tree.core_))
+  select(!c(contains(c("peat.sample_", "tree.core_"))))
 colnames(canopy.peat.fauna)
 str(canopy.peat.fauna)
 

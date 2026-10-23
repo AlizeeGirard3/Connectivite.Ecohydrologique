@@ -272,7 +272,8 @@ str(canopy.peat.fauna)
 # à chaque année, ajouter les nouvelles lignes d'UID sans écraser les données déjà remplies
 # obtenir les nouvelles données à partir de canopy.peat.fauna
 tree.core.metadata <- canopy.peat.fauna |>
-  select(contains(c("perm.plot.uid",  "tree.core_sp", "tree.core_uid")))
+  select(contains(c("perm.plot.uid", "site.uid", "chapter", "type", "perm.plot.replicate", "perm.plot.type", "relative.distance",
+                    "quadrat.letter", "year", "tree.core_sp", "tree.core_uid")))
 
 ##### mise à jour données récentes, peat.xlsx ----
 # retrait de la date du nom des feuilles de données (aaaammjj_peat.xlsx -> peat.xlsx)
@@ -299,7 +300,8 @@ str(tree.core_join)
 # à chaque année, ajouter les nouvelles lignes d'UID sans écraser les données déjà remplies
 # obtenir les nouvelles données à partir de canopy.peat.fauna
 peat.sample.metadata <- canopy.peat.fauna |>
-  select(c("perm.plot.uid", contains("peat.sample_")))
+  select(c("perm.plot.uid", "perm.plot.uid", "site.uid", "chapter", "type", "perm.plot.replicate", "perm.plot.type", 
+           "relative.distance", "quadrat.letter", "year", , contains("peat.sample_")))
 ##### mise à jour données récentes, peat.xlsx ----
 # retrait de la date du nom des feuilles de données (aaaammjj_peat.xlsx -> peat.xlsx)
 if (length(list.files(path = "data/", pattern = "_peat")) != 0) { # s'il y a un fichier correspondant au motif (pattern)
@@ -308,7 +310,7 @@ if (length(list.files(path = "data/", pattern = "_peat")) != 0) { # s'il y a un 
     str_remove("\\d+?(?=_)_") # enlève la date; explications sur le regex : voir section Mise à jour [...] ci-haut
   file.rename(from = list.files(path = "~/Documents/Doctorat/_R_Stats_PhD/connectivite/data", pattern = "_peat", full.names = TRUE), to = peat_file)
 }
-# lecture fichier brut
+# lecture fichier brut (mettre à jour)
 peat <- read.xlsx("data/raw/peat.xlsx")
 ##### join avec le peat.sample ----
 peat.sample_join <- full_join(peat.sample.metadata, peat)
