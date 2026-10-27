@@ -72,27 +72,35 @@ vegetation_trees.shr.pre_cleand <- vegetation_trees.shr.pre |>
   mutate(across(c(nb.ind, diam.cm, circ.cm), ~ ifelse(.x == 0 | .x == "NA", NA, .x))) |> 
   dplyr::filter(!if_all(c(nb.ind, diam.cm, circ.cm), is.na))  # enlève beaucoup de lignes inutiles OK
 
-### count trees ----
+### vérifications et count trees ----
 for(n in 1:nrow(vegetation_trees.shr.pre_cleand)) {
+  # n<-436
   print(paste("ligne =", n))
   # vérification 1 : fin = ;NA
-  if(grepl(".*;NA", vegetation_trees.shr.pre_cleand$diam.cm[n], ignore.case = T) == FALSE) {
-    stop(paste0(c("Le nombre d'arbres ne fini pas par 'NA', le compte serait erroné. Corriger les donnéres originales, quadrat.UID : ", vegetation_trees.shr.pre_cleand$quadrat.uid[n])))
+  if(!is.na(vegetation_trees.shr.pre_cleand$diam.cm[n])) {
+    if(grepl("NA$", vegetation_trees.shr.pre_cleand$diam.cm[n], ignore.case = T) == FALSE) {
+      stop(paste0(c("Le nombre d'arbres ne fini pas par 'NA', le compte serait erroné. Corriger les donnéres originales, quadrat.UID : ", vegetation_trees.shr.pre_cleand$quadrat.uid[n],".")))
+    }
   }
-  tree.count.n <- length(unlist(gregexec(";", vegetation_trees.shr.pre_cleand$diam.cm[n]))) # logique de compter les ";" : j'ai mis NA à la fin pour que chaque ARBRE ait un ";" à sa droite (1:1)
- 
-   # vérification 2 : soit données dans colonne DHP.cm SOIT dans circ.cm
-  verif.2 <- vegetation_trees.shr.pre_cleand |> 
-    dplyr::filter(is.na(nb.ind))
-  if() {
-    stop(paste0(c("Le nombre d'arbres ne fini pas par 'NA', le compte serait erroné. Corriger les donnéres originales, quadrat.UID : ", vegetation_trees.shr.pre_cleand$quadrat.uid[n])))
-  }
+  # vérification 2 : soit données dans colonne DHP.cm SOIT dans circ.cm
+  if(!all(is.na(vegetation_trees.shr.pre_cleand$diam.cm[n]), is.na(vegetation_trees.shr.pre_cleand$circ.cm[n]))) {
+    if(all(c(is.na(vegetation_trees.shr.pre_cleand$diam.cm[n]), is.na(vegetation_trees.shr.pre_cleand$circ.cm[n])))) {
+      # si les DEUX ne sont ni tous "NA" MAIS que LES DEUX continennent des données STOP ya un problème
+      stop("problème quelconque")
+    } # si les DEUX ne sont ni tous "NA" NI ne continennent de données, ça veut dire que tout VA BIEN, donc continuer
+  } 
+  
+# ARRANGER ICI : SI NA PARTOUT -> ÇA MET "1"
+# ARRANGER AUSSI CONSERVER LE + HAUT CHIFFRE OU ÉCRIRE DIFFÉREMMENT
+  tree.count.n.1 <- length(unlist(gregexec(";", vegetation_trees.shr.pre_cleand$diam.cm[n]))) # logique de compter les ";" : j'ai mis NA à la fin pour que chaque ARBRE ait un ";" à sa droite (1:1)
+  tree.count.n.2 <- length(unlist(gregexec(";", vegetation_trees.shr.pre_cleand$circ.cm[n])))
+  
   
   print(paste("nombre =", tree.count.n))
   if(!is.na(vegetation_trees.shr.pre_cleand$nb.ind[n]) && !is.na(vegetation_trees.shr.pre_cleand$diam.cm[n])) {
     stop("La valeur de la colonne nb.ind.# n'est pas vide, elle sera écrasée. Vérifier méthodologie, corriger les données orinigales.")
   }
-  vegetation_trees.shr.pre_cleand$nb.ind <- tree.count.n
+  vegetation_trees.shr.pre_cleand$nb.ind[n] <- tree.count.n
 }
 
 
