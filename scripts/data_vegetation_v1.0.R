@@ -43,9 +43,8 @@
 setwd("~/Documents/Doctorat/_R_Stats_PhD/connectivite")
 source("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/scripts/fonctions_phd_v3.2.R")
 
-
 # ============================================================================= /
-# Expolorations initiales ----
+# Nettoyages et vérifications ----
 # ============================================================================= /
 # pour toute modification à la source: data_sites_all.R
 ## vegetation_trees.shr ----
@@ -67,41 +66,71 @@ colnames(vegetation_trees.shr.pre)
 str(vegetation_trees.shr.pre)
 
 ### nettoyage ----
-# uniformisation des NA vrais, "NA", 0 dans 3 colonnes et retrait si les 3 colonnes n'avaient aucune donnée (NA)
+# uniformisation des NA vrais, "NA", "na", 0 dans 3 colonnes & retrait si les 3 colonnes n'ont aucune donnée (NA)
 vegetation_trees.shr.pre_cleand <- vegetation_trees.shr.pre |> 
-  mutate(across(c(nb.ind, diam.cm, circ.cm), ~ ifelse(.x == 0 | .x == "NA", NA, .x))) |> 
+  mutate(across(c(nb.ind, diam.cm, circ.cm), ~ ifelse(.x == 0 | toupper(.x) == "NA", NA, .x))) |> # tel quelle ça remet les 0 en NA, veut dire qu'on peut éliminer 
+  # la ligne, ya pas cette espèce ni des DHP/circonf (vestige de la méthode de prise de données numériques)
   dplyr::filter(!if_all(c(nb.ind, diam.cm, circ.cm), is.na))  # enlève beaucoup de lignes inutiles OK
 
-### vérifications et count trees ----
+### vérifications ----
 for(n in 1:nrow(vegetation_trees.shr.pre_cleand)) {
-  # n<-436
+  # n<-436 # circ != NA
+  # n<-1 # diam != NA
+  # n<-366 # diam && circ == NA
   print(paste("ligne =", n))
+  
   # vérification 1 : fin = ;NA
   if(!is.na(vegetation_trees.shr.pre_cleand$diam.cm[n])) {
-    if(grepl("NA$", vegetation_trees.shr.pre_cleand$diam.cm[n], ignore.case = T) == FALSE) {
+    if(!grepl("NA$", vegetation_trees.shr.pre_cleand$diam.cm[n], ignore.case = T)) { # si ne fini pas par NA (ou pas cellule == NA), ERREUR
       stop(paste0(c("Le nombre d'arbres ne fini pas par 'NA', le compte serait erroné. Corriger les donnéres originales, quadrat.UID : ", vegetation_trees.shr.pre_cleand$quadrat.uid[n],".")))
     }
   }
+  
   # vérification 2 : soit données dans colonne DHP.cm SOIT dans circ.cm
-  if(!all(is.na(vegetation_trees.shr.pre_cleand$diam.cm[n]), is.na(vegetation_trees.shr.pre_cleand$circ.cm[n]))) {
-    if(all(c(is.na(vegetation_trees.shr.pre_cleand$diam.cm[n]), is.na(vegetation_trees.shr.pre_cleand$circ.cm[n])))) {
-      # si les DEUX ne sont ni tous "NA" MAIS que LES DEUX continennent des données STOP ya un problème
-      stop("problème quelconque")
-    } # si les DEUX ne sont ni tous "NA" NI ne continennent de données, ça veut dire que tout VA BIEN, donc continuer
+  # stratégie : si les DEUX ne sont ni tous "NA" NI ne continennent de données, ça veut dire que tout VA BIEN, donc continuer
+  if(!all(is.na(vegetation_trees.shr.pre_cleand$diam.cm[n]), is.na(vegetation_trees.shr.pre_cleand$circ.cm[n]))) { # si tout est NA (== T): ne rien faire; si FAUX, vérifier...
+    # si les DEUX ne sont PAS NA : ERREUR
+    if(all(is.na(vegetation_trees.shr.pre_cleand$diam.cm[n]), is.na(vegetation_trees.shr.pre_cleand$circ.cm[n]))) {
+      stop(paste0("Les colonnes diam.cm et circ.cm contiennent toutes deux des données alors que ce devrait être l'UNE ou l'AUTRE des méthodes. 
+                  Aller corriger données originales; quadrat.uid :", vegetation_trees.shr.pre_cleand$quadrat.uid[n], "."))
+    }
   } 
   
-# ARRANGER ICI : SI NA PARTOUT -> ÇA MET "1"
-# ARRANGER AUSSI CONSERVER LE + HAUT CHIFFRE OU ÉCRIRE DIFFÉREMMENT
-  tree.count.n.1 <- length(unlist(gregexec(";", vegetation_trees.shr.pre_cleand$diam.cm[n]))) # logique de compter les ";" : j'ai mis NA à la fin pour que chaque ARBRE ait un ";" à sa droite (1:1)
-  tree.count.n.2 <- length(unlist(gregexec(";", vegetation_trees.shr.pre_cleand$circ.cm[n])))
-  
-  
-  print(paste("nombre =", tree.count.n))
-  if(!is.na(vegetation_trees.shr.pre_cleand$nb.ind[n]) && !is.na(vegetation_trees.shr.pre_cleand$diam.cm[n])) {
-    stop("La valeur de la colonne nb.ind.# n'est pas vide, elle sera écrasée. Vérifier méthodologie, corriger les données orinigales.")
+  # vérification 3 : soit données dans colonne DHP.cm/circ.cm (oui) SOIT dans nb.ind
+  if(!is.na(vegetation_trees.shr.pre_cleand$nb.ind[n]) && !all(is.na(vegetation_trees.shr.pre_cleand$diam.cm[n]), 
+                                                               is.na(vegetation_trees.shr.pre_cleand$circ.cm[n]))) {
+    stop(paste0("La valeur de la colonne nb.ind.# n'est pas vide, elle sera écrasée. Vérifier méthodologie, 
+                Aller corriger données originales; quadrat.uid :", vegetation_trees.shr.pre_cleand$quadrat.uid[n], "."))
   }
-  vegetation_trees.shr.pre_cleand$nb.ind[n] <- tree.count.n
 }
+
+# STRATÉGIE RENDANT CI-DESSOUS CADUQUE : 
+# vérifications boucle en elle-même (mettre dans fonctions ?)
+# j'ai deux colonnes, si des données sont dans la colonne 2 ou 3 je veux m'assurer que la colonne 1 soit NA, sinon erreur.
+# cette vérif permet d'écraser le NA respectif avec la conversion C = D x π
+# CHOISIR SUR QUELLE COLONNE TRAVAILLER, soit CELLE QUI N'EST PAS NA
+
+# vecteur des chiffres
+# diam.cm.n <- str_split(vegetation_trees.shr.pre_cleand$diam.cm[n], pattern = ";")
+# circ.cm.n <- str_split(vegetation_trees.shr.pre_cleand$circ.cm[n], pattern = ";")
+# vegetation_trees.shr.pre_cleand$diam.cm <- if(is.na(diam.cm.n)) 
+# circ.cm.n)
+
+# if(is.na(str_count(vegetation_trees.shr.pre_cleand$diam.cm[n], pattern = ";"))) {
+#   if(!is.na(str_count(vegetation_trees.shr.pre_cleand$circ.cm[n], pattern = ";"))) {
+#     tree.count.n <-  str_count(vegetation_trees.shr.pre_cleand$circ.cm[n], pattern = ";") # logique de compter les ";" : j'ai mis NA à la fin pour que chaque ARBRE ait un ";" à sa droite (1:1)
+#   }
+# } else if(!is.na(str_count(vegetation_trees.shr.pre_cleand$diam.cm[n], pattern = ";"))) {
+#   if(is.na(str_count(vegetation_trees.shr.pre_cleand$circ.cm[n], pattern = ";"))) {
+#     tree.count.n <-  str_count(vegetation_trees.shr.pre_cleand$diam.cm[n], pattern = ";") # logique de compter les ";" : j'ai mis NA à la fin pour que chaque ARBRE ait un ";" à sa droite (1:1)
+#   }
+# } else { # si tout est NA
+#   tree.count.n <- NA
+# }
+
+# print(paste("nombre =", tree.count.n))
+# vegetation_trees.shr.pre_cleand$nb.ind[n] <- tree.count.n
+# }
 
 
 # vegetation_trees.shr.pre_count <- vegetation_trees.shr.pre_cleand |> 
@@ -109,6 +138,76 @@ for(n in 1:nrow(vegetation_trees.shr.pre_cleand)) {
 #     grep(";",   diam.cm),
 #   )
 
+# ============================================================================= /
+# Calcul des équivalences ----
+# ============================================================================= /
+# circonférence (vestige prise de donnée 2024) <-> diamètre avec la conversion C = D x π
+# nb d'individus (parcelle de 20 m2) avec nombre de diamètres/circonférence mesurés
+# NOTE MÉTHODOLOGIQUE : parcelle 20 m2 ou 100 m2 pour les DHP/circ ET (additif dans un même parcelle permanente) 
+# quadrats A/B/C/... pour les individus de moins de 1,3 m ou sans DHP (compte d'individus)
+# sans masquer par des additions ou des moyennes (pas dans le format tidy général), ces données représentent un emboîtement et/ou une moyenne
+# l'important reste donc LA LIGNE
+
+# équivalence DHP <-> circonférence ----
+# vegetation_trees.shr.pre_cleand_dhp
+pattern <- paste(pattern = c("diam.cm",'circ.cm'), collapse = "|")
+cols <- colnames(vegetation_trees.shr.pre_cleand[,grep(pattern, colnames(vegetation_trees.shr.pre_cleand))])
+for(col in 1:length(cols)) {
+  print(cols[col])
+  col.name <- cols[col]
+
+  # stratégie : par une boucle, appliquer les modifications sur le vecteur diam/circ, puis remplacer la valeur nb.ind (vérification 3. faite √ on n'écrase rien)
+  vegetation_trees.shr.pre_cleand.cmpltd <- vegetation_trees.shr.pre_cleand |> 
+    select(!!col.name) 
+  # si non NA, 
+  # vecteur finissant par NA -> supprimer le NA
+  # str_split avec ";"
+  # vecteur de charactères où "," doit changer pour "." pour convertir en chiffre
+  # conserver colonne-liste (vecteur de chiffres)
+  # -> cette colonne liste devra être transformée en format long un moment donné....
+  # me renseigner sur l'usage de ces données (rendue là, 30 octobre 2026)
+  
+  # |> 
+  #   mutate()
+}
+
+# ou version base R (+ compréhensible et directement testable)
+test <- vegetation_trees.shr.pre_cleand |>
+  mutate(
+    diam_liste = map(`diam.cm`, function(x) {
+      x |> 
+        str_remove(";NA$") %>%        # Supprime le ";NA" à la fin de la chaîne
+        str_split(";") %>%            # Sépare les valeurs dans une liste de caractères
+        pluck(1) %>%                  # Extrait le premier vecteur de la liste de str_split
+        str_replace(",", ".") %>%     # Remplace la virgule décimale par un point pour R
+        as.numeric()                  # Convertit en vecteur numérique
+      
+    }),
+    nb_valeurs_non_na = map_int(diam_liste, ~ sum(!is.na(.x)))
+    )
+    
+  # vecteur des chiffres
+  # diam.cm.n <- str_split(vegetation_trees.shr.pre_cleand$diam.cm[n], pattern = ";")
+  # circ.cm.n <- str_split(vegetation_trees.shr.pre_cleand$circ.cm[n], pattern = ";")
+  # vegetation_trees.shr.pre_cleand$diam.cm <- if(is.na(diam.cm.n)) 
+  # circ.cm.n)
+  
+
+# for(n in 1:nrow(vegetation_trees.shr.pre_cleand)) {
+#   # n<-436 # circ != NA
+#   # n<-1 # diam != NA
+#   # n<-366 # diam && circ == NA
+#   print(paste("ligne =", n))
+#   
+#   # vérification 1 : fin = ;NA
+#   if(!is.na(vegetation_trees.shr.pre_cleand$diam.cm[n])) {
+
+
+# ============================================================================= /
+# Expolorations initiales ----
+# ============================================================================= /
+
+  
 ## vegetation_lower.str ----
 vegetation_lower.str.pre <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/vegetation_lower.str.RDS") # |> 
   # mutate(source.df.tab = "lower.str") |> # onglet/feuille d'origine de la base de données "data/raw/data_SITE.UID.xlsx"
