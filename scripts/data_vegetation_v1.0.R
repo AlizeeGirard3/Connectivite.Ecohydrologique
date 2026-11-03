@@ -132,9 +132,36 @@ for (rowN in 1:nrow(vegetation_trees.shr.pre_cleand)) {
   print(rowN)
   # rowN <- 3
   
-  diam.cm.n <- str_split(vegetation_trees.shr.pre_cleand$diam.cm[rowN], pattern = ";")
-  circ.cm.n <- str_split(vegetation_trees.shr.pre_cleand$circ.cm[rowN], pattern = ";")
+  # extraire les données (non NA)
+  # values <- setNames(c(str_split(vegetation_trees.shr.pre_cleand$diam.cm[rowN], pattern = ";"), str_split(vegetation_trees.shr.pre_cleand$circ.cm[rowN], pattern = ";")), c("diam.cm",  "circ.cm"))
+  values <- setNames(c(vegetation_trees.shr.pre_cleand$diam.cm[rowN], vegetation_trees.shr.pre_cleand$circ.cm[rowN]), c("diam.cm",  "circ.cm"))
+  value <- if(TRUE %in% is.na(values[[1]])) { values[2] } else { values[1] } # Si diam.cm == NA, on garde circonférence, sinon, on garde diam.cm (boucle de vérif : un OU l'autre == OK)
+  type <- names(value)
+  
+  # retrait NA final et character vector to numeric vector
+  value.1 <- str_remove(value, ";NA$") |> 
+    str_split(";") |> 
+    pluck(1) |> # extrait le premier vecteur de la liste de str_split
+    str_replace(",", ".") |>
+    as.numeric()
+  str(value.1)
+  class(value.1) # vecteur numérique
+  
+  
+  # transformer en colonne-liste ?
+  # mettre "value" dans une liste ??
 }
+
+# map_dfc() pour retourner un data frame dont les colonnes sur lesquelles sont appliquées les fonctions sont recollées.
+map_dfc(value, is.na)
+
+
+value |> 
+  dplyr::filter(.data, is.na())
+  #   str_split(";") %>%            # Sépare les valeurs dans une liste de caractères
+#   pluck(1) %>%                  # Extrait le premier vecteur de la liste de str_split
+#   str_replace(",", ".") %>%     # Remplace la virgule décimale par un point pour R
+#   as.numeric()  
 
 # vegetation_trees.shr.pre_cleand$diam.cm <- if(is.na(diam.cm.n)) 
 # circ.cm.n)
@@ -209,34 +236,10 @@ test <- vegetation_trees.shr.pre_cleand |>
       x |> 
         str_remove(";NA$") %>%        # Supprime le ";NA" à la fin de la chaîne
         str_split(";") %>%            # Sépare les valeurs dans une liste de caractères
-        pluck(1) %>%                  # Extrait le premier vecteur de la liste de str_split
-        str_replace(",", ".") %>%     # Remplace la virgule décimale par un point pour R
-        as.numeric()                  # Convertit en vecteur numérique
       
     }),
     nb_valeurs_non_na = map_int(diam_liste, ~ sum(!is.na(.x)))
     )
-    
-  # vecteur des chiffres
-  # diam.cm.n <- str_split(vegetation_trees.shr.pre_cleand$diam.cm[n], pattern = ";")
-  # circ.cm.n <- str_split(vegetation_trees.shr.pre_cleand$circ.cm[n], pattern = ";")
-  # vegetation_trees.shr.pre_cleand$diam.cm <- if(is.na(diam.cm.n)) 
-  # circ.cm.n)
-  
-
-# for(n in 1:nrow(vegetation_trees.shr.pre_cleand)) {
-#   # n<-436 # circ != NA
-#   # n<-1 # diam != NA
-#   # n<-366 # diam && circ == NA
-#   print(paste("ligne =", n))
-#   
-#   # vérification 1 : fin = ;NA
-#   if(!is.na(vegetation_trees.shr.pre_cleand$diam.cm[n])) {
-
-
-
-
-
 # ============================================================================= /
 # Expolorations initiales ----
 # ============================================================================= /
