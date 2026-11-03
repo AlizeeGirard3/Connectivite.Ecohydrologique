@@ -41,38 +41,55 @@
 # .rs.restartR()
 # setwd("/Users/Aliz/Library/CloudStorage/OneDrive-UniversitéLaval/_FIELD.LAB WORK 2025/Laboratoire/LOI")
 setwd("~/Documents/Doctorat/_R_Stats_PhD/connectivite")
+list.files("data/extracted_raw/", pattern = "vegetation")
+list.files("data/clean/", pattern = "vegetation")
 source("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/scripts/fonctions_phd_v3.2.R")
+
+# ============================================================================= /
+# Import ----
+# ============================================================================= /
+vegetation_trees.shr.pre <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/vegetation_trees.shr.RDS")
+vegetation_lower.str.pre <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/vegetation_lower.str.RDS")
+tidy_vegetation_heights <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/clean/tidy_vegetation_heights.RDS")
 
 # ============================================================================= /
 # Nettoyages et vérifications ----
 # ============================================================================= /
+
 # pour toute modification à la source: data_sites_all.R
+# noter que toutes obervation rejetée (measure.status == "rejected") a été filtrée dans le script "data_sites_all.R"
 ## vegetation_trees.shr ----
+str(vegetation_trees.shr.pre)
+
 ### pivot longer ----
-vegetation_trees.shr.pre <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/vegetation_trees.shr.RDS") |> 
+# pour chaque espèce dominante 1-5, les colonnes multiples (1-5) seront ramenées
+# en une seul colonne avec toutes les infos des différentes espèces (1-5) ramenées en différentes lignes
+# la hauteur est répétée dans chaque ligne (à changer ?; attendre de savoir traiter ces données avant de décider)
+vegetation_trees.shr.pre1 <- vegetation_trees.shr.pre |> 
   mutate(source.df.tab = "trees.shr") |>  # onglet/feuille d'origine de la base de données "data/raw/data_SITE.UID.xlsx"
   # les renames sont caduques si je pivote vers format long d'office avant l'aggrégation
   rename(trees.shr_measure.status = measure.status) |>
   rename_with(~ paste0("trees.shr_", .x, recycle0 = TRUE),
-              starts_with("dom.")) |>
-  pivot_longer(cols = matches("(.*)\\.[1-5]$"),
+              starts_with("dom.")) |> # commence par "dom." c'est toujours le nom de l'espèce dominante
+  pivot_longer(cols = matches("(.*)\\.[1-5]$"), # suivi du chiffre 1-5 (changer le chiffre si + d'espèces que 5)
                names_to = c(".value", "sp.NO"), # code de GGIA pour cette partie précise, aide pour le concept général
                names_pattern = "(.*)\\.([1-5]$)") # ou : (.*)\\.(\\d+)
 # explication du names_pattern : '.*' opérateur "glouton"/"greedy" qui capture le plus d'affaires possible
 # puis, \\. signifie "escape point, donc point comme élément typographique plustôt que comme symbole codé du regex
 # les 3 groupes de parenthèses indiquent les 2 parties à séparer
 # le \\d+ veut dire "tout ce qui se trouve après, fonctionne aussi en restreignant aux chiffres ([1-9]$) où le $ signifie FIN de la chaîne de charactères
-colnames(vegetation_trees.shr.pre)
-str(vegetation_trees.shr.pre)
+colnames(vegetation_trees.shr.pre1)
+str(vegetation_trees.shr.pre1)
 
-### nettoyage ----
-# uniformisation des NA vrais, "NA", "na", 0 dans 3 colonnes & retrait si les 3 colonnes n'ont aucune donnée (NA)
-vegetation_trees.shr.pre_cleand <- vegetation_trees.shr.pre |> 
+### nettoyage des abondances nulles ----
+# uniformisation des NA vrais, "NA", "na", 0 dans 3 colonnes & retrait si les 3 colonnes n'ont aucune donnée 
+vegetation_trees.shr.pre_cleand <- vegetation_trees.shr.pre2 |> 
   mutate(across(c(nb.ind, diam.cm, circ.cm), ~ ifelse(.x == 0 | toupper(.x) == "NA", NA, .x))) |> # tel quelle ça remet les 0 en NA, veut dire qu'on peut éliminer 
   # la ligne, ya pas cette espèce ni des DHP/circonf (vestige de la méthode de prise de données numériques)
   dplyr::filter(!if_all(c(nb.ind, diam.cm, circ.cm), is.na))  # enlève beaucoup de lignes inutiles OK
 
 ### vérifications ----
+# TRANSFORMER EN fonction ??
 for(n in 1:nrow(vegetation_trees.shr.pre_cleand)) {
   # n<-436 # circ != NA
   # n<-1 # diam != NA
@@ -101,18 +118,24 @@ for(n in 1:nrow(vegetation_trees.shr.pre_cleand)) {
                                                                is.na(vegetation_trees.shr.pre_cleand$circ.cm[n]))) {
     stop(paste0("La valeur de la colonne nb.ind.# n'est pas vide, elle sera écrasée. Vérifier méthodologie, 
                 Aller corriger données originales; quadrat.uid :", vegetation_trees.shr.pre_cleand$quadrat.uid[n], "."))
+    # cette vérif permet d'écraser le NA respectif avec la conversion C = D x π
+    # À FAIRE : CHOISIR SUR QUELLE COLONNE TRAVAILLER, soit CELLE QUI N'EST PAS NA
   }
 }
 
-# STRATÉGIE RENDANT CI-DESSOUS CADUQUE : 
-# vérifications boucle en elle-même (mettre dans fonctions ?)
-# j'ai deux colonnes, si des données sont dans la colonne 2 ou 3 je veux m'assurer que la colonne 1 soit NA, sinon erreur.
-# cette vérif permet d'écraser le NA respectif avec la conversion C = D x π
-# CHOISIR SUR QUELLE COLONNE TRAVAILLER, soit CELLE QUI N'EST PAS NA
+# ____________ CHANTIER - CHANTIER - CHANTIER - CHANTIER____________
+str(vegetation_trees.shr.pre_cleand)
 
 # vecteur des chiffres
-# diam.cm.n <- str_split(vegetation_trees.shr.pre_cleand$diam.cm[n], pattern = ";")
-# circ.cm.n <- str_split(vegetation_trees.shr.pre_cleand$circ.cm[n], pattern = ";")
+for (rowN in 1:nrow(vegetation_trees.shr.pre_cleand)) {
+  # line <- vegetation_trees.shr.pre_cleand[rowN,]
+  print(rowN)
+  # rowN <- 3
+  
+  diam.cm.n <- str_split(vegetation_trees.shr.pre_cleand$diam.cm[rowN], pattern = ";")
+  circ.cm.n <- str_split(vegetation_trees.shr.pre_cleand$circ.cm[rowN], pattern = ";")
+}
+
 # vegetation_trees.shr.pre_cleand$diam.cm <- if(is.na(diam.cm.n)) 
 # circ.cm.n)
 
@@ -137,6 +160,14 @@ for(n in 1:nrow(vegetation_trees.shr.pre_cleand)) {
 #   mutate(compte.arbres = case_when(
 #     grep(";",   diam.cm),
 #   )
+
+
+
+# ____________ CHANTIER - CHANTIER - CHANTIER - CHANTIER____________
+
+
+
+
 
 # ============================================================================= /
 # Calcul des équivalences ----
@@ -201,6 +232,9 @@ test <- vegetation_trees.shr.pre_cleand |>
 #   
 #   # vérification 1 : fin = ;NA
 #   if(!is.na(vegetation_trees.shr.pre_cleand$diam.cm[n])) {
+
+
+
 
 
 # ============================================================================= /
@@ -275,7 +309,6 @@ colnames(vegetation_trees.shr)
 
 
 
-# ____________ CHANTIER - CHANTIER - CHANTIER - CHANTIER____________
 
 
 

@@ -244,15 +244,21 @@ print("Avertissement (microtopo) OK : il y a des lignes vides. Juste m'assurer d
 saveRDS(env.data.merged, file = "/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/env.data.merged.RDS")
 ### COMMENT/UNCOMMENT TO HERE (previous line)
 
+
 # ============================================================================= /
-# Nettoyage (type colonnes, wide-to-long, etc.) ----
+# Nettoyages et enregistrements ----
 # ============================================================================= /
-# ouverture rapide de l'état actuel des fiochiers data_site.uid
+# ouverture rapide de l'état actuel des fichiers data_site.uid
+# nettoyages : type colonnes, wide-to-long, séparation en sous-df, etc.
+
+## env.data.merged ----
+## LISTE des 4 onglets bruts extraits
 # env.data.merged <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/env.data.merged.RDS")
+# names(env.data.merged)
+## [1] "microtopo"            "canopy.peat.fauna"    "vegetation_trees.shr" "vegetation_lower.str"
 
 ## microtopo ----
 # microtopo <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/microtopo.RDS")
-
 
 ## canopy.peat.fauna ----
 ### visualisation pour définir comment l'ouvrir ----
@@ -328,14 +334,20 @@ vegetation_trees.shr <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/con
 colnames(vegetation_trees.shr)
 str(vegetation_trees.shr)
 
+### separation heigth vs sp + abund ----
+# stratégie : éviter une situation où j'ai des hauteurs d'arbres/arbustes, et des NA dans dans nb.ind, diam.cm, circ.cm (NA)  
+vegetation_heights <- vegetation_trees.shr.pre |> 
+  select(quadrat.uid, contains("height"))
+str(vegetation_heights)
+saveRDS(vegetation_heights, file = "/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/clean/tidy_vegetation_heights.RDS")
+
+vegetation_trees.shr.noHeigths <- vegetation_trees.shr.pre |> 
+  select(!contains("height"))
+str(vegetation_trees.shr.noHeigths)
+saveRDS(vegetation_trees.shr.noHeigths, file = "/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/vegetation_trees.shr.RDS")
+
 
 ## vegetation_lower.str, visualisation ----
 vegetation_lower.str <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/vegetation_lower.str.RDS")
 colnames(vegetation_lower.str)
 str(vegetation_lower.str)
-
-
-# ============================================================================= /
-# Enregistrement final ----
-# ============================================================================= /
-# voir scripts data_canopy.R, data_peat_all.R, data_tree.core_all.R, data_vegetation_v1.0.R

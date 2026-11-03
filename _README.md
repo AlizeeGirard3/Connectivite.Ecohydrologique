@@ -19,7 +19,7 @@ INFORMATIONS GÉNÉRALES
 # Des informations sur le projet dans son ensemble. 
 # Vous pouvez décrire aussi le but de l'étude 
 # (étude d'impact, évaluation, conservation, projet citoyen, etc.)
-1. Titre de la base de données: 
+1. Titre de la base de données: Restauration des processus écohydrologiques à l'échelle du paysage - Tourbières extraites comme modèle de recherche
 2. Information des auteurs
 	Chercheur correspondant
 		Nom: Alizée Girard
@@ -31,12 +31,12 @@ INFORMATIONS GÉNÉRALES
 	Co-investigateur 2
 		Nom: Sylvain Jutras (co-directeur)
 		Institution: Université laval, Québec, Québec, Canada
-3. Date de collecte des données : 2025-
-4. Localisation géographique de la collecte des données : Québec et Nouveau-Brunswick (Est du Canada)
-5. Sources de financement ayant soutenu la collecte des données : 
-6. Citation recommandée pour cet ensemble de données : CSPMA, CRSNG
-Sujet    # Liste de sujets généraux (à venir)
-Keyword  # Liste de mots clés pour retrouver le document au besoin(à venir)
+3. Date de collecte des données : 2024-
+4. Localisation géographique de la collecte des données : Provinces du Québec et du Nouveau-Brunswick (Est du Canada)
+5. Sources de financement ayant soutenu la collecte des données : CSPMA, CRSNG
+6. Citation recommandée pour cet ensemble de données : Girard, A. 2028. Données du projet "Restauration des processus écohydrologiques à l'échelle du paysage - Tourbières extraites comme modèle de recherche"
+Sujets    # Liste de sujets généraux (à venir)
+Mots-clé  # Paysage fragmenté, Restauration hydrologique, Écotone, Connectivité écologique, Science des systèmes complexes, Fonctions et services écosystémiques, Cycle du carbone, Toposéquence, Processus hydrologique, Habitat de la sphaigne
 License  # Type de licence pour les données. Souvent différent du code source. (à venir)
          # Par exemple, les données pourraient être sous CC-BY 4.0 et 
          # le code sous GNU V3. Vous devriez discuter de cela avec vos collègues. 
@@ -67,6 +67,8 @@ APERÇU DES DONNÉES ET DES FICHIERS
 
 INFORMATIONS MÉTHODOLOGIQUES
 # Décrire ici les informations méthodologiques de la collecte de données. 
+Les formats de prise de données numériques diffèrent des formats finaux de données tidy pour usage dans les analyses (le temps de prise de données-terrain doit être optimisé).
+Voir les protocoles [...].
 
 INFORMATIONS SPÉCIFIQUES AUX DONNÉES POUR :
 # Pour chaque base de données, vous pouvez spécifier ce qui se retrouve à l'intérieur. 

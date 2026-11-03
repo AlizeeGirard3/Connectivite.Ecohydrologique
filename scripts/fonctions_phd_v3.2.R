@@ -491,10 +491,11 @@ metadata <- function(x) {
 
 ## files.uids
 # x <- raw.ll.files.i.init
-files.uid.df <- data.frame(file.uid = NA, file.name = NA, probe.uid = NA, "extraction.data.aaaammjj" = NA, 
-                           "tz_orig" = NA, site.uid = NA,  probe.brand = NA, well.uid = NA) # pour stocker les fichier.uid (aussi première colonne de cal.data) et autres données intérimaires
 files.uid <- function(x) { # création du fichier.uid.i, nom unique du FICHIER qui ne pourra JAMAIS être dupliqué (utile dans section début et fin des mesures par périodes, pour un mm FICHIER)
-  if (grepl("odyssey", raw.ll.files[i])) {
+  files.uid.df <- data.frame(file.uid = NA, file.name = NA, probe.uid = NA, "extraction.data.aaaammjj" = NA, 
+                             "tz_orig" = NA, site.uid = NA,  probe.brand = NA, well.uid = NA) # pour stocker les fichier.uid (aussi première colonne de cal.data) et autres données intérimaires
+  
+    if (grepl("odyssey", raw.ll.files[i])) {
     texte <- x[[2]][4] # logger serial no, en base R
     numbers <- gregexpr("[0-9]+", texte)
     result <- regmatches(texte, numbers)
@@ -699,8 +700,8 @@ concatenate.ll <- function(file.to.concat) {
 
 # clean.to.calibrated_ll
 # file.to.calibrate <- ll.cal.pre.i
-offset.all <- tibble(offsets = list(), file.uid = character(), time = list())
 clean.to.calibrated_ll <- function(file.to.calibrate) {
+  offset.all <- tibble(offsets = list(), file.uid = character(), time = list())
   # boucles
   if(grepl("odyssey", raw.ll.files[i])) {     # i<-84 # exemple avec plusieurs mesures de bulleur 
     if(FALSE %in% (!file.to.calibrate$calibrated.value.cm %in% rep("NA", times = length(file.to.calibrate$calibrated.value.cm)))) { # si TRUE = STOP et warning (les données ont été calibrées avec le programme-mère, vérifier que j'obtiens les mêmes) // si FALSE = continuer la boucle (donc rien, donc IF statement)

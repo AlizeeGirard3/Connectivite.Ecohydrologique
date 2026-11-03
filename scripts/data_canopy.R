@@ -59,7 +59,6 @@ str(canopy.peat.fauna)
 # idées (à faire)
 # supprimer colonnes "peat"
 # ouverture de canopée pts/96 -> % ?
-#
 
 # ============================================================================= /
 # Enregistrement final ----
