@@ -46,7 +46,7 @@ source("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/scripts/fonctio
 
 # COMMENT/UNCOMMENT HERE (next line)
 # ============================================================================= /
-# Mise à jour données récentes, tous data)_SITE.UID ----
+# Mise à jour données récentes, tous data_SITE.UID ----
 # ============================================================================= /
 # Retrait de la date du nom des feuilles de données (aaaammjj_data_SITE.UID.xlsx -> data_SITE.UID.xlsx)
 path.rename <- "~/Documents/Doctorat/_R_Stats_PhD/connectivite/data"
@@ -308,25 +308,11 @@ str(tree.core_join)
 peat.sample.metadata <- canopy.peat.fauna |>
   select(c("perm.plot.uid", "perm.plot.uid", "site.uid", "chapter", "type", "perm.plot.replicate", "perm.plot.type", 
            "relative.distance", "quadrat.letter", "year", , contains("peat.sample_")))
-##### mise à jour données récentes, peat.xlsx ----
-# retrait de la date du nom des feuilles de données (aaaammjj_peat.xlsx -> peat.xlsx)
-if (length(list.files(path = "data/", pattern = "_peat")) != 0) { # s'il y a un fichier correspondant au motif (pattern)
-  peat_file <- list.files(path = "data/", pattern = "_peat") |>
-    basename() |> # basename(conserve le "path" dans le nom, en arrière-plan)
-    str_remove("\\d+?(?=_)_") # enlève la date; explications sur le regex : voir section Mise à jour [...] ci-haut
-  file.rename(from = list.files(path = "~/Documents/Doctorat/_R_Stats_PhD/connectivite/data", pattern = "_peat", full.names = TRUE), to = peat_file)
-}
-# lecture fichier brut (mettre à jour)
-peat <- read.xlsx("data/raw/peat.xlsx")
-##### join avec le peat.sample ----
-peat.sample_join <- full_join(peat.sample.metadata, peat)
-# visualisation / lecture fichier
-peat.sample_join
-colnames(peat.sample_join)
-str(peat.sample_join)
+# les prochaines manipulations sur les données de peat sont faites dans le script data_peat_all.R
+
 ##### enregistrement dans extracted_raw ----
 # pour toutes autres modification, passer au script "data_peat_all.R"
-# saveRDS(peat.sample_join, file = "data/extracted_raw/peat.sample_join.RDS")
+saveRDS(peat.sample.metadata, file = "data/extracted_raw/peat.sample.metadata.RDS")
 
 
 ## vegetation_trees.shr, visualisation ----

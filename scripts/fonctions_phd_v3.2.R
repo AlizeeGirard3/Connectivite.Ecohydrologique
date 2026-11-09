@@ -134,6 +134,8 @@ order.list <- function(path, pattern) {
 }
 
 # filter.raw.file
+# DESCRIPTION : - élimine lignes si [...]measure_status == "rejected", si toutes colonnes est NA;
+#               - élimine colonnes si contiennent la mention caduque (peut importe la case) : "_cad", ".cad", 'cad_', "cad."
 # object.to.filter <- peat.sample_join
 # path.filtering.object <- "connectivite/data/raw/level_logger_calibration_all.csv"
 # object.to.filter <- ele.profiles
@@ -149,8 +151,9 @@ filter.raw.file <- function(object.to.filter = NULL, path.filtering.object = NUL
       dplyr::rename(!!status_col := status_temp) %>%  # restaurer le nom d'origine dynamiquement
       # "!!" : opérateur Bang-Bang, pour interpréter le contenu de la variable nommée (ex. ma_variable_nommée <- "measure.status") au
       # lieu de comprendre "ma_variable_nommée" comme du texte; contourne l'évaluation non-standard (NSE) par défaut de dplyr/tidyverse
-      dplyr::select(!contains("_cad", ignore.case = TRUE), 
-                    -any_of(c("picture.no", "date.aaaa.mm.dd", "observers", "comment"))) # , "measure.status" // le cas échéant, enlever les colonnes inutiles aux analyses
+      dplyr::select(!contains(c("_cad", ".cad", 'cad_', "cad."), ignore.case = TRUE), 
+                    # -any_of(c("picture.no", "date.aaaa.mm.dd", "observers", "comment"))) # , "measure.status" // le cas échéant, enlever les colonnes inutiles aux analyses
+                    -contains(c("picture.no", "date.aaaa.mm.dd", "observers", "comment", "container", "peat.sample_pH.EC", "peat.sample_BD"))) # container : toujours impertinent car on soustrait cette valeur pour obtenir la masse de l'échantillon; peat.sample_pH.EC & peat.sample_BD colonnes pour savoir si échantillon prélevé sur le terrain (métadonnée)
   }
   if(c(!is.null(path.filtering.object) & !is.null(object.to.filter))) { # fournir l'objet à filtrer par les informations fournies dans le cal data path à filtrer
     filtering.object <- read.csv(path.filtering.object, , sep = ";", dec = ",")

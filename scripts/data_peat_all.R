@@ -26,6 +26,9 @@
 # NOTES : 
 # À FAIRE dans script analysis : anova one-way : bulk density groupe-site ou pas ? (mixt des routes et écotone, et aussi en les séparant ?)
 #
+# LEXIQUE :
+# T : température
+# EC: conductivité électrique
 ########################################################################## -
 
 # ============================================================================= /
@@ -41,21 +44,78 @@ if (!require("readxl")) install.packages("readxl") # lire les excel
 setwd("~/Documents/Doctorat/_R_Stats_PhD/connectivite")
 source("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/scripts/fonctions_phd_v3.2.R")
 
-# Import données (pour tout modification à la source: data_sites_all.R)
-peat.sample_join <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/peat.sample_join.RDS")
+# Mise à jour données récentes, tous peat.xlsx
+# retrait de la date du nom des feuilles de données (aaaammjj_peat.xlsx -> peat.xlsx)
+if (length(list.files(path = "data/", pattern = "_peat")) != 0) { # s'il y a un fichier correspondant au motif (pattern)
+  peat_file <- list.files(path = "data/", pattern = "_peat") |>
+    basename() |> # basename(conserve le "path" dans le nom, en arrière-plan)
+    str_remove("\\d+?(?=_)_") # enlève la date; explications sur le regex : voir section Mise à jour [...] ci-haut
+  file.rename(from = list.files(path = "~/Documents/Doctorat/_R_Stats_PhD/connectivite/data", pattern = "_peat", full.names = TRUE), to = peat_file)
+}
+
+# Import données récentes
+peat.pre <- read.xlsx("data/raw/peat.xlsx")
+peat.sample.metadata <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/peat.sample.metadata.RDS")  # fonction uid.to.column() appliquée par le script qui a généré peat.sample.metadata.RDS (data_sites_all.R)
+# peat.sample_join <- readRDS("/Users/Aliz/Documents/Doctorat/_R_Stats_PhD/connectivite/data/extracted_raw/peat.sample_join.RDS")
+
 
 # ============================================================================= /
-# Mise à jour données récentes, tous data)_SITE.UID ----
+# Expolorations initiales ----
 # ============================================================================= /
-# Non-applicable : faire à partir de script data_sites_all.R pour joindre métadonnées et nouveaux quadrat.uid
+## peat.pre ----
+str(peat.pre)
+colnames(peat.pre)
+nrow(peat.pre)
+
+## peat.sample.metadata ----
+str(peat.sample.metadata)
+colnames(peat.sample.metadata)
+nrow(peat.sample.metadata)
+
 
 # ============================================================================= /
-# Nettoyage ----
+# Nettoyages et agglomération ----
 # ============================================================================= /
+## join avec le peat.sample ----
+peat.sample_join.pre <- full_join(peat.sample.metadata, peat.pre)
+
+## filtre des lignes vides ----
+col.vector <- colnames(peat.pre)[!colnames(peat.pre) %in%
+                                   c("peat.sample_measure.status", "perm.plot.uid")] # spécification des colonnes à examiner (exclure colonnes qui ne sont jamais vides)
+peat.sample_join <- peat.sample_join.pre |> 
+  dplyr::filter(if_any(all_of(col.vector), ~ !is.na(.)))
+
+## éliminer objets intermédiaires ----
+rm(list = ls(.GlobalEnv, pattern = "\\.pre"))
+
+## visualisation / lecture fichier ----
+peat.sample_join
+colnames(peat.sample_join)
+str(peat.sample_join)
+nrow(peat.sample_join)
+
 ## filtre global ----
 peat.sample_join_fltrd <- filter.raw.file(peat.sample_join) # script "fonction_phd_vX" (AG, 2025+)
-colnames(peat.sample_join_fltrd)
-# uid.to.column -> fait dans le script qui a généré peat.sample_join.RDS (data_sites_all.R)
+colnames(peat.sample_join_fltrd) # √ ok enlevé métadonnées de traitement en laboratoire (voir fichier brut peat.pre au besoin)
+
+## correction EC ~ (pH, T) (Sjörs, 1950) ----
+# Le pH-conductimètre Fisher Accumet AB200 Benchtop pH-Conductivity Meter compense automatiquement les données de conductivité 
+# électrique (EC) en fonction de la température. Il faut toutefois appliquer une correction à l’EC mesurée puisque le pH influence
+# la mesure. Pour se faire, on utilise la formule de Sjörs (1950) adaptée aux tourbières :
+# Conductivité électrique corrigée (ECcorr) = 
+# ECmesurée – (10 - pH x constante)
+# Où la constante = 325 000 à 20 °C et 349 820 à 25 °C.
+# La correction de l’EC permet de compenser l’effet des ions H+ et se calcul à partir de la formule tirée de Sjörs (1950) lorsque l’EC est prise ou compensée pour une température de 20 °C, ce qui est le cas de la plupart des appareils.
+
+
+# ============================================================================= /
+# [...] ----
+# ============================================================================= /
+
+
+# ============================================================================= /
+# [...] ----
+# ============================================================================= /
 
 # ============================================================================= /
 # [...] ----
